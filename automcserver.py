@@ -164,20 +164,30 @@ def setupnewserver(stdscr):
                 break
     else:
         njavapath = "java"
+    stdscr.clear()
+    stdscr.erase()
     p.step("Preparing scripts",True)
-    while True:
-        memorytoall: str = cursesplus.cursesinput(stdscr,"How much memory should the server get? (EX: 1024M, 5G)")
-        if memorytoall.endswith("M") or memorytoall.endswith("G"):
-            try:
-                l = int(memorytoall[0:-1])
-                if (memorytoall.endswith("M") and l < 512) or (memorytoall.endswith("G") and l < 1):
-                    raise Exception()
-            except:
-                continue
+    userecmem = cursesplus.messagebox.askyesno(stdscr,["Do you want to use the","default amount of memory","YES: Use default","NO: Set custom amount of memory"])
+    if not userecmem:
+        while True:
+            memorytoall: str = cursesplus.cursesinput(stdscr,"How much memory should the server get? (EX: 1024M, 5G)")
+            if memorytoall.endswith("M") or memorytoall.endswith("G"):
+                try:
+                    l = int(memorytoall[0:-1])
+                    if (memorytoall.endswith("M") and l < 512) or (memorytoall.endswith("G") and l < 1):
+                        raise Exception()
+                except:
+                    continue
+                else:
+                    break
             else:
-                break
+                continue
+    else:
+        if serversoftware == 0:
+            #Vanilla
+            memorytoall = "1024M"
         else:
-            continue
+            memorytoall = "2G"#Bukkit
     njavapath = njavapath.replace("//","/")
     _space = "\\ "
     __SCRIPT__ = f"#!/usr/bin/sh\n{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
@@ -209,11 +219,13 @@ def servermgrmenu(stdscr):
         _sname = [a["name"] for a in APPDATA["servers"]][chosenserver-1]
         if os.path.isdir(SERVERSDIR+"/"+_sname):
             manage_server(stdscr,_sname,chosenserver)
+            updateappdata()
 
         else:
             cursesplus.displaymsg(stdscr,["ERROR","Server not found"])
             
             del APPDATA["servers"][chosenserver-1]#Unregister bad server
+            updateappdata()
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
