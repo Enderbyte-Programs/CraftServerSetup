@@ -179,7 +179,8 @@ def setupnewserver(stdscr):
         else:
             continue
     njavapath = njavapath.replace("//","/")
-    __SCRIPT__ = f"#!/usr/bin/sh\n{njavapath} -jar -Xms{memorytoall} -Xmx{memorytoall} {S_INSTALL_DIR}/server.jar nogui"
+    _space = "\\ "
+    __SCRIPT__ = f"#!/usr/bin/sh\n{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     with open(S_INSTALL_DIR+"/start","w+") as f:
         f.write(__SCRIPT__)
     os.system(f"chmod +x '{S_INSTALL_DIR+'/start'}'")
@@ -207,63 +208,69 @@ def servermgrmenu(stdscr):
     else:
         _sname = [a["name"] for a in APPDATA["servers"]][chosenserver-1]
         if os.path.isdir(SERVERSDIR+"/"+_sname):
-            SERVER_DIR = SERVERSDIR+"/"+_sname
-            _ODIR = os.getcwd()
-            os.chdir(SERVER_DIR)
-
-            #Manager server
-            while True:
-                w = cursesplus.displayops(stdscr,["Back","Start Server","Change MOTD","Advanced config","Delete server"])
-                if w == 0:
-                    break
-                elif w == 1:
-                    stdscr.clear()
-                    stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}")
-                    stdscr.refresh()
-                    curses.reset_shell_mode()
-                    os.system("./start")
-                    curses.reset_prog_mode()
-                    stdscr.clear()
-                    stdscr.refresh()
-                elif w == 2:
-                    if not os.path.isfile("server.properties"):
-                        cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
-                    else:
-                        with open("server.properties") as f:
-                            config = PropertiesParse.load(f.read())
-                        cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
-                        newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD")
-                        config["motd"] = newmotd
-                        with open("server.properties","w+") as f:
-                            f.write(PropertiesParse.dump(config))
-                elif w == 3:
-                    if not os.path.isfile("server.properties"):
-                        cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
-                    else:
-                        with open("server.properties") as f:
-                            config = PropertiesParse.load(f.read())
-                        while True:
-                            chc = cursesplus.optionmenu(stdscr,["BACK"]+[f for f in list(config.keys())])
-                            if chc == 0:
-                                break
-                            else:
-                                cursesplus.displaymsg(stdscr,["Current value of Is",list(config.values())[chc-1]])
-                                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}")
-                                config[list(config.keys())[chc-1]] = newval
-                        with open("server.properties","w+") as f:
-                            f.write(PropertiesParse.dump(config))
-                elif w == 4:
-                    if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"]):
-                        if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"]):
-                            os.chdir(SERVERSDIR)
-                            shutil.rmtree(SERVER_DIR)
-                            del APPDATA["servers"][chosenserver-1]
-                            cursesplus.messagebox.showinfo(stdscr,["Deleted server"])
-                            stdscr.clear()
-                            break
+            manage_server(stdscr,_sname,chosenserver)
 
         else:
             cursesplus.displaymsg(stdscr,["ERROR","Server not found"])
+            
+            del APPDATA["servers"][chosenserver-1]#Unregister bad server
+
+def manage_server(stdscr,_sname: str,chosenserver: int):
+    global APPDATA
+    SERVER_DIR = SERVERSDIR+"/"+_sname
+    _ODIR = os.getcwd()
+    os.chdir(SERVER_DIR)
+
+    #Manager server
+    while True:
+        w = cursesplus.displayops(stdscr,["Back","Start Server","Change MOTD","Advanced config","Delete server"])
+        if w == 0:
+            break
+        elif w == 1:
+            stdscr.clear()
+            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}")
+            stdscr.refresh()
+            curses.reset_shell_mode()
+            os.system("./start")
+            curses.reset_prog_mode()
+            stdscr.clear()
+            stdscr.refresh()
+        elif w == 2:
+            if not os.path.isfile("server.properties"):
+                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+            else:
+                with open("server.properties") as f:
+                    config = PropertiesParse.load(f.read())
+                cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
+                newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD")
+                config["motd"] = newmotd
+                with open("server.properties","w+") as f:
+                    f.write(PropertiesParse.dump(config))
+        elif w == 3:
+            if not os.path.isfile("server.properties"):
+                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+            else:
+                with open("server.properties") as f:
+                    config = PropertiesParse.load(f.read())
+                while True:
+                    chc = cursesplus.optionmenu(stdscr,["BACK"]+[f for f in list(config.keys())])
+                    if chc == 0:
+                        break
+                    else:
+                        cursesplus.displaymsg(stdscr,["Current value of Is",list(config.values())[chc-1]])
+                        newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}")
+                        config[list(config.keys())[chc-1]] = newval
+                with open("server.properties","w+") as f:
+                    f.write(PropertiesParse.dump(config))
+        elif w == 4:
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"]):
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"]):
+                    os.chdir(SERVERSDIR)
+                    shutil.rmtree(SERVER_DIR)
+                    del APPDATA["servers"][chosenserver-1]
+                    cursesplus.messagebox.showinfo(stdscr,["Deleted server"])
+                    stdscr.clear()
+                    break
 
 def updateappdata():
     global APPDATA
