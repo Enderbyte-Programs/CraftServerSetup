@@ -13,7 +13,7 @@ from time import sleep
 import curses
 import curses.textpad
 import json
-
+import signal
 import datetime
 import subprocess
 print("Checking for libcursesplus")
@@ -47,6 +47,11 @@ except:
     import urllib.request
 import urllib.error
 print("Checking internet connection")
+
+def sigint(signal,frame):
+    if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
+        updateappdata()
+        sys.exit()
 
 def internet_on():
     try:
@@ -235,8 +240,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
     #Manager server
     while True:
-        w = cursesplus.displayops(stdscr,["Back","Start Server","Change MOTD","Advanced config","Delete server"])
+        w = cursesplus.displayops(stdscr,["Back","Start Server","Change MOTD","Advanced config","Delete server","Set up new world"])
         if w == 0:
+            stdscr.erase()
             break
         elif w == 1:
             stdscr.clear()
@@ -283,22 +289,30 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     cursesplus.messagebox.showinfo(stdscr,["Deleted server"])
                     stdscr.clear()
                     break
-
+            stdscr.erase()
+        else:
+            nyi(stdscr)
+_SCREEN = None
 def updateappdata():
     global APPDATA
     global APPDATAFILE
     with open(APPDATAFILE,"w+") as f:
         f.write(json.dumps(APPDATA))
-
+def nyi(stdscr):
+    cursesplus.messagebox.showerror(stdscr,["Not Yet Implemented"],colour=True)
+    stdscr.erase()
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
     global APPDATAFILE
+    global _SCREEN
+    _SCREEN = stdscr
     try:
         curses.start_color()
 
         cursesplus.displaymsgnodelay(stdscr,["Auto Minecraft Server","Starting..."])
         global APPDATA
+        signal.signal(signal.SIGINT,sigint)
         APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
         if not os.path.isdir(os.path.expanduser("~/.local/share/mcserver")):
             os.mkdir(os.path.expanduser("~/.local/share/mcserver"))
@@ -346,9 +360,8 @@ def main(stdscr):
                 setupnewserver(stdscr)
             elif m == 1:
                 servermgrmenu(stdscr)
-    except KeyboardInterrupt:
-        if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to quit?"]):
-            sys.exit()
+    
+        
     except Exception as e:
         cursesplus.displaymsg(stdscr,["An error occured",str(e)])
 
