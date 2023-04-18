@@ -18,11 +18,11 @@ if ! test -f "$FILE"; then
     #Download file
     if ! command -v wget &>/dev/null; then
         echo "wget is required to do a download install."
-        exit -1
+        exit 1
     fi
     if ! command -v gzip &>/dev/null; then
         echo "GZIP is required to do a download install"
-        exit -1
+        exit 1
     fi
     wget -q -O automcserver.py.gz http://enderbyteprograms.ddnsfree.com:10223/downloads/hosted/automcserver.py.gz
     gzip -df automcserver.py.gz
@@ -30,12 +30,12 @@ fi
 
 if ! command -v python3 &>/dev/null; then
     echo "Please install Python3 before using this program"
-    exit -1
+    exit 1
 fi
 
 if ! command -v pip3 &>/dev/null; then
     echo "Please install python3-pip before using this program"
-    exit -1
+    exit 1
 fi
 if ! command -v java &>/dev/null; then
     read -p "WARNING: You need java to run a Minecraft server. Are you sure you want to go ahead with the install?" -n 1 -r
