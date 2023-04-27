@@ -16,6 +16,7 @@ import json
 import signal
 import datetime
 import subprocess
+import glob
 print("Checking for libcursesplus")
 try:
     import cursesplus
@@ -114,10 +115,10 @@ class PropertiesParse:
         return l
 def setupnewserver(stdscr):
     stdscr.erase()
-    serversoftware = cursesplus.displayops(stdscr,["Vanilla","Cancel"],"Please choose your server software")
-    if serversoftware == 1:
+    serversoftware = cursesplus.displayops(stdscr,["Cancel","Vanilla (Normal)","Spigot"],"Please choose your server software")
+    if serversoftware == 0:
         return
-    elif serversoftware == 0:
+    elif serversoftware == 1:
         stdscr.clear()
         stdscr.erase()
         downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
@@ -128,38 +129,27 @@ def setupnewserver(stdscr):
             cursesplus.displaymsgnodelay(stdscr,["Getting version manifest..."])
             PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
             cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
-            while True:
-                servername = cursesplus.cursesinput(stdscr,"What is the name of your server?").strip()
-                if not os.path.isdir(SERVERSDIR):
-                    os.mkdir(SERVERSDIR)
-                if os.path.isdir(SERVERSDIR+"/"+servername):
-                    cursesplus.displaymsg(stdscr,["Name already exists."])
-                    continue
-                else:
-                    try:
-                        os.mkdir(SERVERSDIR+"/"+servername)
-                    except:
-                        cursesplus.displaymsg(stdscr,["Error","Server path is illegal"])
-                    else:
-                        break
+    while True:
+        servername = cursesplus.cursesinput(stdscr,"What is the name of your server?").strip()
+        if not os.path.isdir(SERVERSDIR):
+            os.mkdir(SERVERSDIR)
+        if os.path.isdir(SERVERSDIR+"/"+servername):
+            cursesplus.displaymsg(stdscr,["Name already exists."])
+            continue
+        else:
+            try:
+                os.mkdir(SERVERSDIR+"/"+servername)
+            except:
+                cursesplus.displaymsg(stdscr,["Error","Server path is illegal"])
+            else:
+                break
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
     p = cursesplus.ProgressBar(stdscr,6,1,True,True,"Setting up server")
     p.step("Getting download data",True)
-    S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
-    S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
-    p.appendlog(f"SIZE: {S_DOWNLOAD_size}")
-    p.appendlog(f"URL: {S_DOWNLOAD_data['url']}")
-    p.step("Downloading",True)
-    urllib.request.urlretrieve(S_DOWNLOAD_data["url"],S_INSTALL_DIR+"/server.jar")
-    p.step("Checking stuff",True)
-    setupeula = cursesplus.messagebox.askyesno(stdscr,["To proceed, you must agree","To Mojang's EULA","","Do you agree?"])
-    if setupeula:
-        with open(S_INSTALL_DIR+"/eula.txt","w+") as f:
-            f.write("eula=true")# Agree
-    p.step("Loading java",True)
     usecustomjavaversion = cursesplus.messagebox.askyesno(stdscr,["Do you want to use the default java install (program java)?",f"Version {get_java_version()}"])
     stdscr.clear()
     stdscr.erase()
+    p.step("Loading java",True)
     if not usecustomjavaversion:
         while True:
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a new java executable",directory="/")
@@ -169,6 +159,50 @@ def setupnewserver(stdscr):
                 break
     else:
         njavapath = "java"
+    if serversoftware == 1:
+        S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
+        S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
+        p.appendlog(f"SIZE: {S_DOWNLOAD_size}")
+        p.appendlog(f"URL: {S_DOWNLOAD_data['url']}")
+        p.step("Downloading",True)
+        urllib.request.urlretrieve(S_DOWNLOAD_data["url"],S_INSTALL_DIR+"/server.jar")
+    elif serversoftware == 2:
+        
+        p.max = 8
+        p.step("Getting build file")
+        urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar",S_INSTALL_DIR+"/BuildTools.jar")
+        os.chdir(S_INSTALL_DIR)
+        p.step("Building Spigot")
+        while True:
+            build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
+            if not build_lver:
+                xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            else:
+                xver = "latest"
+            PACKAGEDATA = {"id":xver}
+            proc = subprocess.Popen([njavapath,"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
+            while True:
+                output = proc.stdout.readline()
+                if proc.poll() is not None:
+                    break
+                if output:
+                    for l in output.strip().splitlines():
+                        p.appendlog(l)
+            rc = proc.poll()
+            if rc == 0:
+                os.rename(glob.glob("spigot*.jar")[0],"server.jar")
+                break
+            else:
+                cursesplus.messagebox.showerror(stdscr,["Build Failed","Please view the log for more info"])
+
+
+    p.step("Checking stuff",True)
+    setupeula = cursesplus.messagebox.askyesno(stdscr,["To proceed, you must agree","To Mojang's EULA","","Do you agree?"])
+    if setupeula:
+        with open(S_INSTALL_DIR+"/eula.txt","w+") as f:
+            f.write("eula=true")# Agree
+    
+    
     stdscr.clear()
     stdscr.erase()
     p.step("Preparing scripts",True)
@@ -188,7 +222,7 @@ def setupnewserver(stdscr):
             else:
                 continue
     else:
-        if serversoftware == 0:
+        if serversoftware == 1:
             #Vanilla
             memorytoall = "1024M"
         else:
