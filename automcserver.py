@@ -17,7 +17,9 @@ import signal
 import datetime
 import subprocess
 import glob
-print("Checking for libcursesplus")
+import zipfile
+import hashlib
+print("Checking for cursesplus")
 try:
     import cursesplus
 except:
@@ -28,7 +30,7 @@ except:
     import cursesplus
 import cursesplus.messagebox
 import cursesplus.filedialog
-print("Checking for librequests")
+print("Checking for requests")
 try:
     import requests
 except:
@@ -47,6 +49,15 @@ except:
         sys.exit(1)
     import urllib.request
 import urllib.error
+print("Checking for pyyaml")
+try:
+    import yaml
+except:
+    lop = os.system("pip3 install --quiet pyyaml")
+    if lop != 0:
+        print("Failed to install pyyaml")
+        sys.exit(1)
+    import yaml
 print("Checking internet connection")
 
 def sigint(signal,frame):
@@ -62,10 +73,13 @@ def internet_on():
         return False
 APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
 SERVERSDIR = APPDATADIR + "/servers"
+TEMPDIR = APPDATADIR + "/temp"
 if not os.path.isdir(APPDATADIR):
     os.mkdir(APPDATADIR)
 if not os.path.isdir(SERVERSDIR):
     os.mkdir(SERVERSDIR)
+if not os.path.isdir(TEMPDIR):
+    os.mkdir(TEMPDIR)
 __DEFAULTAPPDATA__ = {
     "servers" : [
 
@@ -190,6 +204,7 @@ def setupnewserver(stdscr):
                         p.appendlog(l)
             rc = proc.poll()
             if rc == 0:
+                PACKAGEDATA["id"] = glob.glob("spigot*.jar")[0].split("-")[1].replace(".jar","")#Update version value as "latest" is very ambiguous. UPDATE: Fix bug where version is "1.19.4.jar"
                 os.rename(glob.glob("spigot*.jar")[0],"server.jar")
                 break
             else:
@@ -235,7 +250,7 @@ def setupnewserver(stdscr):
     os.system(f"chmod +x '{S_INSTALL_DIR+'/start'}'")
     p.step("All done!",True)
     startnow = cursesplus.messagebox.askyesno(stdscr,["Do you want to start your server now","to generate remaining config files","and to generate a default world?"])
-    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"]})
+    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1})
     updateappdata()
     if not startnow:
         return
@@ -266,6 +281,45 @@ def servermgrmenu(stdscr):
             del APPDATA["servers"][chosenserver-1]#Unregister bad server
             updateappdata()
 
+def jar_get_bukkit_plugin_name(file: str) -> dict:
+    zf = zipfile.ZipFile(file)
+    tmpxhash = str(hashlib.md5(zf.read("plugin.yml")).digest()).replace("\\","").replace("'","")
+    tmpxfl = TEMPDIR + "/" + tmpxhash
+    if not os.path.isdir(tmpxfl):
+        zf.extract("plugin.yml",tmpxfl)
+    zf.close()
+    with open(tmpxfl+"/plugin.yml") as f:
+        plugdata = f.read()
+    pdoc = yaml.load(plugdata,yaml.BaseLoader)#NOTE: add dump if this does not return dict
+    return {"version":pdoc["version"],"name":pdoc["name"],"mcversion":str(pdoc["api-version"])}
+
+def retr_jplug(path: str) -> list[dict]:
+    ltk = []
+    for fob in os.listdir(path):
+        if os.path.isfile(path+"/"+fob):
+            ltk.append(os.path.join(path,fob))
+    final = []
+    for jf in ltk:
+        try:
+            final.append(jar_get_bukkit_plugin_name(jf))
+        except Exception as e:
+            cursesplus.displayerror(_SCREEN,e,"er")
+            final.append({"version":"???","name":fob,"mcversion":""})#There was a problem loading this plugin file
+    return final
+
+def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
+    modsforlder = SERVERDIRECTORY + "/mods"
+    if not os.path.isdir(modsforlder):
+        os.mkdir(modsforlder)
+    while True:
+        spldi = cursesplus.displayops(stdscr,["BACK","ADD MOD"]+[f["name"]+" ("+f["version"]+")" for f in retr_jplug(modsforlder)])
+        if spldi == 0:
+            return
+        elif spldi == 1:
+            #add mod
+            nyi(stdscr)
+    
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     SERVER_DIR = SERVERSDIR+"/"+_sname
@@ -274,7 +328,10 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
     #Manager server
     while True:
-        w = cursesplus.displayops(stdscr,["Back","Start Server","Change MOTD","Advanced config","Delete server","Set up new world"])
+        x__ops = ["Back","Start Server","Change MOTD","Advanced config","Delete server","Set up new world"]
+        if APPDATA["servers"][chosenserver-1]["moddable"]:
+            x__ops += ["Manage mods/plgins"]
+        w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
             break
@@ -324,6 +381,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     stdscr.clear()
                     break
             stdscr.erase()
+        elif w == 6:
+            svr_mod_mgr(stdscr,SERVER_DIR)
         else:
             nyi(stdscr)
 _SCREEN = None
