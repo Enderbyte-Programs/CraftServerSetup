@@ -283,7 +283,7 @@ def servermgrmenu(stdscr):
 
 def jar_get_bukkit_plugin_name(file: str) -> dict:
     zf = zipfile.ZipFile(file)
-    tmpxhash = str(hashlib.md5(zf.read("plugin.yml")).digest()).replace("\\","").replace("'","")
+    tmpxhash = hashlib.md5(zf.read("plugin.yml")).hexdigest()
     tmpxfl = TEMPDIR + "/" + tmpxhash
     if not os.path.isdir(tmpxfl):
         zf.extract("plugin.yml",tmpxfl)
@@ -291,7 +291,7 @@ def jar_get_bukkit_plugin_name(file: str) -> dict:
     with open(tmpxfl+"/plugin.yml") as f:
         plugdata = f.read()
     pdoc = yaml.load(plugdata,yaml.BaseLoader)#NOTE: add dump if this does not return dict
-    return {"version":pdoc["version"],"name":pdoc["name"],"mcversion":str(pdoc["api-version"])}
+    return {"version":pdoc["version"],"name":pdoc["name"],"mcversion":str(pdoc["api-version"]),"path":file}
 
 def retr_jplug(path: str) -> list[dict]:
     ltk = []
@@ -304,20 +304,66 @@ def retr_jplug(path: str) -> list[dict]:
             final.append(jar_get_bukkit_plugin_name(jf))
         except Exception as e:
             cursesplus.displayerror(_SCREEN,e,"er")
-            final.append({"version":"???","name":fob,"mcversion":""})#There was a problem loading this plugin file
+            final.append({"version":"???","name":fob,"mcversion":"","path":path})#There was a problem loading this plugin file
     return final
+
+def file_get_md5(path: str) -> str:
+    with open(path,'rb') as f:
+        data = f.read()
+    return hashlib.md5(data).hexdigest()
 
 def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
     modsforlder = SERVERDIRECTORY + "/mods"
     if not os.path.isdir(modsforlder):
         os.mkdir(modsforlder)
     while True:
-        spldi = cursesplus.displayops(stdscr,["BACK","ADD MOD"]+[f["name"]+" ("+f["version"]+")" for f in retr_jplug(modsforlder)])
+        PLUGSLIST = retr_jplug(modsforlder)
+        spldi = cursesplus.displayops(stdscr,["BACK","ADD MOD"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST])
         if spldi == 0:
             return
         elif spldi == 1:
             #add mod
-            nyi(stdscr)
+            modfiles = cursesplus.filedialog.openfilesdialog(stdscr,"Please choose the plugins you would like to add",[["*.jar","JAR Executables"],["*","All files"]])
+            for modfile in modfiles:
+                if os.path.isfile(modfile):
+                    stdscr.clear()
+                    cursesplus.displaymsgnodelay(stdscr,["loading plugin",modfile])
+                    mf_name = os.path.split(modfile)[1]
+                    try:
+                        jar_get_bukkit_plugin_name(modfile)
+                    except:
+                        
+                        if not cursesplus.messagebox.askyesno(stdscr,[f"Modfile {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
+                            continue
+                    shutil.copyfile(modfile,modsforlder+"/"+mf_name)
+            stdscr.erase()
+        else:
+            chosenplug = spldi - 2
+            while True:
+                stdscr.erase()
+                activeplug = PLUGSLIST[chosenplug]
+                stdscr.addstr(0,0,"PLUGIN INFO")
+                stdscr.addstr(2,0,"Plugin Name")
+                stdscr.addstr(3,0,"Plugin Version")
+                stdscr.addstr(4,0,"Minecraft Version")
+                stdscr.addstr(5,0,"File path")
+                stdscr.addstr(6,0,"File size")
+                stdscr.addstr(7,0,"MD5 sum")
+                stdscr.addstr(2,20,activeplug["name"])
+                stdscr.addstr(3,20,activeplug["version"])
+                stdscr.addstr(4,20,activeplug["mcversion"])
+                stdscr.addstr(5,20,activeplug["path"])
+                stdscr.addstr(6,20,parse_size(os.path.getsize(activeplug["path"])))
+                stdscr.addstr(7,20,file_get_md5(activeplug["path"]))
+                stdscr.addstr(8,0,"PRESS D TO DELETE PLUGIN. PRESS ENTER TO GO BACK",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+                ch = stdscr.getch()
+                if ch == curses.KEY_ENTER or ch == 10 or ch == 13:
+                    break
+                elif ch == 100 or ch == 68:
+                    if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this plugin from your server?"]):
+                        os.remove(activeplug["path"])
+                        break
+            stdscr.clear()
     
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
