@@ -313,12 +313,12 @@ def file_get_md5(path: str) -> str:
     return hashlib.md5(data).hexdigest()
 
 def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
-    modsforlder = SERVERDIRECTORY + "/mods"
+    modsforlder = SERVERDIRECTORY + "/plugins"
     if not os.path.isdir(modsforlder):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = cursesplus.displayops(stdscr,["BACK","ADD MOD"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST])
+        spldi = cursesplus.displayops(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST])
         if spldi == 0:
             return
         elif spldi == 1:
@@ -333,7 +333,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
                         jar_get_bukkit_plugin_name(modfile)
                     except:
                         
-                        if not cursesplus.messagebox.askyesno(stdscr,[f"Modfile {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
+                        if not cursesplus.messagebox.askyesno(stdscr,[f"file {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
                             continue
                     shutil.copyfile(modfile,modsforlder+"/"+mf_name)
             stdscr.erase()
