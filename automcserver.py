@@ -129,7 +129,7 @@ class PropertiesParse:
         return l
 def setupnewserver(stdscr):
     stdscr.erase()
-    serversoftware = cursesplus.displayops(stdscr,["Cancel","Vanilla (Normal)","Spigot"],"Please choose your server software")
+    serversoftware = cursesplus.displayops(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
     if serversoftware == 0:
         return
     elif serversoftware == 1:
@@ -200,8 +200,8 @@ def setupnewserver(stdscr):
                 if proc.poll() is not None:
                     break
                 if output:
-                    for l in output.strip().splitlines():
-                        p.appendlog(l)
+                    for l in output.decode().strip().splitlines():
+                        p.appendlog(l.strip().replace("\n","").replace("\r",""))
             rc = proc.poll()
             if rc == 0:
                 PACKAGEDATA["id"] = glob.glob("spigot*.jar")[0].split("-")[1].replace(".jar","")#Update version value as "latest" is very ambiguous. UPDATE: Fix bug where version is "1.19.4.jar"
@@ -209,6 +209,24 @@ def setupnewserver(stdscr):
                 break
             else:
                 cursesplus.messagebox.showerror(stdscr,["Build Failed","Please view the log for more info"])
+    elif serversoftware == 3:
+        VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
+        stdscr.erase()
+        pxver = list(reversed(VMAN["versions"]))[cursesplus.optionmenu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+        BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
+        buildslist = list(reversed(BMAN["builds"]))
+        
+        if cursesplus.messagebox.askyesno(stdscr,["Would you like to install the latest build of Paper","It is highly recommended to do so"]):
+            builddat = buildslist[0]
+        else:
+            stdscr.erase()
+            builddat = buildslist[cursesplus.optionmenu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+        bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+        #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+        p.step("Downloading",True)
+        
+        urllib.request.urlretrieve(bdownload,S_INSTALL_DIR+"/server.jar")
+        PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
 
 
     p.step("Checking stuff",True)
