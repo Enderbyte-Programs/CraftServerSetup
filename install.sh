@@ -1,19 +1,37 @@
 #!/usr/bin/sh
-#This program installs automcserver. Run with --help for help or --local to install locally
+#This program installs and removes automcserver. Run with --help for help or --local to install locally
+
+FILE=automcserver.py
+APPDATAFOLDER=~/.local/share/mcserver
+LOCAL_INSFILE=~/.local/bin/automcserver
+LOCAL_INSLNK=~/.local/bin/mcserver
+INSLNK=/bin/mcserver
+INSFILE=/bin/automcserver
+DNURL=https://github.com/Enderbyte-Programs/automcserver/raw/main/automcserver.py
 
 if [ "$1" == "--remove" ] || [ "$1" == "-r" ]; then
     #Remove locally
     echo "Removing locally..."
-    rm ~/.local/bin/automcserver 2>/dev/null
-    rm ~/.local/bin/mcserver 2>/dev/null
+    rm $LOCAL_INSFILE 2>/dev/null
+    rm $LOCAL_INSLNK 2>/dev/null
     echo "Removing globally..."
     if [ "$EUID" -ne 0 ]
         then echo "WARNING: Root priviliges are required to uninstall globally"
+    else
+        rm $INSLNK 2>/dev/null
+        rm $INSFILE 2>/dev/null
     fi
     exit 0
 fi
+if [ "$1" == "--clear" ] || [ "$1" == "-c" ]; then
+    echo "Clearing appdata"
+    du -hs $APPDATAFOLDER
+    #Print size info
+    rm -rf $APPDATAFOLDER
+    echo "Appdata is cleared"
+    exit 0
+fi
 
-FILE=automcserver.py
 if ! test -f "$FILE"; then
     #Download file
     if ! command -v wget &>/dev/null; then
@@ -21,7 +39,7 @@ if ! test -f "$FILE"; then
         exit -1
     fi
 
-    wget -q -O automcserver.py https://github.com/Enderbyte-Programs/automcserver/raw/main/automcserver.py
+    wget -q -O $FILE $DNURL
 fi
 
 if ! command -v python3 &>/dev/null; then
@@ -48,15 +66,16 @@ if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     echo "-h --help :       Displays this help menu"
     echo "-l --local :      Installs program locally (doesn't need root)"
     echo "-r --remove :     Removes program both globally and locally"
+    echo "-c --clear :      Clear appdata and servers for automcserver"
     echo " (no arguments) : Installs program globally (requires root)"
     exit 0
 fi
 
 if [ "$1" == "--local" ] || [ "$1" == "-l" ]; then
-    cp $FILE ~/.local/bin/automcserver #Copy file
-    chmod +x ~/.local/bin/automcserver # Allow execution
+    cp $FILE $LOCAL_INSFILE #Copy file
+    chmod +x $LOCAL_INSFILE # Allow execution
     if ! test -f "$HOME/.local/bin/mcserver"; then
-        ln ~/.local/bin/automcserver ~/.local/bin/mcserver #Create link
+        ln $LOCAL_INSFILE $LOCAL_INSLNK #Create link
     fi
     
     echo "Successfully installed AutoMcServer Locally"
@@ -66,10 +85,10 @@ else
         then echo "Please run as root or run with --local argument"
         exit -1
     fi
-    cp $FILE /usr/bin/automcserver # Copy file
-    chmod +x /usr/bin/automcserver #Allow execution
-    if ~ test -f "/usr/bin/mcserver"; then
-        ln /usr/bin/automcserver /usr/bin/mcserver #Create link
+    cp $FILE $INSFILE # Copy file
+    chmod +x $INSFILE #Allow execution
+    if ~ test -f $INSLNK; then
+        ln $INSFILE $INSLNK #Create link
     fi
     echo "Sucessfully installed Auto Minecraft Server"
 fi
