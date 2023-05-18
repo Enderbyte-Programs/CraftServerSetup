@@ -158,7 +158,7 @@ def setupnewserver(stdscr):
             else:
                 break
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
-    p = cursesplus.ProgressBar(stdscr,6,1,True,True,"Setting up server")
+    p = cursesplus.ProgressBar(stdscr,6,cursesplus.ProgressBarTypes.FullScreenProgressBar,message="Setting up server")
     p.step("Getting download data",True)
     usecustomjavaversion = cursesplus.messagebox.askyesno(stdscr,["Do you want to use the default java install (program java)?",f"Version {get_java_version()}"])
     stdscr.clear()
