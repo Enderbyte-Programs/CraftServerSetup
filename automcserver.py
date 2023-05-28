@@ -18,6 +18,7 @@ import datetime
 import subprocess
 import glob
 import zipfile
+import traceback
 import hashlib
 print("Checking for cursesplus")
 try:
@@ -84,7 +85,10 @@ __DEFAULTAPPDATA__ = {
     "servers" : [
 
     ],
-    "hasCompletedOOBE" : False
+    "hasCompletedOOBE" : False,
+    "javainstalls" : [
+
+    ]
 }
 def parse_size(data: int) -> str:
     if data < 0:
@@ -103,9 +107,9 @@ def parse_size(data: int) -> str:
     if neg:
         result = "-"+result
     return result
-def get_java_version() -> str:
+def get_java_version(file="java") -> str:
     try:
-        return subprocess.check_output(r"java -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
+        return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
     except:
         return "Error"
 
@@ -144,7 +148,9 @@ def setupnewserver(stdscr):
             PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
             cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
     while True:
+        curses.curs_set(1)
         servername = cursesplus.cursesinput(stdscr,"What is the name of your server?").strip()
+        curses.curs_set(0)
         if not os.path.isdir(SERVERSDIR):
             os.mkdir(SERVERSDIR)
         if os.path.isdir(SERVERSDIR+"/"+servername):
@@ -160,19 +166,7 @@ def setupnewserver(stdscr):
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
     p = cursesplus.ProgressBar(stdscr,6,cursesplus.ProgressBarTypes.FullScreenProgressBar,message="Setting up server")
     p.step("Getting download data",True)
-    usecustomjavaversion = cursesplus.messagebox.askyesno(stdscr,["Do you want to use the default java install (program java)?",f"Version {get_java_version()}"])
-    stdscr.clear()
-    stdscr.erase()
-    p.step("Loading java",True)
-    if not usecustomjavaversion:
-        while True:
-            njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a new java executable",directory="/")
-            if os.system(njavapath+" -version &> /dev/null") != 0:
-                cursesplus.displaymsg(stdscr,["Bad java file"])
-            else:
-                break
-    else:
-        njavapath = "java"
+    njavapath = choose_java_install(stdscr)
     if serversoftware == 1:
         S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
         S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
@@ -190,7 +184,9 @@ def setupnewserver(stdscr):
         while True:
             build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
             if not build_lver:
+                curses.curs_set(1)
                 xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+                curses.curs_set(0)
             else:
                 xver = "latest"
             PACKAGEDATA = {"id":xver}
@@ -242,7 +238,9 @@ def setupnewserver(stdscr):
     userecmem = cursesplus.messagebox.askyesno(stdscr,["Do you want to use the","default amount of memory","YES: Use default","NO: Set custom amount of memory"])
     if not userecmem:
         while True:
+            curses.curs_set(1)
             memorytoall: str = cursesplus.cursesinput(stdscr,"How much memory should the server get? (EX: 1024M, 5G)")
+            curses.curs_set(0)
             if memorytoall.endswith("M") or memorytoall.endswith("G"):
                 try:
                     l = int(memorytoall[0:-1])
@@ -415,7 +413,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 with open("server.properties") as f:
                     config = PropertiesParse.load(f.read())
                 cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
+                curses.curs_set(1)
                 newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD")
+                curses.curs_set(0)
                 config["motd"] = newmotd
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
@@ -431,7 +431,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         break
                     else:
                         cursesplus.displaymsg(stdscr,["Current value of Is",list(config.values())[chc-1]])
+                        curses.curs_set(1)
                         newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}")
+                        curses.curs_set(0)
                         config[list(config.keys())[chc-1]] = newval
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
@@ -458,6 +460,59 @@ def updateappdata():
 def nyi(stdscr):
     cursesplus.messagebox.showerror(stdscr,["Not Yet Implemented"],colour=True)
     stdscr.erase()
+def choose_java_install(stdscr) -> str:
+    #Return path of selected java
+    while True:
+        stdscr.erase()
+        jsl = cursesplus.optionmenu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]],"Please choose a Java installation from the list")
+        if jsl == 0:
+            managejavainstalls()
+        else:
+            break
+    return APPDATA["javainstalls"][jsl-1]["path"]
+def managejavainstalls(stdscr):
+    global APPDATA
+    if os.system("java -help &> /dev/null") == 0:
+        APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
+    while True:
+        stdscr.erase()
+        jmg = cursesplus.optionmenu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
+        if jmg == 0:
+            njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory="/")
+            if os.system(njavapath+" -version &> /dev/null") != 0:
+                if not cursesplus.messagebox.askyesno(stdscr,["You have selected an invalid java file.","Would you like to try again?"]):
+                    break
+            else:
+                fver = get_java_version(njavapath)
+                ndict = {"path":njavapath,"ver":fver}
+                APPDATA["javainstalls"].append(ndict)
+        elif jmg == 1:
+            return
+        else:
+            
+            jdl = APPDATA["javainstalls"][jmg-1]
+            stdscr.clear()
+            stdscr.addstr(0,0,"MANAGING JAVA INSTALLATION")
+            stdscr.addstr(2,0,"Path")
+            stdscr.addstr(3,0,"Version")
+            stdscr.addstr(5,0,"Press V to verify installation | Press D to delete | Press any other key to return",cursesplus.cp.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+            stdscr.addstr(2,10,jdl["path"])
+            stdscr.addstr(3,10,jdl["ver"])
+            k = stdscr.getch()
+            if k == curses.KEY_DC or k == 100:
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to remove the java installation",jdl["path"]]):
+                    del APPDATA["javainstalls"][jmg-1]
+            elif k == 118:
+                try:
+                    jdl["ver"] = get_java_version(njavapath)
+                except:
+                    cursesplus.messagebox.showwarning(stdscr,["Java installaion is corrupt"])
+                    del APPDATA["javainstalls"][jmg-1]
+                else:
+                    cursesplus.messagebox.showinfo(stdscr,["Java installation is safe"])
+
+        updateappdata()
+        
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -466,7 +521,8 @@ def main(stdscr):
     _SCREEN = stdscr
     try:
         curses.start_color()
-
+        curses.curs_set(0)
+        
         cursesplus.displaymsgnodelay(stdscr,["Auto Minecraft Server","Starting..."])
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
@@ -491,24 +547,30 @@ def main(stdscr):
                 return
         VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
         
-        setupservernow = False
         if not APPDATA["hasCompletedOOBE"]:
             stdscr.clear()
-            cursesplus.displaymsg(stdscr,["AMCS OOBE","","Welcome to AutoMinecraftServer: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server","","v1.0"])
-            
+            cursesplus.displaymsg(stdscr,["AMCS OOBE","","Welcome to AutoMinecraftServer: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
+            if not bool(APPDATA["javainstalls"]):
+                if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
+                    managejavainstalls(stdscr)
+                else:
+                    cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
+            setupservernow = False
             setupservernow = cursesplus.messagebox.askyesno(stdscr,["AMCS OOBE","","Would you like to set up a server now?"])
             stdscr.clear()
             if setupservernow:
                 
                 setupnewserver(stdscr)
+        
 
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
         mx,my = os.get_terminal_size()
-        if mx < 120 or my < 20:
-            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
+#        if mx < 120 or my < 20:
+#            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit"],"AMCS 1.0")
+            stdscr.erase()
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit"],"AutoMcServer by Enderbyte Programs")
             if m == 2:
 
                 return
@@ -520,7 +582,7 @@ def main(stdscr):
     
         
     except Exception as e:
-        cursesplus.displaymsg(stdscr,["An error occured",str(e)])
+        cursesplus.displaymsg(stdscr,["An error occured"]+traceback.format_exc().splitlines())
 
 
 curses.wrapper(main)
