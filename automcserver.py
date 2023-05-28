@@ -270,6 +270,7 @@ def setupnewserver(stdscr):
     updateappdata()
     if not startnow:
         return
+    curses.curs_set(1)
     curses.reset_shell_mode()
     _OLDDIR = os.getcwd()
     os.chdir(S_INSTALL_DIR)
@@ -277,6 +278,7 @@ def setupnewserver(stdscr):
     
     curses.reset_prog_mode()
     os.chdir(_OLDDIR)
+    curses.curs_set(0)
     stdscr.clear()
     
 def servermgrmenu(stdscr):
@@ -401,9 +403,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}")
             stdscr.refresh()
+            curses.curs_set(1)
             curses.reset_shell_mode()
             os.system("./start")
             curses.reset_prog_mode()
+            curses.curs_set(0)
             stdscr.clear()
             stdscr.refresh()
         elif w == 2:
