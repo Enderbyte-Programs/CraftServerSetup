@@ -476,8 +476,12 @@ def choose_java_install(stdscr) -> str:
     return APPDATA["javainstalls"][jsl-1]["path"]
 def managejavainstalls(stdscr):
     global APPDATA
-    if os.system("java -help &> /dev/null") == 0:
-        APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
+    if "java" in [j["path"] for j in APPDATA["javainstalls"]]:
+        pass
+    else:
+        if os.system("java -help &> /dev/null") == 0:
+        
+            APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
     while True:
         stdscr.erase()
         jmg = cursesplus.optionmenu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
@@ -574,7 +578,7 @@ def main(stdscr):
 #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit"],"AutoMcServer by Enderbyte Programs")
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations"],"AutoMcServer by Enderbyte Programs")
             if m == 2:
 
                 return
@@ -583,6 +587,8 @@ def main(stdscr):
                 setupnewserver(stdscr)
             elif m == 1:
                 servermgrmenu(stdscr)
+            elif m == 3:
+                managejavainstalls(stdscr)
     
         
     except Exception as e:
