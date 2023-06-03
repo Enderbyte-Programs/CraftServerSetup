@@ -498,7 +498,7 @@ def managejavainstalls(stdscr):
             return
         else:
             
-            jdl = APPDATA["javainstalls"][jmg-1]
+            jdl = APPDATA["javainstalls"][jmg-2]
             stdscr.clear()
             stdscr.addstr(0,0,"MANAGING JAVA INSTALLATION")
             stdscr.addstr(2,0,"Path")
@@ -509,13 +509,13 @@ def managejavainstalls(stdscr):
             k = stdscr.getch()
             if k == curses.KEY_DC or k == 100:
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to remove the java installation",jdl["path"]]):
-                    del APPDATA["javainstalls"][jmg-1]
+                    del APPDATA["javainstalls"][jmg-2]
             elif k == 118:
                 try:
                     jdl["ver"] = get_java_version(njavapath)
                 except:
                     cursesplus.messagebox.showwarning(stdscr,["Java installaion is corrupt"])
-                    del APPDATA["javainstalls"][jmg-1]
+                    del APPDATA["javainstalls"][jmg-2]
                 else:
                     cursesplus.messagebox.showinfo(stdscr,["Java installation is safe"])
 
