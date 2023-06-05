@@ -385,10 +385,17 @@ def generate_script(svrdict: dict) -> str:
     __SCRIPT__ = f"#!/usr/bin/sh\n{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
     return __SCRIPT__
 
-def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
+def update_s_software_preinit(serverdir:str):
     os.chdir(serverdir)
     if os.path.isfile("server.jar"):
         os.remove("server.jar")
+def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
+    APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
+    generate_script(APPDATA["servers"][chosenserver-1])
+    updateappdata()
+
+def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
+    update_s_software_preinit(serverdir)
     stdscr.erase()
     downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
     if downloadversion == 0:
@@ -406,8 +413,42 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     stdscr.addstr(0,0,"Downloading new server file...")
     stdscr.refresh()
     urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
-    APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
-    generate_script(APPDATA["servers"][chosenserver-1])
+    update_s_software_postinit(PACKAGEDATA,chosenserver)
+
+def update_paper_software(stdscr,serverdir:str,chosenserver:int):
+    update_s_software_preinit(serverdir)
+    stdscr.erase()
+    VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
+    stdscr.erase()
+    pxver = list(reversed(VMAN["versions"]))[cursesplus.optionmenu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+    BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
+    buildslist = list(reversed(BMAN["builds"]))
+    
+    if cursesplus.messagebox.askyesno(stdscr,["Would you like to update to the latest build of Paper","It is highly recommended to do so"]):
+        builddat = buildslist[0]
+    else:
+        stdscr.erase()
+        builddat = buildslist[cursesplus.optionmenu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+    bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+    #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+    
+    urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
+    PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
+    update_s_software_postinit(PACKAGEDATA,chosenserver)
+
+def textview(file:str):
+    pass
+
+def view_server_logs(stdscr,server_dir:str):
+    
+    logsdir = server_dir+"/logs"
+    if not os.path.isdir(logsdir):
+        cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
+        return
+    if not cursesplus.messagebox.askyesno(stdscr,["Do you want to view that latest log?"]):
+        pass
+    else:
+        textview(logsdir+"/latest.log")
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -422,19 +463,22 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             x__ops += ["Manage mods/plgins"]
         else:
             x__ops += ["Convert server to moddable"]
+        x__ops += ["View logs"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
             break
         elif w == 1:
             stdscr.clear()
-            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}")
+            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
             stdscr.refresh()
             curses.curs_set(1)
             curses.reset_shell_mode()
-            os.system(APPDATA["servers"][chosenserver-1]["script"])
+            lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
             curses.reset_prog_mode()
             curses.curs_set(0)
+            if lretr != 0:
+                displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
             stdscr.clear()
             stdscr.refresh()
         elif w == 2:
@@ -505,6 +549,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 6:
             if not APPDATA["servers"][chosenserver-1]["moddable"]:
                 update_vanilla_software(stdscr,os.getcwd(),chosenserver)
+            elif APPDATA["servers"][chosenserver-1]["software"] == 3:
+                update_paper_software(stdscr,os.getcwd(),chosenserver)
             else:
                 nyi(stdscr)
         elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
