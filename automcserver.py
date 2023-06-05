@@ -526,7 +526,7 @@ def choose_java_install(stdscr) -> str:
         stdscr.erase()
         jsl = cursesplus.optionmenu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]],"Please choose a Java installation from the list")
         if jsl == 0:
-            managejavainstalls()
+            managejavainstalls(stdscr)
         else:
             break
     return APPDATA["javainstalls"][jsl-1]["path"]
