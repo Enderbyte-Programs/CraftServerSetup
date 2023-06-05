@@ -447,7 +447,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 curses.curs_set(1)
                 newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD",2,59)
                 curses.curs_set(0)
-                config["motd"] = newmotd
+                config["motd"] = newmotd.replace("\n","")
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
