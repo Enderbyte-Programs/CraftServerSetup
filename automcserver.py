@@ -261,12 +261,9 @@ def setupnewserver(stdscr):
     njavapath = njavapath.replace("//","/")
     _space = "\\ "
     __SCRIPT__ = f"#!/usr/bin/sh\n{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
-    with open(S_INSTALL_DIR+"/start","w+") as f:
-        f.write(__SCRIPT__)
-    os.system(f"chmod +x '{S_INSTALL_DIR+'/start'}'")
     p.step("All done!",True)
     startnow = cursesplus.messagebox.askyesno(stdscr,["Do you want to start your server now","to generate remaining config files","and to generate a default world?"])
-    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1})
+    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"script":__SCRIPT__})
     updateappdata()
     if not startnow:
         return
@@ -274,7 +271,7 @@ def setupnewserver(stdscr):
     curses.reset_shell_mode()
     _OLDDIR = os.getcwd()
     os.chdir(S_INSTALL_DIR)
-    os.system(f"'{S_INSTALL_DIR}/start'")
+    os.system(__SCRIPT__)
     
     curses.reset_prog_mode()
     os.chdir(_OLDDIR)
@@ -288,8 +285,8 @@ def servermgrmenu(stdscr):
     if chosenserver == 0:
         return
     else:
-        _sname = [a["name"] for a in APPDATA["servers"]][chosenserver-1]
-        if os.path.isdir(SERVERSDIR+"/"+_sname):
+        _sname = [a["dir"] for a in APPDATA["servers"]][chosenserver-1]
+        if os.path.isdir(_sname):
             manage_server(stdscr,_sname,chosenserver)
             updateappdata()
 
@@ -382,19 +379,49 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
                         os.remove(activeplug["path"])
                         break
             stdscr.clear()
-    
+
+def generate_script(svrdict: dict) -> str:
+    _space = "\\ "
+    __SCRIPT__ = f"#!/usr/bin/sh\n{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
+    return __SCRIPT__
+
+def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
+    os.chdir(serverdir)
+    if os.path.isfile("server.jar"):
+        os.remove("server.jar")
+    stdscr.erase()
+    downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+    if downloadversion == 0:
+        return
+    else:
+        stdscr.clear()
+        cursesplus.displaymsgnodelay(stdscr,["Getting version manifest..."])
+        PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
+        cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
+    if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?"]):
+        njavapath = choose_java_install(stdscr)
+        APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
+    S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
+    stdscr.clear()
+    stdscr.addstr(0,0,"Downloading new server file...")
+    stdscr.refresh()
+    urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
+    APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
+    generate_script(APPDATA["servers"][chosenserver-1])
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
-    SERVER_DIR = SERVERSDIR+"/"+_sname
+    SERVER_DIR = _sname
     _ODIR = os.getcwd()
     os.chdir(SERVER_DIR)
 
     #Manager server
     while True:
-        x__ops = ["Back","Start Server","Change MOTD","Advanced config","Delete server","Set up new world"]
+        x__ops = ["Back","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software"]
         if APPDATA["servers"][chosenserver-1]["moddable"]:
             x__ops += ["Manage mods/plgins"]
+        else:
+            x__ops += ["Convert server to moddable"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
@@ -405,7 +432,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.refresh()
             curses.curs_set(1)
             curses.reset_shell_mode()
-            os.system("./start")
+            os.system(APPDATA["servers"][chosenserver-1]["script"])
             curses.reset_prog_mode()
             curses.curs_set(0)
             stdscr.clear()
@@ -418,29 +445,53 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     config = PropertiesParse.load(f.read())
                 cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
                 curses.curs_set(1)
-                newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD")
+                newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD",2,59)
                 curses.curs_set(0)
                 config["motd"] = newmotd
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
-            if not os.path.isfile("server.properties"):
-                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+            __l = cursesplus.displayops(stdscr,["Cancel","Modify server properties","Modify AMCS Server options"])
+            if __l == 0:
+                continue
+            elif __l == 1:
+                if not os.path.isfile("server.properties"):
+                    cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+                else:
+                    with open("server.properties") as f:
+                        config = PropertiesParse.load(f.read())
+                    while True:
+                        chc = cursesplus.optionmenu(stdscr,["BACK"]+[f for f in list(config.keys())])
+                        if chc == 0:
+                            break
+                        else:
+                            cursesplus.displaymsg(stdscr,[f"Current value of {list(config.keys())[chc-1]} Is",list(config.values())[chc-1]])
+                            if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
+                                curses.curs_set(1)
+                                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}")
+                                curses.curs_set(0)
+                                config[list(config.keys())[chc-1]] = newval
+                    with open("server.properties","w+") as f:
+                        f.write(PropertiesParse.dump(config))
             else:
-                with open("server.properties") as f:
-                    config = PropertiesParse.load(f.read())
+                dt = APPDATA["servers"][chosenserver-1]
                 while True:
-                    chc = cursesplus.optionmenu(stdscr,["BACK"]+[f for f in list(config.keys())])
-                    if chc == 0:
+                    dx = cursesplus.optionmenu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
+                    if dx == 0:
+                        APPDATA["servers"][chosenserver-1] = dt
                         break
                     else:
-                        cursesplus.displaymsg(stdscr,["Current value of Is",list(config.values())[chc-1]])
-                        curses.curs_set(1)
-                        newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}")
-                        curses.curs_set(0)
-                        config[list(config.keys())[chc-1]] = newval
-                with open("server.properties","w+") as f:
-                    f.write(PropertiesParse.dump(config))
+                        cursesplus.displaymsg(stdscr,[f"Current value of {list(dt.keys())[dx-1]} is",str(list(dt.values())[dx-1])])
+                        lname = list(dt.keys())[dx-1]
+                        if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
+                            if lname == "software" or lname == "moddable":
+                                cursesplus.messagebox.showerror(stdscr,["This value may not be changed"])
+                                continue
+                            curses.curs_set(1)
+                            newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(dt.keys())[dx-1]}")
+                            curses.curs_set(0)
+                            dt[list(dt.keys())[dx-1]] = newval
+                APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
         elif w == 4:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"]):
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"]):
@@ -452,8 +503,13 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     break
             stdscr.erase()
         elif w == 6:
+            if not APPDATA["servers"][chosenserver-1]["moddable"]:
+                update_vanilla_software(stdscr,os.getcwd(),chosenserver)
+            else:
+                nyi(stdscr)
+        elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
             svr_mod_mgr(stdscr,SERVER_DIR)
-        else:
+        elif w == 7 and not APPDATA["servers"][chosenserver-1]["moddable"]:
             nyi(stdscr)
 _SCREEN = None
 def updateappdata():
