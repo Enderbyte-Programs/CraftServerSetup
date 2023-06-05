@@ -3,7 +3,7 @@
 print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
 
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
-
+APP_VERSION = 1
 
 print("Loading libraries:")
 import shutil
@@ -66,6 +66,12 @@ def sigint(signal,frame):
         updateappdata()
         sys.exit()
 
+def compatibilize_appdata(data:dict) -> dict:
+    try:
+        cver = data["version"]
+    except:
+        data["version"] = APP_VERSION
+
 def internet_on():
     try:
         urllib.request.urlopen('http://google.com', timeout=5)
@@ -86,6 +92,7 @@ __DEFAULTAPPDATA__ = {
 
     ],
     "hasCompletedOOBE" : False,
+    "version" : APP_VERSION,
     "javainstalls" : [
 
     ]
@@ -651,6 +658,8 @@ def main(stdscr):
                 with open(APPDATAFILE,"w+") as f:
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
+        APPDATA = compatibilize_appdata(APPDATA)
+
         #Graphics support loading
         if not internet_on():
             if not cursesplus.messagebox.askyesno(stdscr,["WARNING","No internet connection could be found!","You may run in to errors","Are you sure you want to continue?"]):
