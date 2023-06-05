@@ -71,6 +71,7 @@ def compatibilize_appdata(data:dict) -> dict:
         cver = data["version"]
     except:
         data["version"] = APP_VERSION
+    return data
 
 def internet_on():
     try:
