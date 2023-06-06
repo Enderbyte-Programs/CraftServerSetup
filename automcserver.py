@@ -444,8 +444,57 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
 
-def textview(file:str):
-    pass
+def textview(stdscr,file:str):# NOTE: This function may be moved to cursesplus library
+    if not os.path.isfile(file):
+        cursesplus.messagebox.showwarning(stdscr,["Specified file does not exist"])
+        return
+    else:
+        with open(file) as f:
+            data = f.readlines()
+    xoffset = 0
+    yoffset = 0
+    mx,my = os.get_terminal_size()
+    ERROR = ""
+    while True:
+        stdscr.clear()
+        cursesplus.filline(stdscr,my-1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        cursesplus.filline(stdscr,0,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        stdscr.addstr(0,0,f"Viewing file {file}. PRESS Q TO QUIT"[xoffset:xoffset+mx-2],cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        if ERROR != "":
+            stdscr.addstr(my-1,0,ERROR,cursesplus.set_colour(cursesplus.WHITE,cursesplus.RED))
+            ERROR = ""
+        stdscr.addstr(my-1,mx-7,f"({xoffset},{yoffset})",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        for p in range(yoffset,len(data)):
+            try:
+                stdscr.addstr(yoffset+1,0,data[p][xoffset:xoffset+mx-2])
+            except:
+                continue
+
+        stdscr.refresh()
+        ch = stdscr.getch()
+        if ch == 113:
+            return
+        elif ch == curses.KEY_UP:
+            if yoffset == 0:
+                curses.beep()
+                ERROR = "You are already at the top of the page"
+            else:
+                yoffset -= 1
+        elif ch == curses.KEY_DOWN:
+            if yoffset < len(data)-mx-3:
+                yoffset += 1
+            else:
+                curses.beep()
+                ERROR = "You are already at the bottom of the page"
+        elif ch == curses.KEY_RIGHT:
+            xoffset += 1
+        elif ch == curses.KEY_LEFT:
+            if xoffset == 0:
+                curses.beep()
+                ERROR = "You are already at the left"
+            else:
+                xoffset -= 1
+
 
 def view_server_logs(stdscr,server_dir:str):
     
@@ -453,10 +502,10 @@ def view_server_logs(stdscr,server_dir:str):
     if not os.path.isdir(logsdir):
         cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
         return
-    if not cursesplus.messagebox.askyesno(stdscr,["Do you want to view that latest log?"]):
-        pass
+    #if not cursesplus.messagebox.askyesno(stdscr,["Do you want to view that latest log?"]):#TODO Finish all log feature
+    #    pass
     else:
-        textview(logsdir+"/latest.log")
+        textview(stdscr,logsdir+"/latest.log")
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -565,6 +614,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             svr_mod_mgr(stdscr,SERVER_DIR)
         elif w == 7 and not APPDATA["servers"][chosenserver-1]["moddable"]:
             nyi(stdscr)
+        elif w == 8:
+            view_server_logs(stdscr,SERVER_DIR)
 _SCREEN = None
 def updateappdata():
     global APPDATA
