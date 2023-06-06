@@ -640,7 +640,7 @@ def managejavainstalls(stdscr):
     if "java" in [j["path"] for j in APPDATA["javainstalls"]]:
         pass
     else:
-        if os.system("java -help &> /dev/null") == 0:
+        if os.system("java -help > /dev/null 2>&1") == 0:
         
             APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
     while True:
@@ -648,7 +648,7 @@ def managejavainstalls(stdscr):
         jmg = cursesplus.optionmenu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
         if jmg == 0:
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory="/")
-            if os.system(njavapath+" -version &> /dev/null") != 0:
+            if os.system(njavapath+" -version > /dev/null 2>&1") != 0:
                 if not cursesplus.messagebox.askyesno(stdscr,["You have selected an invalid java file.","Would you like to try again?"]):
                     break
             else:
