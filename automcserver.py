@@ -4,6 +4,7 @@ print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
 
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1
+APP_UF_VERSION = "0.6"
 
 print("Loading libraries:")
 import shutil
@@ -546,9 +547,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     config = PropertiesParse.load(f.read())
                 cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
                 curses.curs_set(1)
-                newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD",2,59)
+                newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
                 curses.curs_set(0)
-                config["motd"] = newmotd.replace("\n","")
+                config["motd"] = newmotd.replace("\n","\\n")
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
@@ -569,7 +570,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                             cursesplus.displaymsg(stdscr,[f"Current value of {list(config.keys())[chc-1]} Is",list(config.values())[chc-1]])
                             if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
                                 curses.curs_set(1)
-                                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}")
+                                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}",prefiltext=str(list(config.values())[chc-1]))
                                 curses.curs_set(0)
                                 config[list(config.keys())[chc-1]] = newval
                     with open("server.properties","w+") as f:
@@ -589,7 +590,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                                 cursesplus.messagebox.showerror(stdscr,["This value may not be changed"])
                                 continue
                             curses.curs_set(1)
-                            newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(dt.keys())[dx-1]}")
+                            newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(dt.keys())[dx-1]}",prefiltext=str(list(dt.values())[dx-1]))
                             curses.curs_set(0)
                             dt[list(dt.keys())[dx-1]] = newval
                 APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
@@ -741,7 +742,7 @@ def main(stdscr):
 #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations"],"AutoMcServer by Enderbyte Programs")
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}")
             if m == 2:
 
                 return
