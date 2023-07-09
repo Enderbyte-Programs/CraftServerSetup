@@ -12,6 +12,20 @@ then
     echo "unzip is required to use this"
     exit 1
 fi
+if ! command -v tar &> /dev/null
+then
+    echo "tar is required to use this program"
+    exit 1
+fi
+if ! command -v xz &> /dev/null
+then
+    echo "xz is required to use this"
+    exit 1
+fi
+if ! command -v make &> /dev/null
+then
+    echo "WARNING: GNUMake is required to build a library that this program relies on. "
+fi
 if ! command -v java &> /dev/null
 then
     echo "WARNING: You should probably have java if you want to set up a Minecraft server"
@@ -56,16 +70,20 @@ do
 done
 
 #Build unbuilt library
-pushd lib
+if [ ! -d "$LIBDIR/yaml" ]; then
+    pushd lib
 
-tar -xf PyYAML-6.0.tar.gz
-cd PyYAML-6.0
-make -s
-python3 setup.py build -q
-cd build
-cp -r ./lib*/* "$LIBDIR"
+    tar -xf PyYAML-6.0.tar.gz
+    cd PyYAML-6.0
+    make -s
+    python3 setup.py build -q
+    cd build
+    cp -r ./lib*/* "$LIBDIR"
 
-popd
+    popd
+else
+    echo "libyaml is already built, skipping to save time"
+fi
 
 rm -rf lib/PyYAML-6.0
 

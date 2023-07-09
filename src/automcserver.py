@@ -4,7 +4,7 @@ print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
 
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.7"#The semver version
+APP_UF_VERSION = "0.7.1"#The semver version
 
 print("Loading libraries:")
 import shutil                   #File utilities
@@ -18,13 +18,18 @@ import datetime                 #Getting current date
 import subprocess               #Starting processes
 import glob                     #File system pattern matching
 import zipfile                  #Extracting ZIP Archive
+from time import sleep          #For delays
 import traceback                #Get information about errors
 import hashlib                  #Calculate file hashes
 
-### SET UP SYS.PATH
-sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs
-sys.path.insert(1,os.path.expanduser("~/.local/lib/automcserver"))
-sys.path.insert(1,"/usr/lib/automcserver")
+### SET UP SYS.PATH TO ONLY USE my special library directory
+if "bin" in sys.argv[0]:
+    sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs
+    sys.path.insert(1,os.path.expanduser("~/.local/lib/automcserver"))
+    sys.path.insert(1,"/usr/lib/automcserver")
+    DEBUG=False
+else:
+    DEBUG=True
 
 #Third party libraries below here
 import cursesplus               #Terminal Display Control
@@ -673,11 +678,16 @@ def main(stdscr):
     global APPDATAFILE
     global _SCREEN
     _SCREEN = stdscr
+    global DEBUG
     try:
         curses.start_color()
         curses.curs_set(0)
         
         cursesplus.displaymsgnodelay(stdscr,["Auto Minecraft Server","Starting..."])
+        if DEBUG:
+            stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
+            stdscr.refresh()
+            sleep(3)
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
@@ -722,11 +732,15 @@ def main(stdscr):
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
         mx,my = os.get_terminal_size()
+        if DEBUG:
+            introsuffix=" | SRC DEBUG"
+        else:
+            introsuffix = ""
 #        if mx < 120 or my < 20:
 #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}")
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
                 return
