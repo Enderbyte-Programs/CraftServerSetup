@@ -2,6 +2,7 @@
 
 #Check program requirements
 set -e
+echo "Checking for programs..."
 if ! command -v python3 &> /dev/null
 then
     echo "Python3 is required to use this program"
@@ -22,6 +23,11 @@ then
     echo "xz is required to use this"
     exit 1
 fi
+if ! command -v gzip &> /dev/null
+then
+    echo "gz is required to use this"
+    exit 1
+fi
 if ! command -v make &> /dev/null
 then
     echo "WARNING: GNUMake is required to build a library that this program relies on. "
@@ -36,7 +42,7 @@ then
 fi
 
 #Set up folders
-
+echo "Setting up..."
 if [ "$EUID" -ne 0 ]; then
     echo "WARNING: You are not running as root. Program will be installed locally."
     INSTALLDIR="$HOME/.local/bin"
@@ -50,6 +56,7 @@ if [ ! -d "$LIBDIR" ]; then
     mkdir -p "$LIBDIR"
 fi
 
+echo "Installing"
 #Copy code and add exec permissions
 cp src/automcserver.py "$INSTALLDIR/automcserver"
 chmod +x "$INSTALLDIR/automcserver"
@@ -61,31 +68,41 @@ if [ ! -L "$INSTALLDIR/amcs" ]; then
 fi
 
 #Copy prebuild util scripts
+echo "Copying scripts"
 cp -r src/utils "$LIBDIR"
 chmod -R +rx "$LIBDIR/utils" 
 
+echo "Installing libraries: "
+pushd lib >/dev/null
 #Copy prebuilt python library
-for file in lib/*.whl
+for file in *.xz
 do
-    unzip -q -o "$file" -d "$LIBDIR" #Extract library to custom library path
+    echo "      ${file}"
+    tar -xf $file -C $LIBDIR #Extract library to custom library path
 done
 
+echo "Building libyaml"
 #Build unbuilt library
 if [ ! -d "$LIBDIR/yaml" ]; then
-    pushd lib
-
     tar -xf PyYAML-6.0.tar.gz
     cd PyYAML-6.0
-    make -s
-    python3 setup.py build -q
+    set +e #Disable crashing
+    make >/dev/null
+    RES1=$?
+    python3 setup.py build >/dev/null
+    RES2=$?
+    set -e
+    if [ "$RES1" -ne 0 ] && [ "$RES2" -ne 0 ]; then
+        echo "ERROR: libyaml build failed with exit code $RES2."
+        exit 2
+    fi
     cd build
     cp -r ./lib*/* "$LIBDIR"
-
-    popd
 else
     echo "libyaml is already built, skipping to save time"
 fi
 
+popd >/dev/null
 rm -rf lib/PyYAML-6.0
 
 echo "Program installed successfully!"

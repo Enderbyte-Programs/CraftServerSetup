@@ -12,7 +12,7 @@ then
     exit 1
 fi
 
-rm *.xz
+rm *.xz *.amc
 tar -cJf automcserver.tar.xz ./*
 
 #Set up folders

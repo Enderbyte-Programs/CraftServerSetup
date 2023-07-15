@@ -19,7 +19,7 @@ pushd "$2" >/dev/null
 tar -xf "$1"
 WL=$?
 popd >/dev/null
-if [ $WL -ne 0]; then
+if [ $WL -ne 0 ]; then
     exit 7
 fi
 exit 0

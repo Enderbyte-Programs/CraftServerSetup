@@ -18,7 +18,7 @@ pushd "$1" >/dev/null
 tar -cJf "$2" ./* > /dev/null 2&>1
 WL=$?
 popd >/dev/null
-if [ $WL -ne 0]; then
+if [ $WL -ne 0 ]; then
     exit 7
 fi
 exit 0

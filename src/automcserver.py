@@ -4,7 +4,7 @@ print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
 
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.8"#The semver version
+APP_UF_VERSION = "0.8.1"#The semver version
 
 print("Loading libraries:")
 import shutil                   #File utilities
@@ -132,8 +132,11 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
         #Write server data into a temporary file
     wdir=cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a folder for the output server file")
     wxfileout=wdir+"/"+sdata["name"]+".amc"
-    cursesplus.displaymsgnodelay(stdscr,["Packaging server","please wait..."])
+    nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])
+    nwait.start()
     pr = os.system(f"bash {UTILDIR}/package_server.sh {serverdir} {wxfileout}")
+    nwait.stop()
+    nwait.destroy()
     if pr != 0:
         cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
     os.remove(serverdir+"/exdata.json")
@@ -728,11 +731,13 @@ def managejavainstalls(stdscr):
 
 def import_server(stdscr):
     chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
-    cursesplus.displaymsgnodelay(stdscr,["Unpacking server...","please wait"])
+    nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
+    nwait.start()
     smd5 = file_get_md5(chlx)
     if os.path.isdir(f"{TEMPDIR}/{smd5}"):
         shutil.rmtree(f"{TEMPDIR}/{smd5}")
     s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
+    nwait.stop()
     if s != 0:
         cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
         return
@@ -748,13 +753,15 @@ def import_server(stdscr):
         else:
             xdat["name"] = nname
             break
-    cursesplus.displaymsgnodelay(stdscr,["Unpacking server...","please wait"])
+    nwait.start()
     #os.mkdir(SERVERSDIR+"/"+nname)
     shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
     xdat["dir"] = SERVERSDIR+"/"+nname
     xdat["javapath"] = choose_java_install(stdscr)
     xdat["script"] = generate_script(xdat)
     APPDATA["servers"].append(xdat)
+    nwait.stop()
+    nwait.destroy()
     cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
 
 def main(stdscr):
