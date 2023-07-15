@@ -62,6 +62,7 @@ fi
 
 #Copy prebuild util scripts
 cp -r src/utils "$LIBDIR"
+chmod -R +rx "$LIBDIR/utils" 
 
 #Copy prebuilt python library
 for file in lib/*.whl

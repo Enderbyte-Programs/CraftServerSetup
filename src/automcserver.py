@@ -4,7 +4,7 @@ print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
 
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.7.1"#The semver version
+APP_UF_VERSION = "0.8"#The semver version
 
 print("Loading libraries:")
 import shutil                   #File utilities
@@ -28,8 +28,13 @@ if "bin" in sys.argv[0]:
     sys.path.insert(1,os.path.expanduser("~/.local/lib/automcserver"))
     sys.path.insert(1,"/usr/lib/automcserver")
     DEBUG=False
+    if os.path.isdir("/usr/lib/automcserver"):
+        UTILDIR="/usr/lib/automcserver/utils"
+    else:
+        UTILDIR = os.path.expanduser("~/.local/lib/automcserver/utils")
 else:
     DEBUG=True
+    UTILDIR="src/utils"
 
 #Third party libraries below here
 import cursesplus               #Terminal Display Control
@@ -119,6 +124,21 @@ class PropertiesParse:
         for f in d.items():
             l += f[0] + "=" + f[1] + "\n"
         return l
+
+def package_server(stdscr,serverdir:str,chosenserver:int):
+    sdata = APPDATA["servers"][chosenserver]
+    with open(serverdir+"/exdata.json","w+") as f:
+        f.write(json.dumps(sdata))
+        #Write server data into a temporary file
+    wdir=cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a folder for the output server file")
+    wxfileout=wdir+"/"+sdata["name"]+".amc"
+    cursesplus.displaymsgnodelay(stdscr,["Packaging server","please wait..."])
+    pr = os.system(f"bash {UTILDIR}/package_server.sh {serverdir} {wxfileout}")
+    if pr != 0:
+        cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
+    os.remove(serverdir+"/exdata.json")
+    cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
+    
 def setupnewserver(stdscr):
     stdscr.erase()
     serversoftware = cursesplus.displayops(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
@@ -510,7 +530,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             x__ops += ["Manage mods/plgins"]
         else:
             x__ops += ["Convert server to moddable"]
-        x__ops += ["View logs"]
+        x__ops += ["View logs","Export server","View server info"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
@@ -606,7 +626,41 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             nyi(stdscr)
         elif w == 8:
             view_server_logs(stdscr,SERVER_DIR)
+        elif w == 9:
+            package_server(stdscr,SERVER_DIR,chosenserver-1)
+        elif w == 10:
+            stdscr.erase()
+            stdscr.refresh()
+            stdscr.addstr(0,0,"Name ")
+            stdscr.addstr(1,0,"MC Version")
+            stdscr.addstr(2,0,"Directory")
+            stdscr.addstr(3,0,"Allocated Memory")
+            stdscr.addstr(4,0,"Server Size")
+            stdscr.addstr(5,0,"Moddable server?")
+            stdscr.refresh()
+            sdat = APPDATA["servers"][chosenserver-1]
+            stdscr.addstr(0,20,sdat["name"])
+            stdscr.addstr(1,20,sdat["version"])
+            stdscr.addstr(2,20,sdat["dir"][0:os.get_terminal_size()[0]])
+            stdscr.addstr(3,20,sdat["memory"])
+            stdscr.refresh()
+            stdscr.addstr(4,20,parse_size(get_tree_size(sdat["dir"])))
+            stdscr.refresh()
+            stdscr.addstr(5,20,["Yes" if sdat["moddable"] else "No"][0])
+            stdscr.addstr(6,0,"Press any key to continue",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+            stdscr.refresh()
+            stdscr.getch()
 _SCREEN = None
+def get_tree_size(start_path = '.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    return total_size
 def updateappdata():
     global APPDATA
     global APPDATAFILE
@@ -671,7 +725,38 @@ def managejavainstalls(stdscr):
                     cursesplus.messagebox.showinfo(stdscr,["Java installation is safe"])
 
         updateappdata()
-        
+
+def import_server(stdscr):
+    chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
+    cursesplus.displaymsgnodelay(stdscr,["Unpacking server...","please wait"])
+    smd5 = file_get_md5(chlx)
+    if os.path.isdir(f"{TEMPDIR}/{smd5}"):
+        shutil.rmtree(f"{TEMPDIR}/{smd5}")
+    s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
+    if s != 0:
+        cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
+        return
+    smtmpfile = f"{TEMPDIR}/{smd5}/exdata.json"
+    with open(smtmpfile) as f:
+        xdat = json.load(f)
+    nname = xdat["name"]
+    while True:
+        if nname in [l["name"] for l in APPDATA["servers"]]:
+            cursesplus.showcursor()
+            nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
+            cursesplus.hidecursor()
+        else:
+            xdat["name"] = nname
+            break
+    cursesplus.displaymsgnodelay(stdscr,["Unpacking server...","please wait"])
+    #os.mkdir(SERVERSDIR+"/"+nname)
+    shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
+    xdat["dir"] = SERVERSDIR+"/"+nname
+    xdat["javapath"] = choose_java_install(stdscr)
+    xdat["script"] = generate_script(xdat)
+    APPDATA["servers"].append(xdat)
+    cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -684,10 +769,18 @@ def main(stdscr):
         curses.curs_set(0)
         
         cursesplus.displaymsgnodelay(stdscr,["Auto Minecraft Server","Starting..."])
+        issue = False
         if DEBUG:
             stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
             stdscr.refresh()
-            sleep(3)
+            issue = True
+        if os.path.isdir("/usr/lib/automcserver") and os.path.isdir(os.path.expanduser("~/.local/lib/automcserver")):
+            stdscr.addstr(1,0,"ERROR: Conflicting installations of AMCS were found! Some issues may occur",cursesplus.set_colour(cursesplus.BLACK,cursesplus.RED))
+            stdscr.refresh()
+            issue = True
+        if issue:
+            sleep(5)
+
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
@@ -740,7 +833,7 @@ def main(stdscr):
 #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations","Import Server"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
                 return
@@ -751,7 +844,8 @@ def main(stdscr):
                 servermgrmenu(stdscr)
             elif m == 3:
                 managejavainstalls(stdscr)
-    
+            elif m == 4:
+                import_server(stdscr)
         
     except Exception as e:
         cursesplus.displaymsg(stdscr,["An error occured"]+traceback.format_exc().splitlines())
