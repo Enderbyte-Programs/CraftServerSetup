@@ -8,11 +8,6 @@ then
     echo "Python3 is required to use this program"
     exit 1
 fi
-if ! command -v unzip &> /dev/null
-then
-    echo "unzip is required to use this"
-    exit 1
-fi
 if ! command -v tar &> /dev/null
 then
     echo "tar is required to use this program"
