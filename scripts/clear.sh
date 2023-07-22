@@ -1,2 +1,2 @@
 #!/usr/bin.sh
-rm -rf ~/.local/share/automcserver
+rm -rf ~/.local/share/mcserver

@@ -33,7 +33,7 @@ then
 fi
 if ! command -v gcc &> /dev/null
 then
-    echo "WARNING: gcc is required to build a portion of a library that this program depends on. Program failure will likely happen now. On some systems you can ignore this."
+    echo "WARNING: gcc is required to build a portion of a library that this program depends on."
 fi
 
 #Set up folders
@@ -50,11 +50,36 @@ fi
 if [ ! -d "$LIBDIR" ]; then
     mkdir -p "$LIBDIR"
 fi
+if [ ! -d "$INSTALLDIR" ]; then
+    mkdir -p "$INSTALLDIR"
+    if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
+        echo ""
+    else
+        echo "WARNING: Local bin directory is not on PATH"
+    fi
 
-echo "Installing"
+fi
+
+echo "Building"
+if [ -d "dist" ]; then
+    echo "WARNING: dist directory found. Deleting now."
+    rm -rf dist # Clean dist directory
+fi
+mkdir dist
 #Copy code and add exec permissions
-cp src/automcserver.py "$INSTALLDIR/automcserver"
-chmod +x "$INSTALLDIR/automcserver"
+cp src/automcserver.py dist/automcserver.py
+sed '2,${/^#/d}' dist/automcserver.py >dist/automcserver.py.tmp
+#grep -o '^[^#]*' dist/automcserver.py >dist/automcserver.py.tmp
+rm dist/automcserver.py
+mv dist/automcserver.py.tmp dist/automcserver.py
+grep -v -e '^[[:space:]]*$' dist/automcserver.py >dist/automcserver.py.tmp
+rm dist/automcserver.py
+mv dist/automcserver.py.tmp dist/automcserver.py
+chmod +x dist/automcserver.py
+mv dist/automcserver.py dist/automcserver
+echo "Installing"
+cp dist/automcserver "$INSTALLDIR/automcserver"
+
 if [ ! -L "$INSTALLDIR/mcserver" ]; then
     ln -s "$INSTALLDIR/automcserver" "$INSTALLDIR/mcserver"
 fi

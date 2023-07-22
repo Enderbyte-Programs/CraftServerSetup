@@ -4,7 +4,7 @@ print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
 
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.8.1"#The semver version
+APP_UF_VERSION = "0.9"#The semver version
 
 print("Loading libraries:")
 import shutil                   #File utilities
@@ -46,6 +46,65 @@ import urllib.error
 import yaml                     #Parse YML Files
 print("Checking internet connection")
 
+___DEFAULT_SERVER_PROPERTIES___ = """
+enable-jmx-monitoring=false
+rcon.port=25575
+level-seed=
+gamemode=survival
+enable-command-block=false
+enable-query=false
+generator-settings={}
+enforce-secure-profile=true
+level-name=world
+motd=A Minecraft Server
+query.port=25565
+pvp=true
+generate-structures=true
+max-chained-neighbor-updates=1000000
+difficulty=easy
+network-compression-threshold=256
+max-tick-time=60000
+require-resource-pack=false
+use-native-transport=true
+max-players=20
+online-mode=true
+enable-status=true
+allow-flight=false
+initial-disabled-packs=
+broadcast-rcon-to-ops=true
+view-distance=10
+server-ip=
+resource-pack-prompt=
+allow-nether=true
+server-port=25565
+enable-rcon=false
+sync-chunk-writes=true
+op-permission-level=4
+prevent-proxy-connections=false
+hide-online-players=false
+resource-pack=
+entity-broadcast-range-percentage=100
+simulation-distance=10
+rcon.password=
+player-idle-timeout=0
+debug=false
+force-gamemode=false
+rate-limit=0
+hardcore=false
+white-list=false
+broadcast-console-to-ops=true
+spawn-npcs=true
+spawn-animals=true
+function-permission-level=2
+initial-enabled-packs=vanilla
+level-type=minecraft\:normal
+text-filtering-config=
+spawn-monsters=true
+enforce-whitelist=false
+spawn-protection=16
+resource-pack-sha1=
+max-world-size=29999984
+"""
 def sigint(signal,frame):
     if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
         updateappdata()
@@ -122,7 +181,15 @@ class PropertiesParse:
     def dump(d: dict) -> str:
         l = ""
         for f in d.items():
-            l += f[0] + "=" + f[1] + "\n"
+            lout = f[1]
+            if isinstance(lout,bool):
+                if lout:
+                    lout = "true"
+                else:
+                    lout = "false"
+            elif isinstance(lout,int) or isinstance(lout,float):
+                lout = str(lout)
+            l += f[0] + "=" + str(lout) + "\n"
         return l
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
@@ -273,22 +340,142 @@ def setupnewserver(stdscr):
     _space = "\\ "
     __SCRIPT__ = f"#!/usr/bin/sh\n{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     p.step("All done!",True)
-    startnow = cursesplus.messagebox.askyesno(stdscr,["Do you want to start your server now","to generate remaining config files","and to generate a default world?"])
     APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"script":__SCRIPT__})
     updateappdata()
-    if not startnow:
-        return
-    curses.curs_set(1)
-    curses.reset_shell_mode()
-    _OLDDIR = os.getcwd()
+    bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
-    os.system(__SCRIPT__)
-    
-    curses.reset_prog_mode()
-    os.chdir(_OLDDIR)
-    curses.curs_set(0)
-    stdscr.clear()
-    
+    advancedsetup = cursesplus.messagebox.askyesno(stdscr,["Would you like to set up your server configuration now?"])
+    if not advancedsetup:
+        cursesplus.messagebox.showinfo(stdscr,["Default configuration will be generated when you start your server"])
+    else:
+        data = setup_server_properties(stdscr)
+        with open("server.properties","w+") as f:
+            f.write(PropertiesParse.dump(data))
+    os.chdir(bdir)
+
+def get_player_uuid(username:str):
+    req = f"https://api.mojang.com/users/profiles/minecraft/{username}"
+    r = requests.get(req).json()
+    return r["id"]
+
+def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd()) -> dict:
+
+    while True:
+        dpp["level-name"] = cursesplus.cursesinput(stdscr,"What should your world be called")
+        if os.path.isdir(serverdir+"/"+dpp["level-name"]):
+            if cursesplus.messagebox.showwarning(stdscr,["This world may already exist.","Are you sure you want to edit its settings?"]):
+                break
+        else:
+            break
+    if cursesplus.messagebox.askyesno(stdscr,["Do you want to use a custom seed?","Answer no for a random seed"]):
+        dpp["level-seed"] = cursesplus.cursesinput(stdscr,"What should the seed be?")
+    wtype = cursesplus.displayops(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
+    if wtype == 7:
+        wname = cursesplus.cursesinput(stdscr,"Please type the full name of the custom world type")
+    elif wtype == 0:
+        wname = "minecraft:normal"
+    elif wtype == 1:
+        wname = "minecraft:flat"
+    elif wtype == 2:
+        wname = "minecraft:large_biomes"
+    elif wtype == 3:
+        wname = "minecraft:amplified"
+    elif wtype == 4:
+        wname = "minecraft:single_biome_surface"
+    elif wtype == 5:
+        wname = "minecraft:buffet"
+    elif wtype == 6:
+        wname = "minecraft:customized"
+    dpp["level-type"] = wname
+    if wtype == 1 or wtype == 4 or wtype == 5 or wtype == 6:
+        if wtype == 1:
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to customize the flat world?"]):
+               dpp["generator-settings"] = cursesplus.cursesinput(stdscr,f"Please type generator settings for {wname}") 
+        else:
+            dpp["generator-settings"] = cursesplus.cursesinput(stdscr,f"Please type generator settings for {wname}")
+    return dpp
+def setup_server_properties(stdscr) -> dict:
+    dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
+    cursesplus.showcursor()
+    while True:
+        lssl = cursesplus.displayops(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH"],"Server Configuration Setup")
+        #Go through all of the properties 1 by 1...
+        if lssl == 4:
+            cursesplus.hidecursor()
+            return dpp
+        elif lssl == 3:
+            #Network Settings
+            dpp["enable-rcon"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable Remote CONtrol on this server?","WARNING: This could be dangerous"])
+            if dpp["enable-rcon"]:
+                dpp["broadcast-rcon-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable RCON (Remote CONtrol) output to operators?"])
+                dpp["rcon.password"] = cursesplus.cursesinput(stdscr,"Please input RCON password",passwordchar="*")
+                dpp["rcon.port"] = cursesplus.numericinput(stdscr,"Please input the RCON port: (default 25575)",False,False,1,65535,25575)
+
+            dpp["enable-status"] = not cursesplus.messagebox.askyesno(stdscr,["Would you like to hide this server's status?"])
+            dpp["enable-query"] = not cursesplus.messagebox.askyesno(stdscr,["Would you like to hide this server's player count?"])
+            dpp["hide-online-players"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to hide the player list?"])
+            dpp["prevent-proxy-connection"] = not cursesplus.messagebox.askyesno(stdscr,["Do you want to allow proxy connections?"])
+            dpp["query.port"] = cursesplus.numericinput(stdscr,"Please input the query port: (default 25565)",False,False,1,65535,25565)        
+            dpp["server-port"] = cursesplus.numericinput(stdscr,"Please input the port that this server listens on: (default 25565)",False,False,1,65535,25565)  
+
+        elif lssl == 2:
+            #Advanced settings
+            dpp["broadcast-console-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable verbose output to operators?"])
+            dpp["entity-broadcast-range-percentage"] = cursesplus.numericinput(stdscr,"What distance percentage should entities be sent to the client?",minimum=10,maximum=1000,prefillnumber=100)
+            #dpp["enforce-secure-profile"] = not cursesplus.messagebox.askyesno(stdscr,["Do you want to allow cracked accounts to join?"])
+            seclevel = cursesplus.displayops(stdscr,["Maximum (reccommended) - Secure profile and valid account","Moderate - Valid account, secure profile not required","Minimum - Cracked / illegal accounts permitted"],"Please choose a security option")
+            if seclevel == 0:
+                dpp["enforce-secure-profile"] = True
+                dpp["online-mode"] = True
+            elif seclevel == 1:
+                dpp["enforce-secure-profile"] = False
+            else:
+                dpp["enforce-secure-profile"] = False
+                dpp["online-mode"] = False
+            dpp["white-list"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to enable whitelist on this server?"])
+            if dpp["white-list"]:
+                if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up a whitelist now?"]):
+                    #TODO Add whitelist manager
+                    whitelist_manager(stdscr,os.getcwd())
+                if cursesplus.messagebox.askyesno(stdscr,["Do you want to enfore the white list?"]):
+                    dpp["enforce-whitelist"] = True
+            dpp["force-gamemode"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to force players to use the default game mode?"])
+            dpp["function-permission-level"] = cursesplus.displayops(stdscr,["1 (Bypass spawn protection)","2 (Singleplayer commands)","3 (Player management (ban/kick))","4 (Manage server)"],"Please choose the default op admin level") + 1
+            dpp["max-chained-neighbor-updates"] = cursesplus.numericinput(stdscr,"Please input maximum chained neighboue updates",allownegatives=True,minimum=-1,prefillnumber=1000000)
+            dpp["max-tick-time"] = cursesplus.numericinput(stdscr,"How many milliseconds should watchdog wait?",False,True,-1,2**32,60000)
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to enable anti-afk?"]):
+                dpp["player-idle-timeout"] = cursesplus.numericinput(stdscr,"Minutes of AFK before player is kicked:",False,False,0,1000000)
+            else:
+                dpp["player-idle-timeout"] = 0
+            
+        elif lssl == 0:
+            #basic
+            dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins?"])
+            dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this server?"])
+            dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this server?"])
+            dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this server?"])
+            dpp["difficulty"] = str(cursesplus.optionmenu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
+            dpp["gamemode"] = str(cursesplus.optionmenu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
+            dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
+            dpp["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed? (max players)",minimum=1,maximum=1000000,prefillnumber=20)
+            dpp["motd"] = "\\n".join(cursesplus.cursesinput(stdscr,"What should your server message say?",2,59).splitlines())
+            dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
+            dpp["simulation-distance"] = cursesplus.numericinput(stdscr,"What should the maximum simulation distance on the server be?",False,False,2,32,10)
+            dpp["view-distance"] = cursesplus.numericinput(stdscr,"What should the maximum view distance on the server be?",False,False,2,32,10)
+            dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
+            dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
+            dpp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
+            
+        elif lssl == 1:
+            #world
+            dpp = setup_new_world(stdscr,dpp)
+
+def resource_pack_setup(stdscr,serverdata:dict) -> dict:
+    nyi(stdscr)
+
+def whitelist_manager(stdscr,serverdir:str):
+    nyi(stdscr)
+
 def servermgrmenu(stdscr):
     stdscr.clear()
     global APPDATA
@@ -565,7 +752,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
-            __l = cursesplus.displayops(stdscr,["Cancel","Modify server properties","Modify AMCS Server options"])
+            __l = cursesplus.displayops(stdscr,["Cancel","Modify server properties","Modify AMCS Server options","Reset server configuration"])
             if __l == 0:
                 continue
             elif __l == 1:
@@ -587,7 +774,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                                 config[list(config.keys())[chc-1]] = newval
                     with open("server.properties","w+") as f:
                         f.write(PropertiesParse.dump(config))
-            else:
+            elif __l == 2:
                 dt = APPDATA["servers"][chosenserver-1]
                 while True:
                     dx = cursesplus.optionmenu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
@@ -606,6 +793,13 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                             curses.curs_set(0)
                             dt[list(dt.keys())[dx-1]] = newval
                 APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+            elif __l == 3:
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
+                    os.remove("server.properties")
+                    if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
+                        sd = setup_server_properties(stdscr)
+                        with open("server.properties","w+") as f:
+                            f.write(PropertiesParse.dump(sd))
         elif w == 4:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"]):
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"]):
