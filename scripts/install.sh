@@ -46,7 +46,10 @@ else
     INSTALLDIR="/usr/bin"
     LIBDIR="/usr/lib/automcserver"
 fi
-
+APPDATADIR="$HOME/.local/share/mcserver"
+if [ ! -d "$APPDATADIR" ]; then;
+    mkdir -p "$APPDATADIR"
+fi
 if [ ! -d "$LIBDIR" ]; then
     mkdir -p "$LIBDIR"
 fi
@@ -80,12 +83,8 @@ mv dist/automcserver.py dist/automcserver
 echo "Installing"
 cp dist/automcserver "$INSTALLDIR/automcserver"
 
-if [ ! -L "$INSTALLDIR/mcserver" ]; then
-    ln -s "$INSTALLDIR/automcserver" "$INSTALLDIR/mcserver"
-fi
-if [ ! -L "$INSTALLDIR/amcs" ]; then
-    ln -s "$INSTALLDIR/automcserver" "$INSTALLDIR/amcs"
-fi
+ln -sf "$INSTALLDIR/automcserver" "$INSTALLDIR/mcserver"
+ln -sf "$INSTALLDIR/automcserver" "$INSTALLDIR/amcs"
 
 #Copy prebuild util scripts
 echo "Copying scripts"

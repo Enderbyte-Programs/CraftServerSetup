@@ -1,10 +1,9 @@
 #!/usr/bin/python3
-
-print("Auto Minecraft Server by Enderbyte Programs (c) 2023")
-
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.9"#The semver version
+APP_UF_VERSION = "0.10"#The semver version
+
+print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
 print("Loading libraries:")
 import shutil                   #File utilities
@@ -204,8 +203,8 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
     pr = os.system(f"bash {UTILDIR}/package_server.sh {serverdir} {wxfileout}")
     nwait.stop()
     nwait.destroy()
-    if pr != 0:
-        cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
+    #if pr != 0:
+    #    cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
     os.remove(serverdir+"/exdata.json")
     cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
     
@@ -924,39 +923,46 @@ def managejavainstalls(stdscr):
         updateappdata()
 
 def import_server(stdscr):
-    chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
-    nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
-    nwait.start()
-    smd5 = file_get_md5(chlx)
-    if os.path.isdir(f"{TEMPDIR}/{smd5}"):
-        shutil.rmtree(f"{TEMPDIR}/{smd5}")
-    s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
-    nwait.stop()
-    if s != 0:
-        cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
-        return
-    smtmpfile = f"{TEMPDIR}/{smd5}/exdata.json"
-    with open(smtmpfile) as f:
-        xdat = json.load(f)
-    nname = xdat["name"]
-    while True:
-        if nname in [l["name"] for l in APPDATA["servers"]]:
-            cursesplus.showcursor()
-            nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
-            cursesplus.hidecursor()
-        else:
-            xdat["name"] = nname
-            break
-    nwait.start()
-    #os.mkdir(SERVERSDIR+"/"+nname)
-    shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
-    xdat["dir"] = SERVERSDIR+"/"+nname
-    xdat["javapath"] = choose_java_install(stdscr)
-    xdat["script"] = generate_script(xdat)
-    APPDATA["servers"].append(xdat)
-    nwait.stop()
-    nwait.destroy()
-    cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
+    umethod = cursesplus.displayops(stdscr,["Import from .amc file","Import from folder"])
+    if umethod == 0:
+        chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
+        nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
+        nwait.start()
+        smd5 = file_get_md5(chlx)
+        if os.path.isdir(f"{TEMPDIR}/{smd5}"):
+            shutil.rmtree(f"{TEMPDIR}/{smd5}")
+        s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
+        nwait.stop()
+        if s != 0:
+            cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
+            return
+        try:
+            smtmpfile = f"{TEMPDIR}/{smd5}/exdata.json"
+            with open(smtmpfile) as f:
+                xdat = json.load(f)
+            nname = xdat["name"]
+            while True:
+                if nname in [l["name"] for l in APPDATA["servers"]]:
+                    cursesplus.showcursor()
+                    nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
+                    cursesplus.hidecursor()
+                else:
+                    xdat["name"] = nname
+                    break
+            nwait.start()
+            #os.mkdir(SERVERSDIR+"/"+nname)
+            shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
+            xdat["dir"] = SERVERSDIR+"/"+nname
+            xdat["javapath"] = choose_java_install(stdscr)
+            xdat["script"] = generate_script(xdat)
+            APPDATA["servers"].append(xdat)
+            nwait.stop()
+            nwait.destroy()
+            cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
+        except:
+            cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
+    else:
+        nyi(stdscr)
 
 def main(stdscr):
     global VERSION_MANIFEST
@@ -1034,7 +1040,7 @@ def main(stdscr):
 #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations","Import Server"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
                 return
@@ -1047,6 +1053,12 @@ def main(stdscr):
                 managejavainstalls(stdscr)
             elif m == 4:
                 import_server(stdscr)
+            elif m == 5:
+                if not os.path.isfile(UTILDIR+"/run_update.sh"):
+                    cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
+                else:
+                    subprocess.Popen(["bash",f"{UTILDIR}/run_update.sh"])
+                    sys.exit()#Exit for update
         
     except Exception as e:
         cursesplus.displaymsg(stdscr,["An error occured"]+traceback.format_exc().splitlines())
