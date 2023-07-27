@@ -1074,7 +1074,7 @@ def main(stdscr):
 
 curses.wrapper(main)
 if UPDATEINSTALLED:
-    print("""\n
-    =============================
-    Update installed successfully\n
-    =============================""")
+    print("""
+=============================
+Update installed successfully
+=============================""")
