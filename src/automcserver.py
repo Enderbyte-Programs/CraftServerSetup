@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.10"#The semver version
+APP_UF_VERSION = "0.11"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -961,7 +961,57 @@ def import_server(stdscr):
         except:
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
     else:
-        nyi(stdscr)
+        try:
+            xdat = {}#Dict of server data
+            ddir = cursesplus.filedialog.openfolderdialog(stdscr,"Choose the folder of the server you want to import")
+            ffile = cursesplus.filedialog.openfiledialog(stdscr,"Please choose the server JAR file",[["*.jar","Java Archive files"],["*","All Files"]],ddir)
+            fpl = os.path.split(ffile)[1]
+            delaftercomplete = cursesplus.messagebox.askyesno(stdscr,["Delete original folder after import?"])
+            nname = cursesplus.cursesinput(stdscr,"Please enter the name of this server")
+            while True:
+                if nname in [l["name"] for l in APPDATA["servers"]]:
+                    cursesplus.showcursor()
+                    nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
+                    cursesplus.hidecursor()
+                else:
+                    xdat["name"] = nname
+                    break
+            p = cursesplus.PleaseWaitScreen(stdscr,["Copying"])
+            p.start()
+            shutil.copytree(ddir,SERVERSDIR+"/"+nname)
+            if delaftercomplete:
+                try:
+                    shutil.rmtree(ddir)
+                except:
+                    pass
+            p.stop()
+            p.destroy()
+            xdat["dir"] = SERVERSDIR+"/"+nname
+            xdat["javapath"] = choose_java_install(stdscr)
+            while True:
+                curses.curs_set(1)
+                memorytoall: str = cursesplus.cursesinput(stdscr,"How much memory should the server get? (EX: 1024M, 5G)")
+                curses.curs_set(0)
+                if memorytoall.endswith("M") or memorytoall.endswith("G"):
+                    try:
+                        l = int(memorytoall[0:-1])
+                        if (memorytoall.endswith("M") and l < 512) or (memorytoall.endswith("G") and l < 1):
+                            raise Exception()
+                    except:
+                        continue
+                    else:
+                        break
+                else:
+                    continue
+            xdat["memory"] = memorytoall
+            xdat["version"] = cursesplus.cursesinput(stdscr,"What version is your server?")
+            xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?"])
+            xdat["software"] = cursesplus.displayops(stdscr,["Vanilla","Spigot","Paper"],"What software is this server running") + 1
+            xdat["script"] = generate_script(xdat)
+            APPDATA["servers"].append(xdat)
+            cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
+        except:
+            cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
 
 def main(stdscr):
     global VERSION_MANIFEST
