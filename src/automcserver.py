@@ -6,7 +6,6 @@ UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
-print("Loading libraries:")
 import shutil                   #File utilities
 import sys                      #C Utilities
 import os                       #OS System Utilities
@@ -44,7 +43,6 @@ import requests                 #Networking Utilities
 import urllib.request
 import urllib.error
 import yaml                     #Parse YML Files
-print("Checking internet connection")
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -1059,7 +1057,11 @@ def main(stdscr):
                 if not os.path.isfile(UTILDIR+"/run_update.sh"):
                     cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
                 else:
+                    stdscr.clear()
+                    stdscr.refresh()
+                    curses.reset_shell_mode()
                     r = subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
+                    curses.reset_prog_mode()
                     if r == 0:
                         UPDATEINSTALLED = True
                         return#Exit for update
@@ -1072,4 +1074,7 @@ def main(stdscr):
 
 curses.wrapper(main)
 if UPDATEINSTALLED:
-    print("Update installed successfully")
+    print("""\n
+    =============================
+    Update installed successfully\n
+    =============================""")
