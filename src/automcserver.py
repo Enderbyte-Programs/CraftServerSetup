@@ -1057,7 +1057,7 @@ def main(stdscr):
                 if not os.path.isfile(UTILDIR+"/run_update.sh"):
                     cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
                 else:
-                    subprocess.Popen(["bash",f"{UTILDIR}/run_update.sh"])
+                    subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
                     sys.exit()#Exit for update
         
     except Exception as e:

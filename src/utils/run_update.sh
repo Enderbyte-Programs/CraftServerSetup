@@ -22,9 +22,9 @@ then
     exit 1
 fi
 
-pushd /tmp/amcsupdate
-git clone https://github.com/Enderbyte-Programs/automcserver/
-cd automcserver
-bash scripts/install.sh
-popd
+pushd /tmp/amcsupdate >/dev/null
+git clone https://github.com/Enderbyte-Programs/automcserver/ >/dev/null
+cd automcserver 
+bash scripts/install.sh >/dev/null
+popd >/dev/null
 echo "AutoMCServer updated successfully. Restart it with the amcs command."
