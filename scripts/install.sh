@@ -1,5 +1,9 @@
 #!/usr/bin/bash
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
 #Check program requirements
 set -e
 echo "Checking for programs..."
@@ -47,7 +51,7 @@ else
     LIBDIR="/usr/lib/automcserver"
 fi
 APPDATADIR="$HOME/.local/share/mcserver"
-if [ ! -d "$APPDATADIR" ]; then;
+if [ ! -d "$APPDATADIR" ]; then
     mkdir -p "$APPDATADIR"
 fi
 if [ ! -d "$LIBDIR" ]; then
@@ -112,7 +116,7 @@ if [ ! -d "$LIBDIR/yaml" ]; then
     RES2=$?
     set -e
     if [ "$RES1" -ne 0 ] && [ "$RES2" -ne 0 ]; then
-        echo "ERROR: libyaml build failed with exit code $RES2."
+        printf "${RED}ERROR: libyaml build failed with exit code $RES2.${NC}\n"
         exit 2
     fi
     cd build
@@ -124,4 +128,4 @@ fi
 popd >/dev/null
 rm -rf lib/PyYAML-6.0
 
-echo "Program installed successfully!"
+printf "${GREEN}Program installed successfully!${NC}\n"

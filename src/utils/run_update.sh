@@ -1,4 +1,6 @@
 #!/usr/bin/bash
+
+set -e
 if [ -d "/tmp/amcsupdate" ]; then
     rm -rf /tmp/amcsupdate
 fi
@@ -25,4 +27,4 @@ git clone https://github.com/Enderbyte-Programs/automcserver/
 cd automcserver
 bash scripts/install.sh
 popd
-amcs
+echo "AutoMCServer updated successfully. Restart it with the amcs command."
