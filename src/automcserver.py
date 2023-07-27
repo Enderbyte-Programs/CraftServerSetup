@@ -1058,7 +1058,8 @@ def main(stdscr):
                     cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
                 else:
                     subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
-                    sys.exit()#Exit for update
+                    
+                    return#Exit for update
         
     except Exception as e:
         cursesplus.displaymsg(stdscr,["An error occured"]+traceback.format_exc().splitlines())
