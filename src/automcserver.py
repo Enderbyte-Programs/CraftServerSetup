@@ -2,6 +2,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
 APP_UF_VERSION = "0.10"#The semver version
+UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
@@ -968,6 +969,7 @@ def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
     global APPDATAFILE
+    global UPDATEINSTALLED
     global _SCREEN
     _SCREEN = stdscr
     global DEBUG
@@ -1057,12 +1059,17 @@ def main(stdscr):
                 if not os.path.isfile(UTILDIR+"/run_update.sh"):
                     cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
                 else:
-                    subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
-                    
-                    return#Exit for update
+                    r = subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
+                    if r == 0:
+                        UPDATEINSTALLED = True
+                        return#Exit for update
+                    else:
+                        cursesplus.messagebox.showwarning(stdscr,["Update failed."])
         
     except Exception as e:
         cursesplus.displaymsg(stdscr,["An error occured"]+traceback.format_exc().splitlines())
 
 
 curses.wrapper(main)
+if UPDATEINSTALLED:
+    print("Update installed successfully")
