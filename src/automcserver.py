@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.11"#The semver version
+APP_UF_VERSION = "0.12"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -162,6 +162,30 @@ def get_java_version(file="java") -> str:
         return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
     except:
         return "Error"
+
+def manage_whitelist(stdscr,whitefile:str):
+    with open(whitefile) as f:
+        dat = json.load(f)
+    while True:
+        dop = cursesplus.displayops(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove")
+        if dop == 1:
+            with open(whitefile,"w+") as f:
+                f.write(json.dumps(dat))
+            return
+        elif dop == 0:
+            cursesplus.showcursor()
+            name = cursesplus.cursesinput(stdscr,"Name(s) of players allowed: (Seperate with commas)")
+            cursesplus.hidecursor()
+            names = name.split(",")
+            for player in names:
+                cursesplus.displaymsgnodelay(stdscr,[player])
+                try:
+                    pluid = get_player_uuid(player)
+                except:
+                    pass
+                dat.append({"uuid":pluid,"name":player})
+        else:
+            del dat[dop-2]
 
 class PropertiesParse:
     @staticmethod
@@ -354,7 +378,13 @@ def setupnewserver(stdscr):
 def get_player_uuid(username:str):
     req = f"https://api.mojang.com/users/profiles/minecraft/{username}"
     r = requests.get(req).json()
-    return r["id"]
+    uuid = r["id"]
+    uuidl = list(uuid)
+    uuidl.insert(8,"-")
+    uuidl.insert(13,"-")
+    uuidl.insert(18,"-")
+    uuidl.insert(23,"-")
+    return "".join(uuidl)
 
 def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd()) -> dict:
 
@@ -718,7 +748,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             x__ops += ["Manage mods/plgins"]
         else:
             x__ops += ["Convert server to moddable"]
-        x__ops += ["View logs","Export server","View server info"]
+        x__ops += ["View logs","Export server","View server info","Manage Whitelist"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
@@ -845,6 +875,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.addstr(6,0,"Press any key to continue",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
             stdscr.refresh()
             stdscr.getch()
+        elif w == 11:
+            manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
 _SCREEN = None
 def get_tree_size(start_path = '.'):
     total_size = 0
