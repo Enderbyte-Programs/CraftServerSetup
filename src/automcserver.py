@@ -22,6 +22,7 @@ import socket                   #Telemetry
 import hashlib                  #Calculate file hashes
 import platform                 #Get system information
 import threading                #Start threads
+import random                   #Random number generation
 
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if "bin" in sys.argv[0]:
@@ -140,8 +141,59 @@ __DEFAULTAPPDATA__ = {
     "version" : APP_VERSION,
     "javainstalls" : [
 
-    ]
+    ],
+    "productKey" : "",
+    "pkd" : False
 }
+def verify_product_key(key:str) -> bool:
+    if len(key) < 8:
+        return False
+    else:
+        if (int(key[0]) + int(key[2]) == int(key[3])) and (int(key[6]) - int(key[4]) == int(key[1])) and (int(key[7]) * int(key[5]) < 50):
+            return True
+        else:
+            return False
+def generate_product_key() -> str:
+    #Rules: 1 + 3 = 4, 7 - 5 = 2, 8 * 6 must be less than 50
+    while True:
+        l1 = random.randint(0,5)
+        
+        l3 = random.randint(0,4)
+        l4 = l1 + l3
+        l5 = random.randint(0,5)
+        l6 = random.randint(0,9)
+        l7 = random.randint(0,9)
+        l2 = l7 - l5
+        if l2 < 0:
+            continue
+        l8 = random.randint(0,9)
+
+        assembled = f"{l1}{l2}{l3}{l4}{l5}{l6}{l7}{l8}"
+        if verify_product_key(assembled):
+            return assembled
+
+def product_key_page(stdscr):
+    o = cursesplus.displayops(stdscr,["Register Product key","How to register a product key","Use without product key :("],"You have not yet inserted a valid product key.")
+    if o == 2:
+        cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
+        return
+    elif o == 1:
+        stdscr.clear()
+        stdscr.addstr(0,0,"1. Send $2 CAD or equivilant to @enderbyte09 on PayPal")
+        stdscr.addstr(1,0,"2. Send an email to enderbyte09@gmail.com that includes your PayPal username")
+        stdscr.addstr(2,0,"3. I will send you a return email with your product key as soon as I can")
+        stdscr.addstr(4,0,"Press any key to proceed")
+        stdscr.refresh()
+        stdscr.getch()
+    elif o == 0:
+        npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,8)
+        if not verify_product_key(npk):
+            cursesplus.messagebox.showwarning(stdscr,{"Invalid key"})
+        else:
+            APPDATA["productKey"] = npk
+            cursesplus.messagebox.showinfo(stdscr,["Registered!",":D"],"Success")
+            return
+
 def send_telemetry():
     try:
         s = socket.socket()
@@ -178,6 +230,7 @@ def error_handling(e:Exception):
     _SCREEN.addstr(4,0,"https://github.com/Enderbyte-Programs/automcserver/issues")
     _SCREEN.addstr(5,0,"Press any key to quit")
     _SCREEN.refresh()
+    sleep(3)
     _SCREEN.getch()
     sys.exit(1)
     
@@ -743,7 +796,8 @@ def textview(stdscr,file:str):# NOTE: This function may be moved to cursesplus l
         return
     else:
         with open(file) as f:
-            data = f.readlines()
+            data = f.read().replace("\r","").split("\n")
+            #print(data)
     xoffset = 0
     yoffset = 0
     mx,my = os.get_terminal_size()
@@ -757,9 +811,9 @@ def textview(stdscr,file:str):# NOTE: This function may be moved to cursesplus l
             stdscr.addstr(my-1,0,ERROR,cursesplus.set_colour(cursesplus.WHITE,cursesplus.RED))
             ERROR = ""
         stdscr.addstr(my-1,mx-7,f"({xoffset},{yoffset})",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        for p in range(yoffset,len(data)):
+        for p in range(yoffset,my-2+yoffset):
             try:
-                stdscr.addstr(yoffset+1,0,data[p][xoffset:xoffset+mx-2])
+                stdscr.addstr(p+1,0,data[p][xoffset:xoffset+mx-2])
             except:
                 continue
 
@@ -774,11 +828,7 @@ def textview(stdscr,file:str):# NOTE: This function may be moved to cursesplus l
             else:
                 yoffset -= 1
         elif ch == curses.KEY_DOWN:
-            if yoffset < len(data)-mx-3:
-                yoffset += 1
-            else:
-                curses.beep()
-                ERROR = "You are already at the bottom of the page"
+            yoffset += 1
         elif ch == curses.KEY_RIGHT:
             xoffset += 1
         elif ch == curses.KEY_LEFT:
@@ -1138,6 +1188,7 @@ def main(stdscr):
 
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
+
         threading.Thread(target=send_telemetry).start()
         APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
         if not os.path.isdir(os.path.expanduser("~/.local/share/mcserver")):
@@ -1181,6 +1232,16 @@ def main(stdscr):
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
         mx,my = os.get_terminal_size()
+        if not "productKey" in list(APPDATA.keys()):
+            APPDATA["productKey"] = ""
+        if not "pkd" in list(APPDATA.keys()):
+            APPDATA["pkd"] = False
+        if not APPDATA["pkd"]:
+            product_key_page(stdscr)
+        APPDATA["pkd"] = True
+
+        updateappdata()
+
         if DEBUG:
             introsuffix=" | SRC DEBUG"
         else:
@@ -1189,7 +1250,11 @@ def main(stdscr):
     #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer","Test Exception handling"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
+            lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer"]
+            
+            if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
+                lz += ["Insert Product Key","Donate"]
+            m = cursesplus.displayops(stdscr,lz,f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
                 return
@@ -1217,14 +1282,16 @@ def main(stdscr):
                     else:
                         cursesplus.messagebox.showwarning(stdscr,["Update failed."])
             elif m == 6:
-                raise RuntimeError("Manually triggered exception")
+                product_key_page(stdscr)
+            elif m == 7:
+                cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
         error_handling(e)
 
-
-curses.wrapper(main)
-if UPDATEINSTALLED:
-    print("""
-=============================
-Update installed successfully
-=============================""")
+if __name__ == "__main__":
+    curses.wrapper(main)
+    if UPDATEINSTALLED:
+        print("""
+    =============================
+    Update installed successfully
+    =============================""")
