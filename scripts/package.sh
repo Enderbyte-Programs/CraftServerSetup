@@ -12,5 +12,5 @@ then
     exit 1
 fi
 
-rm -rf *.xz *.amc dist
+rm -rf *.xz *.amc dist *.log
 tar -cJf automcserver.tar.xz ./*

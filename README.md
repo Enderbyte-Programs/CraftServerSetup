@@ -1,15 +1,29 @@
 # automcserver
 ## The best way to set up a Minecraft server on Linux
 
-## IMPORTANT NOTICE
-
-**AS IT TURNS OUT, THIS NAME IS VERY COMMON. THIS IS A COMPLETELY UNIQUE PROGRAM MADE IN 2022 AND IS THE MOST ADVANCED OF ITS NAME.**
-
 ## Setup and Installation
 
-First, download automcserver.tar.xz or download the github repo. Next, extract it into a build directory. In this directory you should have a symlink called "install." However, this is likely not preserved if you did a zip download rather than a release.
+### Dependencies
 
-Open a terminal to the source tree. Run `./install` or `bash scripts/install.sh` if the first command does not work. The first time you build the program it will take some time to build some libraries. However, subsequent builds will be faster.
+STRONG: python3, gzip, xz, tar, coreutils
+
+WEAK: gcc, make, java
+
+### Downloading
+
+First, download automcserver.tar.xz or download the github repo. Next, extract it into a build directory with the command: `mkdir amcs_build;tar -xf automcserver.tar.xz -C amcs_build;cd build`. Now you are in the source tree.
+
+Now here there are two install methods
+
+### 1. Interactive installation (best for humans)
+
+In your terminal, execute `python3 install.py` or run it in a terminal. You will see a list of commands. Press "I" for Install. If it succeeds, the top message will say good. If it says bad, check recent.log
+
+Next, run `automcserver`. The program will do the remainder of the setup
+
+### 2. Non-interactive installation
+
+In your terminal, execute `bash scripts/install.sh`. This will install automcserver verbosely
 
 Next, run `automcserver`. The program will do the remainder of the setup
 
@@ -36,3 +50,5 @@ lib: Special library versions to increase control and decrease dependancy
 0.13 - Backups
 
 0.14 - Bukkit classic support
+
+(unscheduled procrastination) - Windows support

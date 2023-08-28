@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.12.1"#The semver version
+APP_UF_VERSION = "0.12.2"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -157,6 +157,20 @@ def parse_size(data: int) -> str:
     if neg:
         result = "-"+result
     return result
+def error_handling(e:Exception):
+    global _SCREEN
+    _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+    _SCREEN.clear()
+    _SCREEN.addstr(0,0,"A serious and critical error occured")
+    _SCREEN.addstr(1,0,f"Message: {str(e)}")
+    _SCREEN.addstr(2,0,f"Type: {str(type(e))}")
+    _SCREEN.addstr(3,0,"Please report this to Enderbyte Programs immediatly at this link.")
+    _SCREEN.addstr(4,0,"https://github.com/Enderbyte-Programs/automcserver/issues")
+    _SCREEN.addstr(5,0,"Press any key to quit")
+    _SCREEN.refresh()
+    _SCREEN.getch()
+    sys.exit(1)
+    
 __DIR_LIST__ = [os.getcwd()]
 def pushd(directory:str):
     global __DIR_LIST__
@@ -1096,10 +1110,9 @@ def main(stdscr):
     global _SCREEN
     _SCREEN = stdscr
     global DEBUG
+    curses.start_color()
+    curses.curs_set(0)
     try:
-        curses.start_color()
-        curses.curs_set(0)
-        
         cursesplus.displaymsgnodelay(stdscr,["Auto Minecraft Server","Starting..."])
         issue = False
         if DEBUG:
@@ -1161,11 +1174,11 @@ def main(stdscr):
             introsuffix=" | SRC DEBUG"
         else:
             introsuffix = ""
-#        if mx < 120 or my < 20:
-#            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
+    #        if mx < 120 or my < 20:
+    #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
+            m = cursesplus.displayops(stdscr,["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer","Test Exception handling"],f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
                 return
@@ -1192,9 +1205,10 @@ def main(stdscr):
                         return#Exit for update
                     else:
                         cursesplus.messagebox.showwarning(stdscr,["Update failed."])
-        
+            elif m == 6:
+                raise RuntimeError("Manually triggered exception")
     except Exception as e:
-        cursesplus.displaymsg(stdscr,["An error occured"]+traceback.format_exc().splitlines())
+        error_handling(e)
 
 
 curses.wrapper(main)
