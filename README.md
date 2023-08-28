@@ -1,9 +1,11 @@
 # automcserver
 ## The best way to set up a Minecraft server on Linux
 
-## Setup and Installation
+## IMPORTANT NOTICE
 
-NOTICE: We are currently overhauling the build system to make it more controlled. Please report any issues you have upgrading to AMCS 0.7
+**AS IT TURNS OUT, THIS NAME IS VERY COMMON. THIS IS A COMPLETELY UNIQUE PROGRAM MADE IN 2022 AND IS THE MOST ADVANCED OF ITS NAME.**
+
+## Setup and Installation
 
 First, download automcserver.tar.xz or download the github repo. Next, extract it into a build directory. In this directory you should have a symlink called "install." However, this is likely not preserved if you did a zip download rather than a release.
 
@@ -20,3 +22,17 @@ src/utils: Utils scripts
 scripts: Build system scripts
 
 lib: Special library versions to increase control and decrease dependancy
+
+## My TODO List
+
+0.12.1 - Spigot upgrades
+
+0.12.2 - New installer and improved exceptions
+
+0.12.3 - Analytics
+
+0.12.4 - Proprietarization
+
+0.13 - Backups
+
+0.14 - Bukkit classic support

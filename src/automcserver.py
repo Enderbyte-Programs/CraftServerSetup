@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.12"#The semver version
+APP_UF_VERSION = "0.12.1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -157,6 +157,15 @@ def parse_size(data: int) -> str:
     if neg:
         result = "-"+result
     return result
+__DIR_LIST__ = [os.getcwd()]
+def pushd(directory:str):
+    global __DIR_LIST__
+    os.chdir(directory)
+    __DIR_LIST__.insert(0,directory)
+def popd():
+    global __DIR_LIST__
+    __DIR_LIST__.pop(0)
+    os.chdir(__DIR_LIST__[0])
 def get_java_version(file="java") -> str:
     try:
         return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
@@ -612,13 +621,14 @@ def generate_script(svrdict: dict) -> str:
     return __SCRIPT__
 
 def update_s_software_preinit(serverdir:str):
-    os.chdir(serverdir)
+    pushd(serverdir)
     if os.path.isfile("server.jar"):
         os.remove("server.jar")
 def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
     APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
     generate_script(APPDATA["servers"][chosenserver-1])
     updateappdata()
+    popd()
 
 def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
@@ -641,6 +651,43 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
     update_s_software_postinit(PACKAGEDATA,chosenserver)
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
+
+def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
+    update_s_software_preinit(serverdir)
+    if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?","WARNING! Make sure you use java 17 or newer"]):
+        njavapath = choose_java_install(stdscr)
+        APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
+    p = cursesplus.ProgressBar(stdscr,2,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,show_percent=True,message="Updating spigot")
+    p.update()
+    urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar","BuildTools.jar")
+    p.step()
+    while True:
+        build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
+        if not build_lver:
+            curses.curs_set(1)
+            xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            curses.curs_set(0)
+        else:
+            xver = "latest"
+        PACKAGEDATA = {"id":xver}
+        proc = subprocess.Popen([APPDATA["servers"][chosenserver-1]["javapath"],"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
+        while True:
+            output = proc.stdout.readline()
+            if proc.poll() is not None:
+                break
+            if output:
+                for l in output.decode().strip().splitlines():
+                    p.appendlog(l.strip().replace("\n","").replace("\r",""))
+        rc = proc.poll()
+        if rc == 0:
+            PACKAGEDATA["id"] = glob.glob("spigot*.jar")[0].split("-")[1].replace(".jar","")#Update version value as "latest" is very ambiguous. UPDATE: Fix bug where version is "1.19.4.jar"
+            os.rename(glob.glob("spigot*.jar")[0],"server.jar")
+            break
+        else:
+            cursesplus.messagebox.showerror(stdscr,["Build Failed","Please view the log for more info"])
+    
+    
+    update_s_software_postinit(PACKAGEDATA,chosenserver)
 
 def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
@@ -665,12 +712,6 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
-
-def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
-    update_s_software_preinit()
-    stdscr.erase()
-    
-    update_s_software_postinit()
 
 def textview(stdscr,file:str):# NOTE: This function may be moved to cursesplus library
     if not os.path.isfile(file):
@@ -843,6 +884,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 update_vanilla_software(stdscr,os.getcwd(),chosenserver)
             elif APPDATA["servers"][chosenserver-1]["software"] == 3:
                 update_paper_software(stdscr,os.getcwd(),chosenserver)
+            elif APPDATA["servers"][chosenserver-1]["software"] == 2:
+                update_spigot_software(stdscr,os.getcwd(),chosenserver)
             else:
                 nyi(stdscr)
         elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
