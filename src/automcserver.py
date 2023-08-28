@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.12.2"#The semver version
+APP_UF_VERSION = "0.12.3"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -18,8 +18,10 @@ import subprocess               #Starting processes
 import glob                     #File system pattern matching
 import zipfile                  #Extracting ZIP Archive
 from time import sleep          #For delays
-import traceback                #Get information about errors
+import socket                   #Telemetry
 import hashlib                  #Calculate file hashes
+import platform                 #Get system information
+import threading                #Start threads
 
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if "bin" in sys.argv[0]:
@@ -140,6 +142,14 @@ __DEFAULTAPPDATA__ = {
 
     ]
 }
+def send_telemetry():
+    try:
+        s = socket.socket()
+        s.connect(('enderbyteprograms.ddnsfree.com',11111))
+        s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION} HTTP/1.1".encode())
+        s.close()
+    except:
+        pass
 def parse_size(data: int) -> str:
     if data < 0:
         neg = True
@@ -1128,6 +1138,7 @@ def main(stdscr):
 
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
+        threading.Thread(target=send_telemetry).start()
         APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
         if not os.path.isdir(os.path.expanduser("~/.local/share/mcserver")):
             os.mkdir(os.path.expanduser("~/.local/share/mcserver"))
