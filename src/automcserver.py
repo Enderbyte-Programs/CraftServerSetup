@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.12.3"#The semver version
+APP_UF_VERSION = "0.13"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -127,6 +127,7 @@ def internet_on():
 APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
 SERVERSDIR = APPDATADIR + "/servers"
 TEMPDIR = APPDATADIR + "/temp"
+BACKUPDIR = os.path.expanduser("~/.local/share/amcs_backup")
 if not os.path.isdir(APPDATADIR):
     os.mkdir(APPDATADIR)
 if not os.path.isdir(SERVERSDIR):
@@ -192,6 +193,7 @@ def product_key_page(stdscr):
         else:
             APPDATA["productKey"] = npk
             cursesplus.messagebox.showinfo(stdscr,["Registered!",":D"],"Success")
+            updateappdata()
             return
 
 def send_telemetry():
@@ -219,20 +221,13 @@ def parse_size(data: int) -> str:
     if neg:
         result = "-"+result
     return result
-def error_handling(e:Exception):
+def error_handling(e:Exception,message="A serious error has occured"):
     global _SCREEN
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-    _SCREEN.clear()
-    _SCREEN.addstr(0,0,"A serious and critical error occured")
-    _SCREEN.addstr(1,0,f"Message: {str(e)}")
-    _SCREEN.addstr(2,0,f"Type: {str(type(e))}")
-    _SCREEN.addstr(3,0,"Please report this to Enderbyte Programs immediatly at this link.")
-    _SCREEN.addstr(4,0,"https://github.com/Enderbyte-Programs/automcserver/issues")
-    _SCREEN.addstr(5,0,"Press any key to quit")
-    _SCREEN.refresh()
-    sleep(3)
-    _SCREEN.getch()
-    sys.exit(1)
+    
+    while True:
+        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Restore a backup","Repair AutoMCServer","Reset AutoMCServer"],f"{message}. What do you want to do?")
+        
     
 __DIR_LIST__ = [os.getcwd()]
 def pushd(directory:str):
@@ -1185,7 +1180,8 @@ def main(stdscr):
             issue = True
         if issue:
             sleep(5)
-
+        if not os.path.isdir(BACKUPDIR):
+            os.mkdir(BACKUPDIR)
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
 
@@ -1241,16 +1237,17 @@ def main(stdscr):
         APPDATA["pkd"] = True
 
         updateappdata()
-
+        if not os.path.isdir(BACKUPDIR):
+                os.mkdir(BACKUPDIR)
+        introsuffix = ""
         if DEBUG:
             introsuffix=" | SRC DEBUG"
-        else:
-            introsuffix = ""
+
     #        if mx < 120 or my < 20:
     #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer"]
+            lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer","Manage global backups"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
@@ -1282,11 +1279,53 @@ def main(stdscr):
                     else:
                         cursesplus.messagebox.showwarning(stdscr,["Update failed."])
             elif m == 6:
-                product_key_page(stdscr)
+                while True:
+                    bkm = cursesplus.optionmenu(stdscr,["Back","Create backup","Load backup"])
+                    if bkm == 1:
+                        if cursesplus.messagebox.askyesno(stdscr,["This will create a backup of your entire AMCS installation including configuration","To create a backup of each server","Go to its management page"]):
+                            cursesplus.displaymsgnodelay(stdscr,["Calculating..."])
+                            mb = round(get_tree_size(APPDATADIR)/1000000,3)
+                            if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {mb} MB of space.","Are you sure you want to proceed?"]):
+                                foln = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
+                                stdscr.erase()
+                                stdscr.refresh()
+                                curses.reset_shell_mode()
+                                p = os.system(f"bash {UTILDIR}/global_backup.sh {foln}")
+                                curses.reset_prog_mode()
+                                if p != 0:
+                                    cursesplus.messagebox.showerror(stdscr,["There was an error creating your backup"])
+                    elif bkm == 0:
+                        break
+                    elif bkm == 2:
+                        backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
+                        pw = cursesplus.PleaseWaitScreen(stdscr,["Restoring"])
+                        pw.start()
+                        p = os.system(f"bash {UTILDIR}/install_global_backup.sh {backup}")
+                        pw.stop()
+                        pw.destroy()
+                        if p != 0:
+                            cursesplus.messagebox.showerror(stdscr,["There was an error installing your backup","Your installation has not been modified"])
+                        if not os.path.isfile(APPDATAFILE):
+                            with open(APPDATAFILE,"w+") as f:
+                                f.write(json.dumps(__DEFAULTAPPDATA__))
+                            APPDATA = __DEFAULTAPPDATA__
+                        else:
+                            try:
+                                with open(APPDATAFILE) as f:
+                                    APPDATA = json.load(f)
+                            except:
+                                with open(APPDATAFILE,"w+") as f:
+                                    f.write(json.dumps(__DEFAULTAPPDATA__))
+                                APPDATA = __DEFAULTAPPDATA__
+                        APPDATA = compatibilize_appdata(APPDATA)
+                        
+
             elif m == 7:
+                product_key_page(stdscr)
+            elif m == 8:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
-        error_handling(e)
+        error_handling(e,"A serious unspecified exception happened.")
 
 if __name__ == "__main__":
     curses.wrapper(main)
