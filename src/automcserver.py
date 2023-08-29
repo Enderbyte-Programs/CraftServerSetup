@@ -23,6 +23,7 @@ import hashlib                  #Calculate file hashes
 import platform                 #Get system information
 import threading                #Start threads
 import random                   #Random number generation
+import traceback                #Error management
 
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if "bin" in sys.argv[0]:
@@ -155,7 +156,6 @@ def verify_product_key(key:str) -> bool:
         else:
             return False
 def generate_product_key() -> str:
-    #Rules: 1 + 3 = 4, 7 - 5 = 2, 8 * 6 must be less than 50
     while True:
         l1 = random.randint(0,5)
         
@@ -226,8 +226,29 @@ def error_handling(e:Exception,message="A serious error has occured"):
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     
     while True:
-        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Restore a backup","Repair AutoMCServer","Reset AutoMCServer"],f"{message}. What do you want to do?")
-        
+        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Restore a backup","Repair AutoMCServer","Reset AutoMCServer","Use emergency command prompt"],f"{message}. What do you want to do?")
+        if erz == 0:
+            sys.exit(1)
+        elif erz == 1:
+            _SCREEN.clear()
+            _SCREEN.addstr(0,0,f"TYPE: {type(e)}")
+            _SCREEN.addstr(1,0,f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}")
+            ztb = traceback.format_exc().splitlines()
+            ex = 2
+            for eline in ztb:
+                try:
+                    _SCREEN.addstr(ex,0,eline[0:os.get_terminal_size()[0]-1])
+                except:
+                    break
+                ex += 1
+            _SCREEN.addstr(os.get_terminal_size()[1]-1,0,"Press any key to return")
+            _SCREEN.refresh()
+            _SCREEN.getch()
+        elif erz == 2:
+            if cursesplus.messagebox.askyesno(_SCREEN,["Do you want to update the most recent App data?"]):
+                updateappdata()
+            _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
+            main(_SCREEN)
     
 __DIR_LIST__ = [os.getcwd()]
 def pushd(directory:str):
@@ -1247,7 +1268,7 @@ def main(stdscr):
     #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
-            lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer","Manage global backups"]
+            lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update AutoMCServer","Manage global backups","Test error"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
@@ -1318,11 +1339,12 @@ def main(stdscr):
                                     f.write(json.dumps(__DEFAULTAPPDATA__))
                                 APPDATA = __DEFAULTAPPDATA__
                         APPDATA = compatibilize_appdata(APPDATA)
-                        
-
             elif m == 7:
-                product_key_page(stdscr)
+                raise RuntimeError("Manually triggered exception")          
+
             elif m == 8:
+                product_key_page(stdscr)
+            elif m == 9:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
         error_handling(e,"A serious unspecified exception happened.")
