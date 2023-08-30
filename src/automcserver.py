@@ -148,13 +148,19 @@ __DEFAULTAPPDATA__ = {
     "pkd" : False
 }
 def verify_product_key(key:str) -> bool:
-    if len(key) < 8:
-        return False
-    else:
-        if (int(key[0]) + int(key[2]) == int(key[3])) and (int(key[6]) - int(key[4]) == int(key[1])) and (int(key[7]) * int(key[5]) < 50):
-            return True
-        else:
+    try:
+        if len(key) < 8:
             return False
+        else:
+            if int(key) == 0:
+                return False
+            elif (int(key[0]) + int(key[2]) == int(key[3])) and (int(key[6]) - int(key[4]) == int(key[1])) and (int(key[7]) * int(key[5]) < 50):
+                return True
+            
+            else:
+                return False
+    except:
+        return False
 def generate_product_key() -> str:
     while True:
         l1 = random.randint(0,5)
@@ -174,27 +180,29 @@ def generate_product_key() -> str:
             return assembled
 
 def product_key_page(stdscr):
-    o = cursesplus.displayops(stdscr,["Register Product key","How to register a product key","Use without product key :("],"You have not yet inserted a valid product key.")
-    if o == 2:
-        cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
-        return
-    elif o == 1:
-        stdscr.clear()
-        stdscr.addstr(0,0,"1. Send $2 CAD or equivilant to @enderbyte09 on PayPal")
-        stdscr.addstr(1,0,"2. Send an email to enderbyte09@gmail.com that includes your PayPal username")
-        stdscr.addstr(2,0,"3. I will send you a return email with your product key as soon as I can")
-        stdscr.addstr(4,0,"Press any key to proceed")
-        stdscr.refresh()
-        stdscr.getch()
-    elif o == 0:
-        npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,8)
-        if not verify_product_key(npk):
-            cursesplus.messagebox.showwarning(stdscr,{"Invalid key"})
-        else:
-            APPDATA["productKey"] = npk
-            cursesplus.messagebox.showinfo(stdscr,["Registered!",":D"],"Success")
-            updateappdata()
+    while True:
+        o = cursesplus.displayops(stdscr,["Register Product key","How to register a product key","Use without product key :("],"You have not yet inserted a valid product key.")
+        if o == 2:
+            cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
             return
+        elif o == 1:
+            stdscr.clear()
+            stdscr.addstr(0,0,"1. Send $2 CAD or equivilant to @enderbyte09 on PayPal")
+            stdscr.addstr(1,0,"2. Send an email to enderbyte09@gmail.com that includes your PayPal username")
+            stdscr.addstr(2,0,"3. I will send you a return email with your product key as soon as I can")
+            stdscr.addstr(4,0,"Press any key to proceed")
+            stdscr.refresh()
+            stdscr.getch()
+        elif o == 0:
+            npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,8)
+            #npk = str(cursesplus.numericinput(stdscr,""))
+            if not verify_product_key(npk):
+                cursesplus.messagebox.showwarning(stdscr,["Invalid key"])
+            else:
+                APPDATA["productKey"] = npk
+                cursesplus.messagebox.showinfo(stdscr,["Registered!",":D"],"Success")
+                updateappdata()
+                return
 
 def send_telemetry():
     try:
@@ -1275,7 +1283,7 @@ def main(stdscr):
             m = cursesplus.displayops(stdscr,lz,f"AutoMcServer by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
-                return
+                sys.exit(0)
             elif m == 0:
 
                 setupnewserver(stdscr)
