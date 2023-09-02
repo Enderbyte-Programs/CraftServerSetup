@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.13"#The semver version
+APP_UF_VERSION = "0.13-b3"#The semver version
 UPDATEINSTALLED = False
 
 print(f"AutoMCServer by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -107,6 +107,7 @@ spawn-protection=16
 resource-pack-sha1=
 max-world-size=29999984
 """
+REPAIR_SCRIPT = """cd ~/.local/share;mkdir amcs-temp;cd amcs-temp;tar -xf $1;bash scripts/install.sh;cd ~;rm -rf ~/.local/share/amcs-temp"""
 def sigint(signal,frame):
     if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
         updateappdata()
@@ -234,7 +235,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     
     while True:
-        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Restore a backup","Repair AutoMCServer","Reset AutoMCServer","Use emergency command prompt"],f"{message}. What do you want to do?")
+        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options"],f"{message}. What do you want to do?")
         if erz == 0:
             sys.exit(1)
         elif erz == 1:
@@ -253,10 +254,56 @@ def error_handling(e:Exception,message="A serious error has occured"):
             _SCREEN.refresh()
             _SCREEN.getch()
         elif erz == 2:
-            if cursesplus.messagebox.askyesno(_SCREEN,["Do you want to update the most recent App data?"]):
+            if cursesplus.messagebox.askyesno(_SCREEN,["Do you want to update the most recent App data?","If you suspect your appdata is corrupt, do not say yes"]):
                 updateappdata()
             _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
             main(_SCREEN)
+        elif erz == 3:
+            while True:
+                aerz = cursesplus.displayops(_SCREEN,["Back","Restore a backup","Repair AutoMCServer","Reset AutoMCServer","Use emergency command prompt"],"Please choose an advanced option")
+                if aerz == 0:
+                    break
+                elif aerz == 1:
+                    load_backup(_SCREEN)
+                elif aerz == 2:
+                    if cursesplus.messagebox.askyesno(_SCREEN,["This will re-install AutoMCServer and restore any lost files.","You will need to have a release downloaded"]):
+                        flz = cursesplus.filedialog.openfiledialog(_SCREEN,"Please choose the release file",[["*.xz","AMCS XZ Release"],["*","All files"]])
+                        _SCREEN.erase()
+                        _SCREEN.refresh()
+                        curses.reset_shell_mode()
+                        z = os.system(REPAIR_SCRIPT.replace("$1","\""+flz+"\""))
+                        curses.reset_prog_mode()
+                        if z != 0:
+                            cursesplus.messagebox.showwarning(_SCREEN,["Error repairing","Please try a manual repair"])
+                elif aerz == 3:
+                    if cursesplus.messagebox.askyesno(_SCREEN,["This will delete all servers","Are you sure you wish to proceed?"]):
+                        os.chdir(os.path.expanduser("~"))
+                        try:
+                            shutil.rmtree(APPDATADIR)
+                            os.mkdir(APPDATADIR)
+                            sys.exit(1)
+                        except:
+                            cursesplus.messagebox.showerror(_SCREEN,["Failed to wipe"])
+                elif aerz == 4:
+                    _SCREEN.clear()
+                    _SCREEN.erase()
+                    _SCREEN.bkgd(cursesplus.set_color(cursesplus.BLACK,cursesplus.WHITE))
+                    _SCREEN.refresh()
+                    curses.reset_shell_mode()
+                    print("Run exit to return")
+                    cursesplus.showcursor()
+                    while True:
+                        
+                        epp = input("Python >")
+                        if epp == "exit":
+                            break
+                        try:
+                            exec(epp)
+                        except Exception as ex:    
+                            print(f"ER {type(ex)}\nMSG {str(ex)}")
+                    curses.reset_prog_mode()
+                    cursesplus.hidecursor()
+                    _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     
 __DIR_LIST__ = [os.getcwd()]
 def pushd(directory:str):
@@ -874,6 +921,29 @@ def view_server_logs(stdscr,server_dir:str):
     else:
         textview(stdscr,logsdir+"/latest.log")
 
+def load_backup(stdscr):
+    backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
+    pw = cursesplus.PleaseWaitScreen(stdscr,["Restoring"])
+    pw.start()
+    p = os.system(f"bash {UTILDIR}/install_global_backup.sh {backup}")
+    pw.stop()
+    pw.destroy()
+    if p != 0:
+        cursesplus.messagebox.showerror(stdscr,["There was an error installing your backup","Your installation has not been modified"])
+    if not os.path.isfile(APPDATAFILE):
+        with open(APPDATAFILE,"w+") as f:
+            f.write(json.dumps(__DEFAULTAPPDATA__))
+        APPDATA = __DEFAULTAPPDATA__
+    else:
+        try:
+            with open(APPDATAFILE) as f:
+                APPDATA = json.load(f)
+        except:
+            with open(APPDATAFILE,"w+") as f:
+                f.write(json.dumps(__DEFAULTAPPDATA__))
+            APPDATA = __DEFAULTAPPDATA__
+    APPDATA = compatibilize_appdata(APPDATA)
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     SERVER_DIR = _sname
@@ -1326,27 +1396,7 @@ def main(stdscr):
                     elif bkm == 0:
                         break
                     elif bkm == 2:
-                        backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
-                        pw = cursesplus.PleaseWaitScreen(stdscr,["Restoring"])
-                        pw.start()
-                        p = os.system(f"bash {UTILDIR}/install_global_backup.sh {backup}")
-                        pw.stop()
-                        pw.destroy()
-                        if p != 0:
-                            cursesplus.messagebox.showerror(stdscr,["There was an error installing your backup","Your installation has not been modified"])
-                        if not os.path.isfile(APPDATAFILE):
-                            with open(APPDATAFILE,"w+") as f:
-                                f.write(json.dumps(__DEFAULTAPPDATA__))
-                            APPDATA = __DEFAULTAPPDATA__
-                        else:
-                            try:
-                                with open(APPDATAFILE) as f:
-                                    APPDATA = json.load(f)
-                            except:
-                                with open(APPDATAFILE,"w+") as f:
-                                    f.write(json.dumps(__DEFAULTAPPDATA__))
-                                APPDATA = __DEFAULTAPPDATA__
-                        APPDATA = compatibilize_appdata(APPDATA)
+                        load_backup(stdscr)
             elif m == 7:
                 raise RuntimeError("Manually triggered exception")          
 
