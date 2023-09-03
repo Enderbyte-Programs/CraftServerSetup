@@ -11,7 +11,7 @@ WEAK: gcc, make, java
 
 ### Downloading
 
-First, download craftserversetup.tar.xz or download the github repo. Next, extract it into a build directory with the command: `mkdir amcs_build;tar -xf acraftserversetup.tar.xz -C amcs_build;cd build`. Now you are in the source tree.
+First, download craftserversetup.tar.xz or download the github repo. Next, extract it into a build directory with the command: `mkdir crss_build;tar -xf craftserversetup.tar.xz -C crss_build;cd build`. Now you are in the source tree.
 
 Now here there are two install methods
 
