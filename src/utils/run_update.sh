@@ -23,8 +23,8 @@ then
 fi
 
 pushd /tmp/amcsupdate
-git clone https://github.com/Enderbyte-Programs/automcserver/
-cd automcserver 
+git clone https://github.com/Enderbyte-Programs/CraftServerSetup
+cd CraftServerSetup 
 bash scripts/install.sh
 popd
-echo "AutoMCServer updated successfully. Restart it with the amcs command."
+echo "CraftServerSetup updated successfully. Restart it with the amcs command."

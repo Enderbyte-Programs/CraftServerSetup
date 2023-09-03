@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 #DANGER! This is incredibly dangerous
 #$1 is backup file to load
-BACKUPDIR="$HOME/.local/share/amcs_backup"
+BACKUPDIR="$HOME/.local/share/crss_backup"
 SYSDIR="$HOME/.local/share/mcserver"
 if [ ! -d $BACKUPDIR ]; then
     mkdir -p $BACKUPDIR

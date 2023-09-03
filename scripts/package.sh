@@ -13,4 +13,4 @@ then
 fi
 
 rm -rf *.xz *.amc dist *.log
-tar --exclude='./analytics' -cJf automcserver.tar.xz ./*
+tar --exclude='./analytics' -cJf craftserversetup.tar.xz ./*

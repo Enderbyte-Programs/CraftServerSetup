@@ -45,10 +45,10 @@ echo "Setting up..."
 if [ "$EUID" -ne 0 ]; then
     echo "WARNING: You are not running as root. Program will be installed locally."
     INSTALLDIR="$HOME/.local/bin"
-    LIBDIR="$HOME/.local/lib/automcserver"
+    LIBDIR="$HOME/.local/lib/craftserversetup"
 else
     INSTALLDIR="/usr/bin"
-    LIBDIR="/usr/lib/automcserver"
+    LIBDIR="/usr/lib/craftserversetup"
 fi
 APPDATADIR="$HOME/.local/share/mcserver"
 if [ ! -d "$APPDATADIR" ]; then
@@ -74,21 +74,21 @@ if [ -d "dist" ]; then
 fi
 mkdir dist
 #Copy code and add exec permissions
-cp src/automcserver.py dist/automcserver.py
-sed '2,${/^#/d}' dist/automcserver.py >dist/automcserver.py.tmp
-#grep -o '^[^#]*' dist/automcserver.py >dist/automcserver.py.tmp
-rm dist/automcserver.py
-mv dist/automcserver.py.tmp dist/automcserver.py
-grep -v -e '^[[:space:]]*$' dist/automcserver.py >dist/automcserver.py.tmp
-rm dist/automcserver.py
-mv dist/automcserver.py.tmp dist/automcserver.py
-chmod +x dist/automcserver.py
-mv dist/automcserver.py dist/automcserver
+cp src/craftserversetup.py dist/craftserversetup.py
+sed '2,${/^#/d}' dist/craftserversetup.py >dist/craftserversetup.py.tmp
+#grep -o '^[^#]*' dist/craftserversetup.py >dist/craftserversetup.py.tmp
+rm dist/craftserversetup.py
+mv dist/craftserversetup.py.tmp dist/craftserversetup.py
+grep -v -e '^[[:space:]]*$' dist/craftserversetup.py >dist/craftserversetup.py.tmp
+rm dist/craftserversetup.py
+mv dist/craftserversetup.py.tmp dist/craftserversetup.py
+chmod +x dist/craftserversetup.py
+mv dist/craftserversetup.py dist/craftserversetup
 echo "Installing"
-cp dist/automcserver "$INSTALLDIR/automcserver"
+cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
 
-ln -sf "$INSTALLDIR/automcserver" "$INSTALLDIR/mcserver"
-ln -sf "$INSTALLDIR/automcserver" "$INSTALLDIR/amcs"
+ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/mcserver"
+ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
 
 #Copy prebuild util scripts
 echo "Copying scripts"
