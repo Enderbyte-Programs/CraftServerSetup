@@ -41,6 +41,10 @@ lib: Special library versions to increase control and decrease dependancy
 
 0.13 - Backups, Further proprietarization
 
-0.14 - Bukkit classic support
+0.13.1 - Fix textview()
+
+0.14 - Removal of shell dependency (Preparation for Windows environment)
+
+0.15 - Classic Bukkit support
 
 (unscheduled procrastination) - Windows support

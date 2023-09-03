@@ -11,11 +11,11 @@ def main(stdscr):
     curses.init_pair(7,curses.COLOR_GREEN,curses.COLOR_BLACK)
     curses.init_pair(8,curses.COLOR_RED,curses.COLOR_BLACK)
     while True:
-        stdscr.addstr(0,0,"AutoMCServer Installer. \n\rPlease press the key on the left to execute the action to the right")
+        stdscr.addstr(0,0,"Craft Server Setup Installer. \n\rPlease press the key on the left to execute the action to the right")
         stdscr.addstr(2,0,f"LAST ACTION: {['good' if recent == 0 else 'bad. See recent.log'][0]}",curses.color_pair(int(recent != 0)+7))
-        stdscr.addstr(3,0,"I      Install AutoMCServer")
-        stdscr.addstr(4,0,"R      Uninstall AutoMCServer")
-        stdscr.addstr(5,0,"C      Reset AutoMCServer")
+        stdscr.addstr(3,0,"I      Install Craft Server Setup")
+        stdscr.addstr(4,0,"R      Uninstall Craft Server Setup")
+        stdscr.addstr(5,0,"C      Reset Craft Server Setup")
         stdscr.addstr(6,0,"Q      Exit installer")
         ch = curses.keyname(stdscr.getch()).decode()
         if ch == "i" or ch == "I":

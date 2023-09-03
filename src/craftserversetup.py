@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.13-b4"#The semver version
+APP_UF_VERSION = "0.13"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -129,6 +129,7 @@ def internet_on():
         return False
 APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
 SERVERSDIR = APPDATADIR + "/servers"
+SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
 TEMPDIR = APPDATADIR + "/temp"
 BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
 if not os.path.isdir(APPDATADIR):
@@ -137,6 +138,10 @@ if not os.path.isdir(SERVERSDIR):
     os.mkdir(SERVERSDIR)
 if not os.path.isdir(TEMPDIR):
     os.mkdir(TEMPDIR)
+if not os.path.isdir(BACKUPDIR):
+    os.mkdir(BACKUPDIR)
+if not os.path.isdir(SERVERS_BACKUP_DIR):
+    os.mkdir(SERVERS_BACKUP_DIR)
 __DEFAULTAPPDATA__ = {
     "servers" : [
 
@@ -529,9 +534,10 @@ def setupnewserver(stdscr):
             memorytoall = "2G"#Bukkit
     njavapath = njavapath.replace("//","/")
     _space = "\\ "
-    __SCRIPT__ = f"#!/usr/bin/sh\n{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
+    __SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     p.step("All done!",True)
-    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"script":__SCRIPT__})
+    serverid = random.randint(1111,9999)
+    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"script":__SCRIPT__,"id":serverid})
     updateappdata()
     bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
@@ -966,10 +972,10 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     while True:
         x__ops = ["Back","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software"]
         if APPDATA["servers"][chosenserver-1]["moddable"]:
-            x__ops += ["Manage mods/plgins"]
+            x__ops += ["Manage plugins"]
         else:
             x__ops += ["Convert server to moddable"]
-        x__ops += ["View logs","Export server","View server info","Manage Whitelist"]
+        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
@@ -1100,7 +1106,35 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.getch()
         elif w == 11:
             manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
+        elif w == 12:
+            server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
 _SCREEN = None
+def server_backups(stdscr,serverdir:str,serverdata:dict):
+    LBKDIR = SERVERS_BACKUP_DIR + "/" + str(serverdata["id"])
+    if not os.path.isdir(LBKDIR):
+        os.mkdir(LBKDIR)
+    while True:
+        z = cursesplus.displayops(stdscr,["Back","Create a Backup","Load a Backup"])
+        if z == 0:
+            break
+        elif z == 1:
+            if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
+                #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
+                cursesplus.displaymsgnodelay(stdscr,["Creating Backup..."])
+                shutil.copytree(serverdir,LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
+                cursesplus.messagebox.showinfo(stdscr,["Backup completed"])
+        elif z == 2:
+            if len(os.listdir(LBKDIR)) == 0:
+                cursesplus.messagebox.showwarning(stdscr,["You do not have any backups"])
+                continue
+            if cursesplus.messagebox.askyesno(stdscr,["This will completely overwrite your server directory","Are you sure you wish to proceed"]):
+                selbk = cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a backup dir",directory=LBKDIR)
+                cursesplus.displaymsgnodelay(stdscr,["Restore Backup"])
+                os.chdir("/")
+                shutil.rmtree(serverdir)
+                shutil.copytree(selbk,serverdir)
+                cursesplus.messagebox.showinfo(stdscr,["Restore completed"])              
+
 def get_tree_size(start_path = '.'):
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(start_path):
@@ -1362,9 +1396,16 @@ def main(stdscr):
             product_key_page(stdscr)
         APPDATA["pkd"] = True
 
+        #UPDATE APPDATA to 23.9.01 format
+        svri = 0
+        for svr in APPDATA["servers"]:
+            if not "id" in svr:
+                APPDATA["servers"][svri]["id"] = random.randint(1111,9999)
+            svri += 1
+
         updateappdata()
         if not os.path.isdir(BACKUPDIR):
-                os.mkdir(BACKUPDIR)
+            os.mkdir(BACKUPDIR)
         introsuffix = ""
         if DEBUG:
             introsuffix=" | SRC DEBUG"
