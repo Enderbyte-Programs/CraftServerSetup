@@ -1,5 +1,85 @@
-0.13-:
--No change
+0.13:
+-SUMMARY OF b1-b5
+-Add backups on global and server level
+-Add ads
+-Now 1485 lines of code (Oh how you've grown)
 0.13-b5:
 -Add server backups
 -Add server id which is a random number between 1111 and 9999
+0.13-b4:
+-Add advertisements for non-upgraded users
+-CHANGE NAME TO CRAFT SERVER SETUP
+0.13-b3:
+-Add Exception advanced options
+0.13-b2:
+-Begin rewrite of exception handling system
+0.13-b1:
+-Add global backups (probably big enough to be 0.12.5)
+0.12.4:
+-Add product key system
+-UPgrading offers no advantages yet
+0.12.3:
+-Add mandatory telemetry
+-Sends OS type and AMCS Version
+0.12.2:
+-Make a new interactive installer
+-Add BSOD Excephan (Still better than old one)
+0.12.1:
+-Add spigot update support
+-Add pushd() and popd()
+0.12:
+-Add whitelist management
+0.11:
+-Add Server Import from folder
+0.10:
+-Improve server import
+-Add updater
+0.9:
+-Replace "would you like to start server now" with new config menu
+-Edits every part of server.properties
+0.8.1:
+-Assorted library updates
+-Replace some displaymsgnodelay with PleaseWaitScreen
+0.8:
+-Add server import/export
+0.7.1:
+-Update docs
+-Add src tree safe run
+0.7:
+-Overhaul build system
+-Delete old install.sh
+-Third party libraries now come included
+0.6.8:
+-Bug fixes
+0.6.7:
+-Bug fixes
+0.6.6:
+-Add server crash warning
+0.6.5:
+-Bug fixes
+0.6.4:
+-Add Appdata Compatibility warning
+0.6.3:
+-Add support for updating paper software
+0.6.2:
+-Fix bug
+0.6.1:
+-Fix bug
+0.6:
+-Add support for update vanilla software
+-Replace run.sh with generate_script() internally
+0.5:
+-Add Java Installation manager
+0.4:
+-Add Paper support
+0.3:
+-Add mod management system
+0.2:
+-Add spigot support
+0.1.1:
+-Add default memory
+0.1:
+-Welcome to automcserver
+-Just vanilla for now!
+-Fun fact- Released on 2 year aniversary of BasicUtilities
+-Only 300 lines of code
