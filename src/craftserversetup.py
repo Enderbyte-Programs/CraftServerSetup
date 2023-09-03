@@ -24,6 +24,7 @@ import platform                 #Get system information
 import threading                #Start threads
 import random                   #Random number generation
 import traceback                #Error management
+import webbrowser               #Advertisements
 
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if "bin" in sys.argv[0]:
@@ -148,6 +149,17 @@ __DEFAULTAPPDATA__ = {
     "productKey" : "",
     "pkd" : False
 }
+
+ADLIB_BASE = "https://pastebin.com/raw/Jm1NV9u6"#   I'm sorry I had to do this.
+ADS = []
+
+def gen_adverts():
+    d = requests.get(ADLIB_BASE).text
+    for ad in d.splitlines():
+        if ad == "":
+            continue
+        ADS.append(Advertisement(ad.split("|")[0],ad.split("|")[1].replace("\\n","\n")))
+
 def verify_product_key(key:str) -> bool:
     try:
         if len(key) < 8:
@@ -1256,6 +1268,21 @@ def import_server(stdscr):
         except:
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
 
+class Advertisement:
+    def __init__(self,url:str,msg:str):
+        self.url = url
+        self.message = msg
+    def show(self,stdscr):
+        if cursesplus.messagebox.askyesno(stdscr,["Advertisement"] + self.message.splitlines() + ["Open website?","Upgrade with a product key to remove ads"]):
+            webbrowser.open(self.url)
+
+def show_ad(stdscr):
+    if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
+
+        if random.randint(0,5) == 3:
+            ad = random.choice(ADS)
+            ad.show(stdscr) 
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -1283,7 +1310,7 @@ def main(stdscr):
             os.mkdir(BACKUPDIR)
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
-
+        gen_adverts()
         threading.Thread(target=send_telemetry).start()
         APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
         if not os.path.isdir(os.path.expanduser("~/.local/share/mcserver")):
@@ -1346,6 +1373,7 @@ def main(stdscr):
     #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
         while True:
             stdscr.erase()
+            show_ad(stdscr)
             lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Test error"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
