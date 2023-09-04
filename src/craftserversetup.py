@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.13.1"#The semver version
+APP_UF_VERSION = "0.13.2"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -879,55 +879,6 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_postinit(PACKAGEDATA,chosenserver)
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
 
-def textview(stdscr,file:str):# NOTE: This function may be moved to cursesplus library
-    if not os.path.isfile(file):
-        cursesplus.messagebox.showwarning(stdscr,["Specified file does not exist"])
-        return
-    else:
-        with open(file) as f:
-            data = f.read().replace("\r","").split("\n")
-            #print(data)
-    xoffset = 0
-    yoffset = 0
-    mx,my = os.get_terminal_size()
-    ERROR = ""
-    while True:
-        stdscr.clear()
-        cursesplus.filline(stdscr,my-1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        cursesplus.filline(stdscr,0,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        stdscr.addstr(0,0,f"Viewing file {file}. PRESS Q TO QUIT"[xoffset:xoffset+mx-2],cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        if ERROR != "":
-            stdscr.addstr(my-1,0,ERROR,cursesplus.set_colour(cursesplus.WHITE,cursesplus.RED))
-            ERROR = ""
-        stdscr.addstr(my-1,mx-7,f"({xoffset},{yoffset})",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        for p in range(yoffset,my-2+yoffset):
-            try:
-                stdscr.addstr(p+1,0,data[p][xoffset:xoffset+mx-2])
-            except:
-                continue
-
-        stdscr.refresh()
-        ch = stdscr.getch()
-        if ch == 113:
-            return
-        elif ch == curses.KEY_UP:
-            if yoffset == 0:
-                curses.beep()
-                ERROR = "You are already at the top of the page"
-            else:
-                yoffset -= 1
-        elif ch == curses.KEY_DOWN:
-            yoffset += 1
-        elif ch == curses.KEY_RIGHT:
-            xoffset += 1
-        elif ch == curses.KEY_LEFT:
-            if xoffset == 0:
-                curses.beep()
-                ERROR = "You are already at the left"
-            else:
-                xoffset -= 1
-
-
 def view_server_logs(stdscr,server_dir:str):
     
     logsdir = server_dir+"/logs"
@@ -937,7 +888,8 @@ def view_server_logs(stdscr,server_dir:str):
     #if not cursesplus.messagebox.askyesno(stdscr,["Do you want to view that latest log?"]):#TODO Finish all log feature
     #    pass
     else:
-        textview(stdscr,logsdir+"/latest.log")
+        #textview(stdscr,logsdir+"/latest.log")
+        cursesplus.textview(stdscr,file=logsdir+"/latest.log")
 
 def load_backup(stdscr):
     backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
@@ -991,6 +943,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             curses.curs_set(0)
             if lretr != 0:
                 displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
+                if displog:
+                    view_server_logs(stdscr,SERVER_DIR)
             stdscr.clear()
             stdscr.refresh()
         elif w == 2:
