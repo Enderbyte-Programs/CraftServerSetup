@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.13"#The semver version
+APP_UF_VERSION = "0.13.1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -1307,7 +1307,7 @@ class Advertisement:
         self.url = url
         self.message = msg
     def show(self,stdscr):
-        if cursesplus.messagebox.askyesno(stdscr,["Advertisement"] + self.message.splitlines() + ["Open website?","Upgrade with a product key to remove ads"]):
+        if cursesplus.messagebox.askyesno(stdscr,["Advertisement",""] + self.message.splitlines() + ["","Open website?","Upgrade with a product key to remove ads"]):
             webbrowser.open(self.url)
 
 def show_ad(stdscr):
@@ -1415,7 +1415,7 @@ def main(stdscr):
         while True:
             stdscr.erase()
             show_ad(stdscr)
-            lz = ["Set up new server","View list of servers","Quit","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Test error"]
+            lz = ["Set up new server","Manage servers","Quit","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
@@ -1465,13 +1465,10 @@ def main(stdscr):
                     elif bkm == 0:
                         break
                     elif bkm == 2:
-                        load_backup(stdscr)
+                        load_backup(stdscr)        
             elif m == 7:
-                raise RuntimeError("Manually triggered exception")          
-
-            elif m == 8:
                 product_key_page(stdscr)
-            elif m == 9:
+            elif m == 8:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
         error_handling(e,"A serious unspecified exception happened.")
