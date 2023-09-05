@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.14-b5"#The semver version
+APP_UF_VERSION = "0.14"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -274,14 +274,27 @@ def restore_global_backup(backup_file:str) -> int:
     except:
         return 1
 
-def package_server(indir:str,outfile:str) -> int:
-    pass
+def package_server_script(indir:str,outfile:str) -> int:
+    try:
+        pushd(indir)
+        with tarfile.open(outfile,"w:xz") as tar:
+            tar.add(".")
+        popd()
+    except:
+        return 1
+    return 0
 
-def update_program(): #Linux autoinstall only. Windows open webpage
-    pass
 
 def unpackage_server(infile:str,outdir:str) -> int:
-    pass
+    try:
+        os.mkdir(outdir)
+        pushd(outdir)
+        with tarfile.open(infile,"r:xz") as tar:
+            tar.extractall(".")
+        popd()
+    except:
+        return 1
+    return 0
 
 ### END UTILS
 
@@ -466,7 +479,7 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
     wxfileout=wdir+"/"+sdata["name"]+".amc"
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])
     nwait.start()
-    pr = os.system(f"bash {UTILDIR}/package_server.sh {serverdir} {wxfileout}")
+    package_server_script(wdir,wxfileout)
     nwait.stop()
     nwait.destroy()
     #if pr != 0:
@@ -1242,7 +1255,8 @@ def import_server(stdscr):
         smd5 = file_get_md5(chlx)
         if os.path.isdir(f"{TEMPDIR}/{smd5}"):
             shutil.rmtree(f"{TEMPDIR}/{smd5}")
-        s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
+        #s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
+        s = unpackage_server(chlx,f"{TEMPDIR}/{smd5}")
         nwait.stop()
         if s != 0:
             cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
@@ -1454,6 +1468,10 @@ def main(stdscr):
             elif m == 4:
                 import_server(stdscr)
             elif m == 5:
+
+                if WINDOWS:
+                    cursesplus.messagebox.showerror(_SCREEN,["This feature is not yet available on Windows"])
+                    continue
                 if not os.path.isfile(UTILDIR+"/run_update.sh"):
                     cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
                 else:
