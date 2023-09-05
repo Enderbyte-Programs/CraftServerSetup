@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.13.2"#The semver version
+APP_UF_VERSION = "0.13.3"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -26,19 +26,22 @@ import random                   #Random number generation
 import traceback                #Error management
 import webbrowser               #Advertisements
 
+WINDOWS = platform.system() == "Windows"
+
 ### SET UP SYS.PATH TO ONLY USE my special library directory
-if "bin" in sys.argv[0]:
-    sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs
-    sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
-    sys.path.insert(1,"/usr/lib/craftserversetup")
-    DEBUG=False
-    if os.path.isdir("/usr/lib/craftserversetup"):
-        UTILDIR="/usr/lib/craftserversetup/utils"
+if not WINDOWS:#Windows edition will package libraries already
+    if "bin" in sys.argv[0]:
+        sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs
+        sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
+        sys.path.insert(1,"/usr/lib/craftserversetup")
+        DEBUG=False
+        if os.path.isdir("/usr/lib/craftserversetup"):
+            UTILDIR="/usr/lib/craftserversetup/utils"
+        else:
+            UTILDIR = os.path.expanduser("~/.local/lib/craftserversetup/utils")
     else:
-        UTILDIR = os.path.expanduser("~/.local/lib/craftserversetup/utils")
-else:
-    DEBUG=True
-    UTILDIR="src/utils"
+        DEBUG=True
+        UTILDIR="src/utils"
 
 #Third party libraries below here
 import cursesplus               #Terminal Display Control

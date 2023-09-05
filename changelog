@@ -1,3 +1,10 @@
+0.13.3:
+-Remove gz,make,gcc as dependancies
+-DO NOT RUN ON WINDOWS
+0.13.2:
+-Fix textview. You can neow see server logs.
+0.13.1:
+-Fix cosmetic issues
 0.13:
 -SUMMARY OF b1-b5
 -Add backups on global and server level

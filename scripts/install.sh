@@ -22,22 +22,9 @@ then
     echo "xz is required to use this"
     exit 1
 fi
-if ! command -v gzip &> /dev/null
-then
-    echo "gz is required to use this"
-    exit 1
-fi
-if ! command -v make &> /dev/null
-then
-    echo "WARNING: GNUMake is required to build a library that this program relies on. "
-fi
 if ! command -v java &> /dev/null
 then
     echo "WARNING: You should probably have java if you want to set up a Minecraft server"
-fi
-if ! command -v gcc &> /dev/null
-then
-    echo "WARNING: gcc is required to build a portion of a library that this program depends on."
 fi
 
 #Set up folders
@@ -103,29 +90,5 @@ do
     echo "      ${file}"
     tar -xf $file -C $LIBDIR #Extract library to custom library path
 done
-
-echo "Building libyaml"
-#Build unbuilt library
-if [ ! -d "$LIBDIR/yaml" ]; then
-    tar -xf PyYAML-6.0.tar.gz
-    cd PyYAML-6.0
-    set +e #Disable crashing
-    make >/dev/null
-    RES1=$?
-    python3 setup.py build >/dev/null
-    RES2=$?
-    set -e
-    if [ "$RES1" -ne 0 ] && [ "$RES2" -ne 0 ]; then
-        printf "${RED}ERROR: libyaml build failed with exit code $RES2.${NC}\n"
-        exit 2
-    fi
-    cd build
-    cp -r ./lib*/* "$LIBDIR"
-else
-    echo "libyaml is already built, skipping to save time"
-fi
-
-popd >/dev/null
-rm -rf lib/PyYAML-6.0
 
 printf "${GREEN}Program installed successfully!${NC}\n"
