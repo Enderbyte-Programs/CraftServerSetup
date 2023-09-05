@@ -265,7 +265,11 @@ def restore_global_backup(backup_file:str) -> int:
             with tarfile.open(backup_file,"r:xz") as tar:
                 tar.extractall(path=APPDATADIR)
         except:
-            pass
+            os.mkdir(APPDATADIR)
+            shutil.copytree(BACKUPDIR+"/tempbk",APPDATADIR)
+            shutil.rmtree(BACKUPDIR+"/tempbk")
+            return 1
+            
         return 0
     except:
         return 1
@@ -1187,14 +1191,15 @@ def managejavainstalls(stdscr):
     if "java" in [j["path"] for j in APPDATA["javainstalls"]]:
         pass
     else:
-        if os.system("java -help > /dev/null 2>&1") == 0:
+        if os.system("java --help") == 0:
         
             APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
+        stdscr.clear()
     while True:
         stdscr.erase()
         jmg = cursesplus.optionmenu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
         if jmg == 0:
-            njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory="/")
+            njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
             if os.system(njavapath+" -version > /dev/null 2>&1") != 0:
                 if not cursesplus.messagebox.askyesno(stdscr,["You have selected an invalid java file.","Would you like to try again?"]):
                     break

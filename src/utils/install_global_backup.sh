@@ -25,7 +25,7 @@ cp -r $SYSDIR/* $BACKUPDIR/tempbk
 } || {
     #Restore old version
     mkdir $SYSDIR
-    cp =r $BACKUPDIR/tempbk/* $SYSDIR
+    cp -r $BACKUPDIR/tempbk/* $SYSDIR
     rm -rf $BACKUPDIR/tempbk
     exit 1
 }
