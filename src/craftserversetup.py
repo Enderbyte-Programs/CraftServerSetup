@@ -1365,9 +1365,7 @@ def main(stdscr):
         signal.signal(signal.SIGINT,sigint)
         gen_adverts()
         threading.Thread(target=send_telemetry).start()
-        APPDATAFILE = os.path.expanduser("~/.local/share/mcserver")+"/config.json"
-        if not os.path.isdir(os.path.expanduser("~/.local/share/mcserver")):
-            os.mkdir(os.path.expanduser("~/.local/share/mcserver"))
+        APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
             with open(APPDATAFILE,"w+") as f:
                 f.write(json.dumps(__DEFAULTAPPDATA__))
