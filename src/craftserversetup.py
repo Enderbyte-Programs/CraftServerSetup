@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.14-b1"#The semver version
+APP_UF_VERSION = "0.14-b5"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -402,7 +402,7 @@ def get_java_version(file="java") -> str:
         if not WINDOWS:
             return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
         else:
-            return subprocess.check_output(f"{file} --version").splitlines()[0].split(" ")[1]
+            return subprocess.check_output(f"{file} --version").decode().splitlines()[0].split(" ")[1]
     except:
         return "Error"
 
