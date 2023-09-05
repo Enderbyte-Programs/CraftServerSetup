@@ -5,9 +5,7 @@
 
 ### Dependencies
 
-STRONG: python3, gzip, xz, tar, coreutils
-
-WEAK: gcc, make, java
+python3, xz, tar, coreutils
 
 ### Downloading
 
