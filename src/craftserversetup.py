@@ -111,7 +111,7 @@ spawn-protection=16
 resource-pack-sha1=
 max-world-size=29999984
 """
-REPAIR_SCRIPT = """cd ~/.local/share;mkdir crss-temp;cd crss-temp;tar -xf $1;bash scripts/install.sh;cd ~;rm -rf ~/.local/share/crss-temp"""
+REPAIR_SCRIPT = """cd ~/.local/share;mkdir crss-temp;cd crss-temp;tar -xf $1;bash scripts/install.sh;cd ~;rm -rf ~/.local/share/crss-temp"""#LINUX ONLY
 def sigint(signal,frame):
     if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
         updateappdata()
@@ -130,11 +130,19 @@ def internet_on():
         return True
     except urllib.error.URLError as err: 
         return False
-APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
-SERVERSDIR = APPDATADIR + "/servers"
-SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
-TEMPDIR = APPDATADIR + "/temp"
-BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
+if not WINDOWS:
+    APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
+    SERVERSDIR = APPDATADIR + "/servers"
+    SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
+    TEMPDIR = APPDATADIR + "/temp"
+    BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
+else:
+    APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
+    SERVERSDIR = APPDATADIR + "/servers"
+    SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
+    TEMPDIR = APPDATADIR + "/temp"
+    BACKUPDIR = os.path.expandvars("%APPDATA%/crss_backup")
+
 if not os.path.isdir(APPDATADIR):
     os.mkdir(APPDATADIR)
 if not os.path.isdir(SERVERSDIR):
@@ -286,6 +294,9 @@ def error_handling(e:Exception,message="A serious error has occured"):
                 elif aerz == 1:
                     load_backup(_SCREEN)
                 elif aerz == 2:
+                    if WINDOWS:
+                        cursesplus.messagebox.showerror(_SCREEN,["This feature is not available on Windows"])
+                        continue
                     if cursesplus.messagebox.askyesno(_SCREEN,["This will re-install CraftServerSetup and restore any lost files.","You will need to have a release downloaded"]):
                         flz = cursesplus.filedialog.openfiledialog(_SCREEN,"Please choose the release file",[["*.xz","crss XZ Release"],["*","All files"]])
                         _SCREEN.erase()
@@ -336,7 +347,10 @@ def popd():
     os.chdir(__DIR_LIST__[0])
 def get_java_version(file="java") -> str:
     try:
-        return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
+        if not WINDOWS:
+            return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
+        else:
+            return subprocess.check_output(f"{file} --version").splitlines()[0].split(" ")[1]
     except:
         return "Error"
 
