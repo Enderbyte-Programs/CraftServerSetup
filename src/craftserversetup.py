@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.13.3"#The semver version
+APP_UF_VERSION = "0.14-b1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -25,6 +25,7 @@ import threading                #Start threads
 import random                   #Random number generation
 import traceback                #Error management
 import webbrowser               #Advertisements
+import tarfile                  #Create archives
 
 WINDOWS = platform.system() == "Windows"
 
@@ -42,7 +43,8 @@ if not WINDOWS:#Windows edition will package libraries already
     else:
         DEBUG=True
         UTILDIR="src/utils"
-
+else:
+    DEBUG = False
 #Third party libraries below here
 import cursesplus               #Terminal Display Control
 import cursesplus.messagebox
@@ -232,6 +234,52 @@ def product_key_page(stdscr):
                 cursesplus.messagebox.showinfo(stdscr,["Registered!",":D"],"Success")
                 updateappdata()
                 return
+
+### BEGIN UTILS ###
+
+def create_global_backup(outpath:str) -> int:
+    try:
+        if not os.path.isdir(BACKUPDIR):
+            os.mkdir(BACKUPDIR)
+        pushd(APPDATADIR)
+        with tarfile.open(outpath,"w:xz") as tar:
+            tar.add(".")
+        popd()
+        return 0
+    except:
+        return 1
+
+
+def restore_global_backup(backup_file:str) -> int:
+    try:
+        if not os.path.isdir(BACKUPDIR):
+            os.mkdir(BACKUPDIR)
+        if not os.path.isdir(BACKUPDIR+"/tempbk"):
+            pass
+        else:
+            shutil.rmtree(BACKUPDIR+"/tempbk")
+        shutil.copytree(APPDATADIR,BACKUPDIR+"/tempbk")
+        try:
+            shutil.rmtree(APPDATADIR)
+            os.mkdir(APPDATADIR)
+            with tarfile.open(backup_file,"r:xz") as tar:
+                tar.extractall(path=APPDATADIR)
+        except:
+            pass
+        return 0
+    except:
+        return 1
+
+def package_server(indir:str,outfile:str) -> int:
+    pass
+
+def update_program(): #Linux autoinstall only. Windows open webpage
+    pass
+
+def unpackage_server(infile:str,outdir:str) -> int:
+    pass
+
+### END UTILS
 
 def send_telemetry():
     try:
@@ -912,7 +960,7 @@ def load_backup(stdscr):
     backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
     pw = cursesplus.PleaseWaitScreen(stdscr,["Restoring"])
     pw.start()
-    p = os.system(f"bash {UTILDIR}/install_global_backup.sh {backup}")
+    p = restore_global_backup(backup)
     pw.stop()
     pw.destroy()
     if p != 0:
@@ -1426,11 +1474,8 @@ def main(stdscr):
                             mb = round(get_tree_size(APPDATADIR)/1000000,3)
                             if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {mb} MB of space.","Are you sure you want to proceed?"]):
                                 foln = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
-                                stdscr.erase()
-                                stdscr.refresh()
-                                curses.reset_shell_mode()
-                                p = os.system(f"bash {UTILDIR}/global_backup.sh {foln}")
-                                curses.reset_prog_mode()
+                                cursesplus.displaymsgnodelay(stdscr,["Creating..."])
+                                p = create_global_backup(foln)
                                 if p != 0:
                                     cursesplus.messagebox.showerror(stdscr,["There was an error creating your backup"])
                     elif bkm == 0:
