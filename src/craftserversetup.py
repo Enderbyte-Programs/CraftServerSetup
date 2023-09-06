@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.14"#The semver version
+APP_UF_VERSION = "0.14.1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -1004,6 +1004,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
     #Manager server
     while True:
+        show_ad(stdscr)
         x__ops = ["Back","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software"]
         if APPDATA["servers"][chosenserver-1]["moddable"]:
             x__ops += ["Manage plugins"]
@@ -1246,6 +1247,40 @@ def managejavainstalls(stdscr):
 
         updateappdata()
 
+def compare_versions(version1, version2):
+    version1_parts = tuple(map(int, version1.split('.')))
+    version2_parts = tuple(map(int, version2.split('.')))
+
+    for v1, v2 in zip(version1_parts, version2_parts):
+        if v1 < v2:
+            return -1
+        elif v1 > v2:
+            return 1
+
+    if len(version1_parts) < len(version2_parts):
+        return -1
+    elif len(version1_parts) > len(version2_parts):
+        return 1
+
+    return 0
+
+def windows_update_software(stdscr):
+    cursesplus.displaymsgnodelay(stdscr,["Checking for updates"])
+    td = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").text
+    tdz = td.split("|")
+    svr = tdz[1]
+    url = tdz[0]
+    msg = tdz[2]
+    if compare_versions(svr,APP_UF_VERSION) == 1:
+        #NUA
+        if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{svr} over {APP_UF_VERSION}",msg,"Would you like to install it?"]):
+            cursesplus.displaymsgnodelay(stdscr,["Downloading new update..."])
+            urllib.request.urlretrieve(url,os.path.expandvars("%TEMP%/crssupdate.exe"))
+            os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
+            sys.exit()
+    else:
+        cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
+
 def import_server(stdscr):
     umethod = cursesplus.displayops(stdscr,["Import from .amc file","Import from folder"])
     if umethod == 0:
@@ -1470,7 +1505,7 @@ def main(stdscr):
             elif m == 5:
 
                 if WINDOWS:
-                    cursesplus.messagebox.showerror(_SCREEN,["This feature is not yet available on Windows"])
+                    windows_update_software(stdscr)
                     continue
                 if not os.path.isfile(UTILDIR+"/run_update.sh"):
                     cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
