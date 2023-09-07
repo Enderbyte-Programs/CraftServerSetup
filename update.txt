@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.14/CraftServerSetup-0.14-installer.exe|0.14.2|Improvements
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.14.1/CraftServerSetup-0.14.1-installer.exe|0.14.1|Add Windows Update system
