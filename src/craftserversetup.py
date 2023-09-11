@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.14.1"#The semver version
+APP_UF_VERSION = "0.14.2"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -417,7 +417,7 @@ def get_java_version(file="java") -> str:
         else:
             return subprocess.check_output(f"{file} --version").decode().splitlines()[0].split(" ")[1]
     except:
-        return "Error"
+        return "Unknown"
 
 def manage_whitelist(stdscr,whitefile:str):
     with open(whitefile) as f:
@@ -865,7 +865,11 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
 
 def generate_script(svrdict: dict) -> str:
     _space = "\\ "
-    __SCRIPT__ = f"#!/usr/bin/sh\n{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
+    _bs = "\\"
+    if not WINDOWS:
+        __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
+    else:
+         __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
     return __SCRIPT__
 
 def update_s_software_preinit(serverdir:str):
@@ -1214,12 +1218,18 @@ def managejavainstalls(stdscr):
         jmg = cursesplus.optionmenu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
         if jmg == 0:
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
-            if os.system(njavapath+" -version > /dev/null 2>&1") != 0:
-                if not cursesplus.messagebox.askyesno(stdscr,["You have selected an invalid java file.","Would you like to try again?"]):
+            if os.system(njavapath.replace("\\","/")+" -help") != 0:
+                if not cursesplus.messagebox.askyesno(stdscr,["You may have selected an invalid java file.","Are you sure you would like to add it"]):
                     break
+                else:
+                    stdscr.erase()
+                    ndict = {"path":njavapath.replace("\\","/"),"ver":"Unknown"}
+                    if cursesplus.messagebox.askyesno(stdscr,["Do you know what java version this is?"]):
+                        ndict["ver"] = cursesplus.cursesinput(stdscr,"Java version?",maxlen=10)
+                        APPDATA["javainstalls"].append(ndict)
             else:
-                fver = get_java_version(njavapath)
-                ndict = {"path":njavapath,"ver":fver}
+                fver = get_java_version(njavapath.replace("\\","/"))
+                ndict = {"path":njavapath.replace("\\","/"),"ver":fver}
                 APPDATA["javainstalls"].append(ndict)
         elif jmg == 1:
             return
@@ -1281,47 +1291,50 @@ def windows_update_software(stdscr):
     else:
         cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
 
+def import_amc_server(stdscr,chlx):
+    nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
+    nwait.start()
+    smd5 = file_get_md5(chlx)
+    if os.path.isdir(f"{TEMPDIR}/{smd5}"):
+        shutil.rmtree(f"{TEMPDIR}/{smd5}")
+    #s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
+    s = unpackage_server(chlx,f"{TEMPDIR}/{smd5}")
+    nwait.stop()
+    if s != 0:
+        cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
+        return
+    try:
+        smtmpfile = f"{TEMPDIR}/{smd5}/exdata.json"
+        with open(smtmpfile) as f:
+            xdat = json.load(f)
+        nname = xdat["name"]
+        while True:
+            if nname in [l["name"] for l in APPDATA["servers"]]:
+                cursesplus.showcursor()
+                nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
+                cursesplus.hidecursor()
+            else:
+                xdat["name"] = nname
+                break
+        nwait.start()
+        #os.mkdir(SERVERSDIR+"/"+nname)
+        shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
+        xdat["dir"] = SERVERSDIR+"/"+nname
+        xdat["javapath"] = choose_java_install(stdscr)
+        xdat["script"] = generate_script(xdat)
+        APPDATA["servers"].append(xdat)
+        nwait.stop()
+        nwait.destroy()
+        cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
+    except:
+        cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
+
 def import_server(stdscr):
-    umethod = cursesplus.displayops(stdscr,["Import from .amc file","Import from folder"])
+    umethod = cursesplus.displayops(stdscr,["Import from .amc file","Import from folder","Cancel (Go Back)"])
     if umethod == 0:
         chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
-        nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
-        nwait.start()
-        smd5 = file_get_md5(chlx)
-        if os.path.isdir(f"{TEMPDIR}/{smd5}"):
-            shutil.rmtree(f"{TEMPDIR}/{smd5}")
-        #s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
-        s = unpackage_server(chlx,f"{TEMPDIR}/{smd5}")
-        nwait.stop()
-        if s != 0:
-            cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
-            return
-        try:
-            smtmpfile = f"{TEMPDIR}/{smd5}/exdata.json"
-            with open(smtmpfile) as f:
-                xdat = json.load(f)
-            nname = xdat["name"]
-            while True:
-                if nname in [l["name"] for l in APPDATA["servers"]]:
-                    cursesplus.showcursor()
-                    nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
-                    cursesplus.hidecursor()
-                else:
-                    xdat["name"] = nname
-                    break
-            nwait.start()
-            #os.mkdir(SERVERSDIR+"/"+nname)
-            shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
-            xdat["dir"] = SERVERSDIR+"/"+nname
-            xdat["javapath"] = choose_java_install(stdscr)
-            xdat["script"] = generate_script(xdat)
-            APPDATA["servers"].append(xdat)
-            nwait.stop()
-            nwait.destroy()
-            cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
-        except:
-            cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
-    else:
+        import_amc_server(stdscr,chlx)
+    elif umethod == 1:
         try:
             xdat = {}#Dict of server data
             ddir = cursesplus.filedialog.openfolderdialog(stdscr,"Choose the folder of the server you want to import")
@@ -1373,6 +1386,7 @@ def import_server(stdscr):
             cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
         except:
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
+    else: return
 
 class Advertisement:
     def __init__(self,url:str,msg:str):
@@ -1402,6 +1416,12 @@ def main(stdscr):
     try:
         cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup","Starting..."])
         issue = False
+        if not internet_on():
+            if not cursesplus.messagebox.askyesno(stdscr,["WARNING","No internet connection could be found!","You may run in to errors","Are you sure you want to continue?"]):
+                return
+            else:
+                issue = True
+                stdscr.addstr(1,0,"ERROR: No internet connection",cursesplus.set_colour(cursesplus.BLACK,cursesplus.RED))
         if DEBUG:
             stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
             stdscr.refresh()
@@ -1434,9 +1454,7 @@ def main(stdscr):
         APPDATA = compatibilize_appdata(APPDATA)
 
         #Graphics support loading
-        if not internet_on():
-            if not cursesplus.messagebox.askyesno(stdscr,["WARNING","No internet connection could be found!","You may run in to errors","Are you sure you want to continue?"]):
-                return
+        
         VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
         
         if not APPDATA["hasCompletedOOBE"]:
@@ -1453,8 +1471,9 @@ def main(stdscr):
             if setupservernow:
                 
                 setupnewserver(stdscr)
-        
-
+        if len(sys.argv) > 1:
+            if os.path.isfile(sys.argv[1]):
+                import_amc_server(stdscr,sys.argv[1])
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
         mx,my = os.get_terminal_size()
@@ -1472,6 +1491,12 @@ def main(stdscr):
             if not "id" in svr:
                 APPDATA["servers"][svri]["id"] = random.randint(1111,9999)
             svri += 1
+
+        svk = 0
+        for ji in APPDATA["javainstalls"]:
+            APPDATA["javainstalls"][svk] = {"path":ji["path"].replace("\\","/").replace("//","/"),"ver":ji["ver"]}
+
+            svk += 1
 
         updateappdata()
         if not os.path.isdir(BACKUPDIR):
