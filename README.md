@@ -1,11 +1,19 @@
 # Craft Server Setup
-## The best way to set up a Minecraft server on Linux
+## The best way to set up a Minecraft Server on your computer
 
 ## Setup and Installation
 
-### Dependencies
+## WINDOWS
 
-python3, xz, tar, coreutils
+The Windows edition uses an installer. Follow the steps in the installer. All dependencies are included.
+
+## Linux
+
+### Dependencies not included
+
+These should not be an issues as almost everyone has these programs. CraftServerSetup comes bundled with all required Python libraries
+
+python3, xz, tar, coreutils, sed, grep
 
 ### Downloading
 
@@ -47,6 +55,7 @@ However, all of these fixes and redos are far overshadowed by exposing this soft
 As of 0.12.4 this program is semiproprietary. The code remains open source but is commercial in nature. A product key costs $2. If you don't want to get a product key, you have a 20% chance of seeing an ad every time you do something from the main menu. **If anybody would like to advertise on my ads system, please send me an email at enderbyte09@gmail.com**
 
 ## My TODO List
-0.14 - Partial Windows support
 
-0.15 - Classic Bukkit support
+0.15 - logview improvements and buildsystem improvements
+
+0.16 - ops.json and ban.json

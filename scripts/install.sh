@@ -22,6 +22,16 @@ then
     echo "xz is required to use this"
     exit 1
 fi
+if ! command -v sed &> /dev/null
+then
+    echo "sed is required to build this program"
+    exit 1
+fi
+if ! command -v grep &> /dev/null
+then
+    echo "grep is required to build this program"
+    exit 1
+fi
 if ! command -v java &> /dev/null
 then
     echo "WARNING: You should probably have java if you want to set up a Minecraft server"
@@ -33,9 +43,15 @@ if [ "$EUID" -ne 0 ]; then
     echo "WARNING: You are not running as root. Program will be installed locally."
     INSTALLDIR="$HOME/.local/bin"
     LIBDIR="$HOME/.local/lib/craftserversetup"
+    ICONDIR="$HOME/.local/share/icons"
+    SHORTCUTDIR="$HOME/.local/share/applications"
+    DK="local"
 else
     INSTALLDIR="/usr/bin"
     LIBDIR="/usr/lib/craftserversetup"
+    ICONDIR="/usr/share/pixmaps"
+    SHORTCUTDIR="/usr/share/applications"
+    DK="global"
 fi
 APPDATADIR="$HOME/.local/share/mcserver"
 if [ ! -d "$APPDATADIR" ]; then
@@ -90,5 +106,12 @@ do
     echo "      ${file}"
     tar -xf $file -C $LIBDIR #Extract library to custom library path
 done
+popd >/dev/null
 
+echo "Creating Shortcut"
+
+cp assets/mc.png $ICONDIR/craftserversetup.png
+cp "assets/${DK}.desktop" "${SHORTCUTDIR}/craftserversetup.desktop"
+sed -i "s@}@${HOME}@g" "${SHORTCUTDIR}/craftserversetup.desktop"
+#Replace home path in shortcut file
 printf "${GREEN}Program installed successfully!${NC}\n"

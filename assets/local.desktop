@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Craft Server Setup
+Comment=Minecraft Server Maker
+Path=/
+Exec=crss
+Icon=}/.local/share/icons/craftserversetup.png
+# NOTE: Path will be subsituted during installation.
+Terminal=true
+Categories=Utilities

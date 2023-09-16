@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Craft Server Setup
+Comment=Minecraft Server Maker
+Path=/
+
+# The executable of the application, possibly with arguments.
+Exec=crss
+
+# The name of the icon that will be used to display this entry
+Icon=/usr/share/pixmaps/craftserversetup.png
+
+# Describes whether this application needs to be run in a terminal or not
+Terminal=true
+
+# Describes the categories in which this entry should be shown
+Categories=Utilities

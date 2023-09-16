@@ -13,4 +13,4 @@ then
 fi
 
 rm -rf *.xz *.amc dist *.log
-tar --exclude='./analytics' -cJf craftserversetup.tar.xz ./*
+tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dev' -cJf craftserversetup.tar.xz ./*

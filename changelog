@@ -1,3 +1,13 @@
+0.15-b1:
+-Add start menu shortcut to Linux
+-Move mc.ico to assets/mc.ico
+0.14.2:
+-Fix Windows bugs
+0.14.1:
+-Add Windows Update support
+0.14:
+-Add windows support
+-Really Really bad
 0.13.3:
 -Remove gz,make,gcc as dependancies
 -DO NOT RUN ON WINDOWS
