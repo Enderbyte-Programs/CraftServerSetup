@@ -1,3 +1,7 @@
+0.15:
+-Fully complete log view routine. You can now view all logs from your server
+0.15-b2:
+-Improve steamlinedness of shortcut installation
 0.15-b1:
 -Add start menu shortcut to Linux
 -Move mc.ico to assets/mc.ico
