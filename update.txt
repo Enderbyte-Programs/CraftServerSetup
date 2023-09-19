@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.14.2/CraftServerSetup-0.14.2-installer.exe|0.14.2|Fix Windows Bugs
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.15/CraftServerSetup-0.15-installer.exe|0.15.0|Improve LogView
