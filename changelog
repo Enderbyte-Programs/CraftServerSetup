@@ -1,3 +1,9 @@
+0.15.2:
+-Remove "Do you want to set up a new server?" option in OOBE.
+-Add Telemetry Consent to OOBE
+-Add settings key to Appdata File
+-Add settings/telemetry (bool) to Appdata
+-Move assorted appdata functions to compatibilize_appdata
 0.15.1:
 -Fix problem in installer
 -Fix crash in logview

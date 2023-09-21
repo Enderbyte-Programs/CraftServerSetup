@@ -125,6 +125,15 @@ def compatibilize_appdata(data:dict) -> dict:
         cver = data["version"]
     except:
         data["version"] = APP_VERSION
+
+    if not "settings" in data:
+        data["settings"] = {"telemetry":True}
+    
+    if not "productKey" in list(data.keys()):
+        data["productKey"] = ""
+    if not "pkd" in list(data.keys()):
+        data["pkd"] = False
+
     return data
 
 def internet_on():
@@ -166,7 +175,10 @@ __DEFAULTAPPDATA__ = {
 
     ],
     "productKey" : "",
-    "pkd" : False
+    "pkd" : False,
+    "settings" : {
+        "telemetry" : True
+    }
 }
 
 ADLIB_BASE = "https://pastebin.com/raw/Jm1NV9u6"#   I'm sorry I had to do this.
@@ -300,13 +312,14 @@ def unpackage_server(infile:str,outdir:str) -> int:
 ### END UTILS
 
 def send_telemetry():
-    try:
-        s = socket.socket()
-        s.connect(('enderbyteprograms.ddnsfree.com',11111))
-        s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION} HTTP/1.1".encode())
-        s.close()
-    except:
-        pass
+    if APPDATA["settings"]["telemetry"]:
+        try:
+            s = socket.socket()
+            s.connect(('enderbyteprograms.ddnsfree.com',11111))
+            s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION} HTTP/1.1".encode())
+            s.close()
+        except:
+            pass
 def parse_size(data: int) -> str:
     if data < 0:
         neg = True
@@ -348,6 +361,9 @@ def error_handling(e:Exception,message="A serious error has occured"):
             _SCREEN.refresh()
             _SCREEN.getch()
         elif erz == 2:
+            if WINDOWS:
+                cursesplus.messagebox.showerror(_SCREEN,["This feature is not yet available on Windows"])
+                continue
             if cursesplus.messagebox.askyesno(_SCREEN,["Do you want to update the most recent App data?","If you suspect your appdata is corrupt, do not say yes"]):
                 updateappdata()
             _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
@@ -494,6 +510,8 @@ def setupnewserver(stdscr):
     if serversoftware == 0:
         return
     elif serversoftware == 1:
+        cursesplus.displaymsgnodelay(stdscr,["Getting version information"])
+        VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
         stdscr.clear()
         stdscr.erase()
         downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
@@ -1470,8 +1488,6 @@ def main(stdscr):
 
         #Graphics support loading
         
-        VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
-        
         if not APPDATA["hasCompletedOOBE"]:
             stdscr.clear()
             cursesplus.displaymsg(stdscr,["CraftServerSetup OOBE","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
@@ -1480,22 +1496,17 @@ def main(stdscr):
                     managejavainstalls(stdscr)
                 else:
                     cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
-            setupservernow = False
-            setupservernow = cursesplus.messagebox.askyesno(stdscr,["crss OOBE","","Would you like to set up a server now?"])
-            stdscr.clear()
-            if setupservernow:
-                
-                setupnewserver(stdscr)
+            APPDATA["settings"]["telemetry"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
+            cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
+
+
         if len(sys.argv) > 1:
             if os.path.isfile(sys.argv[1]):
                 import_amc_server(stdscr,sys.argv[1])
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
         mx,my = os.get_terminal_size()
-        if not "productKey" in list(APPDATA.keys()):
-            APPDATA["productKey"] = ""
-        if not "pkd" in list(APPDATA.keys()):
-            APPDATA["pkd"] = False
+        
         if not APPDATA["pkd"]:
             product_key_page(stdscr)
         APPDATA["pkd"] = True

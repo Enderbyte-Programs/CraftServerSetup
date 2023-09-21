@@ -1,8 +1,36 @@
 ENDERBYTE PROGRAMS LICENSE
 Craft Server Setup Division
 
-Copyright 2022-2023 Enderbyte Programs
+Copyright (c) 2022-2023 Enderbyte Programs. All rights reserved
 
-This program is free and open source, not in price but in code. The source code is public however the price is technically not free but remains optional. By proceeding to use this software, you agree to the following terms:
-This software is provided with a limited warranty. If this software is defective, support will be provided free of charge. However, Enderbyte Programs can not be held liable legally for any damages. 
-Telemetry, stored securely in Enderbyte Programs server with the data: AMCS Version, OS Version, and IP Address. This data is not shared with anyone.
+DEFINITIONS
+
+You, the end user, the User, Users, or Customers refers to YOU- The person who is using or installing this computer program.
+We, Us, Our, Enderbyte Programs, or The Company refers to Enderbyte Programs- The legal entity that is the company.
+The Developer or Enderbyte09 refers to the developer of this computer program. It is mentioned sparingly throughout these terms.
+The Program, the product, the software, or CraftServerSetup refer to the piece of software.
+
+Begin Terms and Conditions
+
+1. What is included in this software (Linux)
+
+This software includes:
+-The computer program (This is the code written by Enderbyte Programs that runs directly)
+-All required third-party libraries (These are third-party libraries written by other people.)
+-Scripts (Scripts are small programs that install and uninstall the program)
+
+This software DOES NOT include (Linux):
+-Python and the base library (This is the interpreter required to execute the software.)
+
+This software includes (WINDOWS):
+-Everything required to execute, install, and remove this program (Compiled)
+
+2. Support Policy:
+
+If this software causes damage to your device, you are elligible to the following:
+-Lots of free support
+However, you may not hold the company legally responsible in any way for any damages to your property, assets, or well-being.
+
+3. Guarantees from the developer:
+
+This software, to the best of the developer's knowledge contains no malicious code
