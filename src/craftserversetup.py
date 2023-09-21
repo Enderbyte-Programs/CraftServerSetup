@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.15"#The semver version
+APP_UF_VERSION = "0.15.1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -967,28 +967,30 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
 
 def view_server_logs(stdscr,server_dir:str):
-    
-    logsdir = server_dir+"/logs"
-    pushd(logsdir)
-    if not os.path.isdir(logsdir):
-        cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
-        return
-    while True:
-        availablelogs = [l for l in os.listdir(logsdir) if os.path.isfile(l)]
-        chosenlog = cursesplus.displayops(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
-        if chosenlog == 0:
-            popd()
+    try:
+        logsdir = server_dir+"/logs"
+        pushd(logsdir)
+        if not os.path.isdir(logsdir):
+            cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
             return
-        else:
-            cl = availablelogs[chosenlog-1]
-            if cl.endswith(".gz"):
-                with open(cl,'rb') as f:
-                    data = gzip.decompress(f.read()).decode()
+        while True:
+            availablelogs = [l for l in os.listdir(logsdir) if os.path.isfile(l)]
+            chosenlog = cursesplus.displayops(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
+            if chosenlog == 0:
+                popd()
+                return
             else:
-                with open(cl) as f:
-                    data = f.read()
-            
-            cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
+                cl = availablelogs[chosenlog-1]
+                if cl.endswith(".gz"):
+                    with open(cl,'rb') as f:
+                        data = gzip.decompress(f.read()).decode()
+                else:
+                    with open(cl) as f:
+                        data = f.read()
+                
+                cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
+    except:
+        cursesplus.messagebox.showwarning(stdscr,["There was an error viewing logs."])
 
 def load_backup(stdscr):
     backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)

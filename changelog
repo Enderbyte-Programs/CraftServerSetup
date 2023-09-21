@@ -1,3 +1,6 @@
+0.15.1:
+-Fix problem in installer
+-Fix crash in logview
 0.15:
 -Fully complete log view routine. You can now view all logs from your server
 0.15-b2:

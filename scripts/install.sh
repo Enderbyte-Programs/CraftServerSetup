@@ -107,7 +107,12 @@ done
 popd >/dev/null
 
 echo "Creating Shortcut"
-
+if [ ! -d $ICONDIR ]; then
+    mkdir -p $ICONDIR
+fi
+if [ ! -d $SHORTCUTDIR ]; then
+    mkdir -p $SHORTCUTDIR
+fi
 cp assets/mc.png $ICONDIR/craftserversetup.png
 cp assets/crasftserversetup.desktop "${SHORTCUTDIR}/craftserversetup.desktop"
 sed -i "s@}@${ICONDIR}@g" "${SHORTCUTDIR}/craftserversetup.desktop"
