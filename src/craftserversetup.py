@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.15.1"#The semver version
+APP_UF_VERSION = "0.15.3"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -127,8 +127,19 @@ def compatibilize_appdata(data:dict) -> dict:
         data["version"] = APP_VERSION
 
     if not "settings" in data:
-        data["settings"] = {"telemetry":True}
-    
+        data["settings"] = [{
+            "name":"telemetry",
+            "display" : "Enable Telemetry?",
+            "type" : "bool",
+            "value":True
+        }]
+    elif type(data["settings"]) == dict:
+        data["settings"] = [{
+            "name":"telemetry",
+            "display" : "Enable Telemetry?",
+            "type" : "bool",
+            "value":True
+        }]
     if not "productKey" in list(data.keys()):
         data["productKey"] = ""
     if not "pkd" in list(data.keys()):
@@ -176,9 +187,14 @@ __DEFAULTAPPDATA__ = {
     ],
     "productKey" : "",
     "pkd" : False,
-    "settings" : {
-        "telemetry" : True
-    }
+    "settings" : [
+        {
+            "name":"telemetry",
+            "display" : "Enable Telemetry?",
+            "type" : "bool",
+            "value":True
+        }
+    ]
 }
 
 ADLIB_BASE = "https://pastebin.com/raw/Jm1NV9u6"#   I'm sorry I had to do this.
@@ -312,7 +328,8 @@ def unpackage_server(infile:str,outdir:str) -> int:
 ### END UTILS
 
 def send_telemetry():
-    if APPDATA["settings"]["telemetry"]:
+    global APPDATA
+    if APPDATA["settings"][0]["value"]:
         try:
             s = socket.socket()
             s.connect(('enderbyteprograms.ddnsfree.com',11111))
@@ -1436,6 +1453,22 @@ def show_ad(stdscr):
             ad = random.choice(ADS)
             ad.show(stdscr) 
 
+def settings_mgr(stdscr):
+    global APPDATA
+    while True:
+        m = cursesplus.displayops(stdscr,["BACK"]+[d["display"] + " : " + str(d["value"]) for d in APPDATA["settings"]],"Please choose a setting to modify")
+        if m == 0:
+            updateappdata()
+            return
+        else:
+            selm = APPDATA["settings"][m-1]
+            if selm["type"] == "bool":
+                selm["value"] = cursesplus.displayops(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
+            elif selm["type"] == "int":
+                selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
+            elif selm["type"] == "str":
+                selm["value"] = cursesplus.cursesinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
+            APPDATA["settings"][m-1] = selm
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -1470,7 +1503,7 @@ def main(stdscr):
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         gen_adverts()
-        threading.Thread(target=send_telemetry).start()
+        
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
             with open(APPDATAFILE,"w+") as f:
@@ -1533,14 +1566,15 @@ def main(stdscr):
 
     #        if mx < 120 or my < 20:
     #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
+        threading.Thread(target=send_telemetry).start()
         while True:
             stdscr.erase()
             show_ad(stdscr)
-            lz = ["Set up new server","Manage servers","Quit","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups"]
+            lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
-            m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | VER {APP_UF_VERSION}{introsuffix}")
+            m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix}")
             if m == 2:
 
                 sys.exit(0)
@@ -1587,10 +1621,15 @@ def main(stdscr):
                     elif bkm == 0:
                         break
                     elif bkm == 2:
-                        load_backup(stdscr)        
+                        load_backup(stdscr)   
             elif m == 7:
-                product_key_page(stdscr)
+                webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
+                cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
             elif m == 8:
+                settings_mgr(stdscr)
+            elif m == 9:
+                product_key_page(stdscr)
+            elif m == 10:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
         error_handling(e,"A serious unspecified exception happened.")

@@ -1,3 +1,6 @@
+0.15.3:
+-Remove critical bug with telemetry
+-
 0.15.2:
 -Remove "Do you want to set up a new server?" option in OOBE.
 -Add Telemetry Consent to OOBE

@@ -56,6 +56,14 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-0.15 - logview improvements and buildsystem improvements
+0.15.3: Settings menu, report bug button
 
-0.16 - ops.json and ban.json
+0.16 : Convert server to moddable
+
+0.17 - Operator manager and bans manager.
+
+0.18 - Help menu with some docs. Also include new user support.
+
+1.0-rc - As many bug fixes as I can
+
+1.0 - GOAL!
