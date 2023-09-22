@@ -43,12 +43,10 @@ scripts: Build system scripts
 
 lib: Special library versions to increase control and decrease dependancy
 
-## My Thoughts for Windows Support
+## My Thoughts for Update 1.0
 
-The appdata folder will be %APPDATA%\mcserver.  Either all the libraries will be bundled into the EXE or a portable python will be packaged and the libraries installed from there. I think I will go with the EXE because it autobundles.
-Another thing I have to do is get rid of the utils directory and replace them with functions. Even though they are more useful, the need to be made OS independent.
-I also have to fix drive letters on the cursesplus library side because it has always broken down. (Perhaps shift-D for drive letters). However, win32api may be a depenency.
-However, all of these fixes and redos are far overshadowed by exposing this software to the great Windows audience.
+I believe that CraftServerSetup is nearing completion, if not at least a major milestone. This major milestone is the 1.0 update which is coming soon. There are a few nyi(). My goal is to get rid of the not yet implemented error by 0.16.
+The next updates will get in the last few things I want to have. After this, I will do a lot of things to look for bugs, fix as many as I can and that will be 1.0!
 
 ## Product Keys and Ads
 
@@ -56,13 +54,11 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-0.15.3: Settings menu, report bug button
-
-0.16 : Convert server to moddable
+0.16 : Convert server to moddable, get rid of nyi()
 
 0.17 - Operator manager and bans manager.
 
-0.18 - Help menu with some docs. Also include new user support.
+0.18 - Help menu with some docs. Also include new user tutorials.
 
 1.0-rc - As many bug fixes as I can
 
