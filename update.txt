@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.15.2/CraftServerSetup-0.15.2-installer.exe|0.15.2|Fix bugs
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.15.3/CraftServerSetup-0.15.3-installer.exe|0.15.3|Add Telemetry Consent
