@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.15.3"#The semver version
+APP_UF_VERSION = "0.15.4"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -27,6 +27,7 @@ import traceback                #Error management
 import webbrowser               #Advertisements
 import tarfile                  #Create archives
 import gzip                     #Compression utilities
+import shlex                    #Pattern matching
 
 WINDOWS = platform.system() == "Windows"
 
@@ -114,8 +115,14 @@ spawn-protection=16
 resource-pack-sha1=
 max-world-size=29999984
 """
+COLOURS_ACTIVE = False
+def restart_colour():
+    global COLOURS_ACTIVE
+    if not COLOURS_ACTIVE:
+        curses.start_color()
 REPAIR_SCRIPT = """cd ~/.local/share;mkdir crss-temp;cd crss-temp;tar -xf $1;bash scripts/install.sh;cd ~;rm -rf ~/.local/share/crss-temp"""#LINUX ONLY
 def sigint(signal,frame):
+    restart_colour()
     if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
         updateappdata()
         sys.exit()
@@ -1073,11 +1080,19 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
             stdscr.refresh()
-            curses.curs_set(1)
-            curses.reset_shell_mode()
-            lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
-            curses.reset_prog_mode()
-            curses.curs_set(0)
+            if not WINDOWS:
+                curses.curs_set(1)
+                curses.reset_shell_mode()
+                lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
+                curses.reset_prog_mode()
+                curses.curs_set(0)
+            else:
+                curses.curs_set(1)
+                curses.reset_shell_mode()
+                lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
+                curses.reset_prog_mode()
+                curses.curs_set(0)
+                restart_colour()
             if lretr != 0:
                 displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
                 if displog:
@@ -1086,7 +1101,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.refresh()
         elif w == 2:
             if not os.path.isfile("server.properties"):
-                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+                cursesplus.diggyygygygygplaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
             else:
                 with open("server.properties") as f:
                     config = PropertiesParse.load(f.read())
@@ -1477,7 +1492,7 @@ def main(stdscr):
     global _SCREEN
     _SCREEN = stdscr
     global DEBUG
-    curses.start_color()
+    restart_colour()
     curses.curs_set(0)
     try:
         cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup","Starting..."])
