@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.16-b2"#The semver version
+APP_UF_VERSION = "0.16"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -741,7 +741,7 @@ def setup_server_properties(stdscr) -> dict:
     dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
     cursesplus.showcursor()
     while True:
-        lssl = cursesplus.displayops(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH"],"Server Configuration Setup")
+        lssl = cursesplus.displayops(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
         #Go through all of the properties 1 by 1...
         if lssl == 4:
             cursesplus.hidecursor()
@@ -779,7 +779,7 @@ def setup_server_properties(stdscr) -> dict:
             if dpp["white-list"]:
                 if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up a whitelist now?"]):
                     #TODO Add whitelist manager
-                    whitelist_manager(stdscr,os.getcwd())
+                    manage_whitelist(stdscr,os.getcwd()+"/whitelist.json")
                 if cursesplus.messagebox.askyesno(stdscr,["Do you want to enfore the white list?"]):
                     dpp["enforce-whitelist"] = True
             dpp["force-gamemode"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to force players to use the default game mode?"])
@@ -812,12 +812,31 @@ def setup_server_properties(stdscr) -> dict:
         elif lssl == 1:
             #world
             dpp = setup_new_world(stdscr,dpp)
+        elif lssl == 5:
+            dpp = resource_pack_setup(stdscr,dpp)
 
-def resource_pack_setup(stdscr,serverdata:dict) -> dict:
-    nyi(stdscr)
-
-def whitelist_manager(stdscr,serverdir:str):
-    nyi(stdscr)
+def resource_pack_setup(stdscr,dpp:dict) -> dict:
+    while True:
+        z = cursesplus.displayops(stdscr,["Done","Set Resource pack URL","Change resource pack settings","Disable resource pack"])
+        if z == 0:
+            return dpp
+        elif z == 1:
+            uurl = cursesplus.cursesinput(stdscr,"Input the URI to your resource pack (Direct download link)")
+            cursesplus.displaymsgnodelay(stdscr,["Testing link"])
+            lzdir = TEMPDIR+"/rp"+str(random.randint(11111,99999))
+            os.mkdir(lzdir)
+            urllib.request.urlretrieve(uurl,lzdir+"pack.zip")
+            with open(lzdir+"pack.zip",'rb') as pack:
+                p = pack.read()
+            packsha = hashlib.sha1(p).hexdigest()
+            dpp["resource-pack"] = uurl
+            dpp["resource-pack-sha1"] = packsha
+        elif z == 2:
+            dpp["require-resource-pack"] = cursesplus.messagebox.askyesno(stdscr,["Do you want this pack to be required?"])
+        elif z == 3:
+            dpp["resource-pack"] = ""
+            dpp["require-resource-pack"] = "false"
+            dpp["resource-pack-sha1"] = ""
 
 def servermgrmenu(stdscr):
     stdscr.clear()
@@ -1082,7 +1101,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     while True:
         show_ad(stdscr)
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software","Manage plugins"]
-        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups"]
+        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
@@ -1239,6 +1258,17 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
         elif w == 12:
             server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
+        elif w == 13:
+            if not os.path.isfile("server.properties"):
+                cursesplus.messagebox.showerror(stdscr,["Please start your server to generate","server.properties"])
+                continue
+            with open("server.properties") as f:
+
+                dpp = PropertiesParse.load(f.read())
+            
+            dpp = resource_pack_setup(stdscr,dpp)
+            with open("server.properties","w+") as f:
+                f.write(PropertiesParse.dump(dpp))
 _SCREEN = None
 def server_backups(stdscr,serverdir:str,serverdata:dict):
     LBKDIR = SERVERS_BACKUP_DIR + "/" + str(serverdata["id"])
@@ -1281,9 +1311,6 @@ def updateappdata():
     global APPDATAFILE
     with open(APPDATAFILE,"w+") as f:
         f.write(json.dumps(APPDATA,indent=2))
-def nyi(stdscr):
-    cursesplus.messagebox.showerror(stdscr,["Not Yet Implemented"],colour=True)
-    stdscr.erase()
 def choose_java_install(stdscr) -> str:
     #Return path of selected java
     while True:
