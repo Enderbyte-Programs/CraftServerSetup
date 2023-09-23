@@ -43,6 +43,10 @@ scripts: Build system scripts
 
 lib: Special library versions to increase control and decrease dependancy
 
+analytics: The server side of the telemetry server (shown for transparency)
+
+assets: desktop files and icon files
+
 ## My Thoughts for Update 1.0
 
 I believe that CraftServerSetup is nearing completion, if not at least a major milestone. This major milestone is the 1.0 update which is coming soon. There are a few nyi(). My goal is to get rid of the not yet implemented error by 0.16.
