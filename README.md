@@ -54,8 +54,6 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-0.16 : Convert server to moddable, get rid of nyi()
-
 0.17 - Operator manager and bans manager.
 
 0.18 - Help menu with some docs. Also include new user tutorials.
