@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.16.2"#The semver version
+APP_UF_VERSION = "0.17-b1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -663,13 +663,14 @@ def setupnewserver(stdscr):
         else:
             memorytoall = "2G"#Bukkit
     njavapath = njavapath.replace("//","/")
+    serverid = random.randint(1111,9999)
     sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid}
     #_space = "\\ "
     #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     __SCRIPT__ = generate_script(sd)
     sd["script"] = __SCRIPT__
     p.step("All done!",True)
-    serverid = random.randint(1111,9999)
+    
     APPDATA["servers"].append(sd)
     updateappdata()
     bdir = os.getcwd()
@@ -1110,7 +1111,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     while True:
         show_ad(stdscr)
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software","Manage plugins"]
-        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack"]
+        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
@@ -1279,7 +1280,75 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             dpp = resource_pack_setup(stdscr,dpp)
             with open("server.properties","w+") as f:
                 f.write(PropertiesParse.dump(dpp))
+        elif w == 14:
+            manage_ops(stdscr,SERVER_DIR)
+        elif w == 15:
+            manage_bans(stdscr,SERVER_DIR)
 _SCREEN = None
+
+def manage_ops(stdscr,serverdir):
+    opdir = serverdir + "/ops.json"
+    if not os.path.isfile(opdir):
+        cursesplus.messagebox.showerror(stdscr,["Please start your server to generate ops.json"])
+    else:
+        with open(opdir) as f:
+            data = json.load(f)
+        
+        while True:
+            dz = cursesplus.displayops(stdscr,["BACK","ADD ADMIN"]+[d["name"] for d in data])
+            if dz == 0:
+                with open(opdir,"w+") as f:
+                    f.write(json.dumps(data))
+                break
+            elif dz == 1:
+                player = cursesplus.cursesinput(stdscr,"Please input the player's name")
+                try:
+                    uuid = get_player_uuid(player)
+                except:
+                    cursesplus.messagebox.showerror(stdscr,["This player does not exist."])
+                else:
+                    bypass = cursesplus.messagebox.askyesno(stdscr,["Should this player be able","to bypass player limits?"])
+                    oplevel = cursesplus.displayops(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
+                    data.append(
+                        {
+                            "name" : player,
+                            "uuid" : uuid,
+                            "level" : oplevel,
+                            "bypassesPlayerLimit" : bypass
+                        }
+                    )
+            else:
+                activel = data[dz-2]
+                while True:
+                    stdscr.clear()
+                    stdscr.refresh()
+                    stdscr.addstr(0,0,"Name:")
+                    stdscr.addstr(1,0,"UUID:")
+                    stdscr.addstr(2,0,"Admin Level:")
+                    stdscr.addstr(3,0,"Bypasses Limit?")
+                    stdscr.addstr(0,20,activel["name"])
+                    stdscr.addstr(1,20,activel["uuid"])
+                    stdscr.addstr(2,20,str(activel["level"]))
+                    stdscr.addstr(3,20,str(activel["bypassesPlayerLimit"]))
+                    stdscr.addstr(5,0,"PRESS R TO REMOVE. PRESS C TO CHANGE PERMISSIONS. PRESS ENTER TO RETURN.",cursesplus.set_color(cursesplus.WHITE,cursesplus.BLACK))
+                    stdscr.refresh()
+                    ch = stdscr.getch()
+                    if ch == 10 or ch == 13 or ch == curses.KEY_ENTER:
+                        break
+                    elif ch == 114:
+                        del data[dz-2]
+                        break
+                    elif ch == 99:
+                        bypass = cursesplus.messagebox.askyesno(stdscr,["Should this player be able","to bypass player limits?"])
+                        oplevel = cursesplus.displayops(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
+                        activel["level"] = oplevel
+                        activel["bypassesPlayerLimit"] = bypass
+                        data[dz-2] = activel
+                        break
+
+def manage_bans(stdscr,serverdir):
+    bandir = serverdir + "/banned-players.json"
+
 def server_backups(stdscr,serverdir:str,serverdata:dict):
     LBKDIR = SERVERS_BACKUP_DIR + "/" + str(serverdata["id"])
     if not os.path.isdir(LBKDIR):
@@ -1607,7 +1676,7 @@ def main(stdscr):
                     managejavainstalls(stdscr)
                 else:
                     cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
-            APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
+            APPDATA["settings"][0]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
             cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
 
 
