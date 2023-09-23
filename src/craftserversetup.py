@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.16"#The semver version
+APP_UF_VERSION = "0.16.1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -1337,7 +1337,7 @@ def managejavainstalls(stdscr):
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
             if os.system(njavapath.replace("\\","/")+" -help") != 0:
                 if not cursesplus.messagebox.askyesno(stdscr,["You may have selected an invalid java file.","Are you sure you would like to add it"]):
-                    break
+                    continue
                 else:
                     stdscr.erase()
                     ndict = {"path":njavapath.replace("\\","/"),"ver":"Unknown"}
@@ -1596,7 +1596,7 @@ def main(stdscr):
                     managejavainstalls(stdscr)
                 else:
                     cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
-            APPDATA["settings"]["telemetry"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
+            APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
             cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
 
 
