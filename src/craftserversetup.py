@@ -362,6 +362,7 @@ def parse_size(data: int) -> str:
         result = "-"+result
     return result
 def error_handling(e:Exception,message="A serious error has occured"):
+    global COLOURS_ACTIVE
     global _SCREEN
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     
@@ -408,8 +409,10 @@ def error_handling(e:Exception,message="A serious error has occured"):
                         _SCREEN.erase()
                         _SCREEN.refresh()
                         curses.reset_shell_mode()
+                        COLOURS_ACTIVE = False
                         z = os.system(REPAIR_SCRIPT.replace("$1","\""+flz+"\""))
                         curses.reset_prog_mode()
+                        restart_colour()
                         if z != 0:
                             cursesplus.messagebox.showwarning(_SCREEN,["Error repairing","Please try a manual repair"])
                 elif aerz == 3:
@@ -427,6 +430,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
                     _SCREEN.bkgd(cursesplus.set_color(cursesplus.BLACK,cursesplus.WHITE))
                     _SCREEN.refresh()
                     curses.reset_shell_mode()
+                    COLOURS_ACTIVE = False
                     print("Run exit to return")
                     cursesplus.showcursor()
                     while True:
@@ -440,6 +444,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
                             print(f"ER {type(ex)}\nMSG {str(ex)}")
                     curses.reset_prog_mode()
                     cursesplus.hidecursor()
+                    restart_colour()
                     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     
 __DIR_LIST__ = [os.getcwd()]
@@ -1125,6 +1130,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             else:
                 curses.curs_set(1)
                 curses.reset_shell_mode()
+                COLOURS_ACTIVE = False
                 lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
                 curses.reset_prog_mode()
                 curses.curs_set(0)
@@ -1543,6 +1549,7 @@ def settings_mgr(stdscr):
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
+    global COLOURS_ACTIVE
     global APPDATAFILE
     global UPDATEINSTALLED
     global _SCREEN
@@ -1669,8 +1676,10 @@ def main(stdscr):
                     stdscr.clear()
                     stdscr.refresh()
                     curses.reset_shell_mode()
+                    COLOURS_ACTIVE = False
                     r = subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
                     curses.reset_prog_mode()
+                    restart_colour()
                     if r == 0:
                         UPDATEINSTALLED = True
                         return#Exit for update
