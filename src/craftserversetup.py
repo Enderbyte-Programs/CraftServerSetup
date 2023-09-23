@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.15.4"#The semver version
+APP_UF_VERSION = "0.16-b1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -535,7 +535,7 @@ def setupnewserver(stdscr):
         return
     elif serversoftware == 1:
         cursesplus.displaymsgnodelay(stdscr,["Getting version information"])
-        VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
+        
         stdscr.clear()
         stdscr.erase()
         downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
@@ -686,8 +686,10 @@ def get_player_uuid(username:str):
     uuidl.insert(23,"-")
     return "".join(uuidl)
 
-def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd()) -> dict:
-
+def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) -> dict:
+    if not initialconfig:
+        if not cursesplus.messagebox.askyesno(stdscr,["This will modify your world settings. Are you sure you wish to proceed?"]):
+            return
     while True:
         dpp["level-name"] = cursesplus.cursesinput(stdscr,"What should your world be called")
         if os.path.isdir(serverdir+"/"+dpp["level-name"]):
@@ -721,6 +723,20 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd()) -> dict:
                dpp["generator-settings"] = cursesplus.cursesinput(stdscr,f"Please type generator settings for {wname}") 
         else:
             dpp["generator-settings"] = cursesplus.cursesinput(stdscr,f"Please type generator settings for {wname}")
+
+    if not initialconfig:
+        #Provide more settings
+        dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins on this world?"])
+        dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this world?"])
+        dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this world?"])
+        dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this world?"])
+        dpp["difficulty"] = str(cursesplus.optionmenu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your world"))
+        dpp["gamemode"] = str(cursesplus.optionmenu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of this world"))
+        dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on this world?"])
+        dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
+        dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
+        dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
+        dpp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
     return dpp
 def setup_server_properties(stdscr) -> dict:
     dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
@@ -1066,7 +1082,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     #Manager server
     while True:
         show_ad(stdscr)
-        x__ops = ["Back","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software"]
+        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software"]
         if APPDATA["servers"][chosenserver-1]["moddable"]:
             x__ops += ["Manage plugins"]
         else:
@@ -1171,6 +1187,18 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     stdscr.clear()
                     break
             stdscr.erase()
+        elif w == 5:
+            if not os.path.isfile("server.properties"):
+                cursesplus.messagebox.showerror(stdscr,["Please start your server to generate","server.properties"])
+                continue
+            with open("server.properties") as f:
+
+                dpp = PropertiesParse.load(f.read())
+            
+            dpp = setup_new_world(stdscr,dpp,SERVER_DIR,False)
+            with open("server.properties","w+") as f:
+                f.write(PropertiesParse.dump(dpp))
+        
         elif w == 6:
             if not APPDATA["servers"][chosenserver-1]["moddable"]:
                 update_vanilla_software(stdscr,os.getcwd(),chosenserver)
@@ -1255,7 +1283,7 @@ def updateappdata():
     global APPDATA
     global APPDATAFILE
     with open(APPDATAFILE,"w+") as f:
-        f.write(json.dumps(APPDATA))
+        f.write(json.dumps(APPDATA,indent=2))
 def nyi(stdscr):
     cursesplus.messagebox.showerror(stdscr,["Not Yet Implemented"],colour=True)
     stdscr.erase()
@@ -1518,7 +1546,7 @@ def main(stdscr):
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         gen_adverts()
-        
+        VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
             with open(APPDATAFILE,"w+") as f:
