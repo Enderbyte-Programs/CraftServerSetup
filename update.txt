@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.16/CraftServerSetup-0.16-installer.exe|0.16.0|Add resource pack manager
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.16.1/CraftServerSetup-0.16.1-installer.exe|0.16.1|Fix bug
