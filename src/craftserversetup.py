@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.16-b1"#The semver version
+APP_UF_VERSION = "0.16-b2"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -27,7 +27,6 @@ import traceback                #Error management
 import webbrowser               #Advertisements
 import tarfile                  #Create archives
 import gzip                     #Compression utilities
-import shlex                    #Pattern matching
 
 WINDOWS = platform.system() == "Windows"
 
@@ -1082,16 +1081,14 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     #Manager server
     while True:
         show_ad(stdscr)
-        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software"]
-        if APPDATA["servers"][chosenserver-1]["moddable"]:
-            x__ops += ["Manage plugins"]
-        else:
-            x__ops += ["Convert server to moddable"]
+        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups"]
         w = cursesplus.displayops(stdscr,x__ops)
         if w == 0:
             stdscr.erase()
+            os.chdir(_ODIR)
             break
+        
         elif w == 1:
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
@@ -1207,11 +1204,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             elif APPDATA["servers"][chosenserver-1]["software"] == 2:
                 update_spigot_software(stdscr,os.getcwd(),chosenserver)
             else:
-                nyi(stdscr)
+                cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
         elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
             svr_mod_mgr(stdscr,SERVER_DIR)
         elif w == 7 and not APPDATA["servers"][chosenserver-1]["moddable"]:
-            nyi(stdscr)
+            cursesplus.messagebox.showerror(stdscr,["Vanilla servers can not have plugins."])
         elif w == 8:
             view_server_logs(stdscr,SERVER_DIR)
         elif w == 9:
