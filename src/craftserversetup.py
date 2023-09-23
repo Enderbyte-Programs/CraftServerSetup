@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.16.1"#The semver version
+APP_UF_VERSION = "0.16.2"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -119,6 +119,7 @@ def restart_colour():
     global COLOURS_ACTIVE
     if not COLOURS_ACTIVE:
         curses.start_color()
+        COLOURS_ACTIVE = True
 REPAIR_SCRIPT = """cd ~/.local/share;mkdir crss-temp;cd crss-temp;tar -xf $1;bash scripts/install.sh;cd ~;rm -rf ~/.local/share/crss-temp"""#LINUX ONLY
 def sigint(signal,frame):
     restart_colour()
@@ -657,11 +658,14 @@ def setupnewserver(stdscr):
         else:
             memorytoall = "2G"#Bukkit
     njavapath = njavapath.replace("//","/")
-    _space = "\\ "
-    __SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
+    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid}
+    #_space = "\\ "
+    #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
+    __SCRIPT__ = generate_script(sd)
+    sd["script"] = __SCRIPT__
     p.step("All done!",True)
     serverid = random.randint(1111,9999)
-    APPDATA["servers"].append({"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"script":__SCRIPT__,"id":serverid})
+    APPDATA["servers"].append(sd)
     updateappdata()
     bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
@@ -1133,7 +1137,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.refresh()
         elif w == 2:
             if not os.path.isfile("server.properties"):
-                cursesplus.diggyygygygygplaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
             else:
                 with open("server.properties") as f:
                     config = PropertiesParse.load(f.read())

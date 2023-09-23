@@ -1,3 +1,7 @@
+0.16.2:
+-fix MORE bugs
+0.16.1:
+-Fix a dumb bug
 0.16:
 -Remove all "loose ends" where some options will throw a not yet implemented error.
 0.16-b3:
