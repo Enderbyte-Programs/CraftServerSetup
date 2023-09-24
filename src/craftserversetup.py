@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.17-b1"#The semver version
+APP_UF_VERSION = "0.17"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -27,6 +27,7 @@ import traceback                #Error management
 import webbrowser               #Advertisements
 import tarfile                  #Create archives
 import gzip                     #Compression utilities
+import time                     #Timezone data
 
 WINDOWS = platform.system() == "Windows"
 
@@ -1346,9 +1347,96 @@ def manage_ops(stdscr,serverdir):
                         data[dz-2] = activel
                         break
 
-def manage_bans(stdscr,serverdir):
-    bandir = serverdir + "/banned-players.json"
+def get_mc_valid_timezone() -> str:
+    offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
+    nzoffset = int((offset / 60 / 60 * -1)*100)
+    if str(nzoffset).startswith("-"):
+        isnegative = True
+        nzoffset = -nzoffset
+    else:
+        isnegative = False
 
+    szstr = str(nzoffset).zfill(4)
+    if isnegative:
+        finaloffset = "-"+szstr
+    else:
+        finaloffset = "+"+szstr
+    return finaloffset
+
+def get_mc_valid_timestamp(d:datetime.datetime) -> str: 
+    return str(d)[0:-7] + " " + get_mc_valid_timezone()
+
+def manage_bans(stdscr,serverdir):
+    opdir = serverdir + "/banned-players.json"
+    if not os.path.isfile(opdir):
+        cursesplus.messagebox.showerror(stdscr,["Please start your server to generate ops.json"])
+    else:
+        with open(opdir) as f:
+            data = json.load(f)
+        
+        while True:
+            dz = cursesplus.displayops(stdscr,["BACK","ADD BAN"]+[d["name"] for d in data])
+            if dz == 0:
+                with open(opdir,"w+") as f:
+                    f.write(json.dumps(data))
+                break
+            elif dz  == 1:
+                player = cursesplus.cursesinput(stdscr,"Please input the player's name")
+                try:
+                    uuid = get_player_uuid(player)
+                except:
+                    cursesplus.messagebox.showerror(stdscr,["This player does not exist."])
+                else:
+                    ctime = get_mc_valid_timestamp(datetime.datetime.now())
+                    source = "CraftServerSetup"
+                    if cursesplus.messagebox.askyesno(stdscr,["Should this ban be forever?"]):
+                        dend = "forever"
+                    else:
+                        ddate = cursesplus.cursesinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
+                        dtime = cursesplus.cursesinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
+                        dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
+                    reason = cursesplus.cursesinput(stdscr,"What is the reason for this ban?")
+                    data.append(
+                        {
+                            "name" : player,
+                            "uuid" : uuid,
+                            "created" : ctime,
+                            "source" : source,
+                            "expires" : dend,
+                            "reason" : reason
+                        }
+                    )
+            else:
+                active = data[dz-2]
+                while True:
+                    stdscr.clear()
+                    stdscr.refresh()
+                    stdscr.addstr(0,0,"Player:")
+                    stdscr.addstr(1,0,"UUID:")
+                    stdscr.addstr(2,0,"Time Created:")
+                    stdscr.addstr(3,0,"Created by:")
+                    stdscr.addstr(4,0,"Ban Expires:")
+                    stdscr.addstr(5,0,"Reason:")
+                    stdscr.addstr(0,20,active["name"])
+                    stdscr.addstr(1,20,active["uuid"])
+                    stdscr.addstr(2,20,active["created"])
+                    stdscr.addstr(3,20,active["source"])
+                    stdscr.addstr(4,20,active["expires"])
+                    stdscr.addstr(5,20,active["reason"])
+                    stdscr.addstr(7,0,"PRESS C TO CHANGE BAN END TIME. PRESS R TO REMOVE BAN. PRESS ENTER TO RETURN.",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+                    ch = stdscr.getch()
+                    if ch == 10 or ch == 13 or ch == curses.KEY_ENTER:
+                        break
+                    elif ch == 114:
+                        del data[dz-2]
+                        break
+                    elif ch == 99:
+                        ddate = cursesplus.cursesinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
+                        dtime = cursesplus.cursesinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
+                        dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
+                        active["expires"] = dend
+                        data[dz-2] = active
+                        
 def server_backups(stdscr,serverdir:str,serverdata:dict):
     LBKDIR = SERVERS_BACKUP_DIR + "/" + str(serverdata["id"])
     if not os.path.isdir(LBKDIR):
