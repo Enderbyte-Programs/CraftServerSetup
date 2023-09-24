@@ -58,9 +58,7 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-0.17 - Operator manager and bans manager.
-
-0.18 - Help menu with some docs. Also include new user tutorials.
+0.18 - Help menu with some docs. Also include new user tutorials. And credits and stats
 
 1.0-rc - As many bug fixes as I can
 
