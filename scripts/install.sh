@@ -3,6 +3,8 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
+FILEREGFILE="$HOME/.config/mimeapps.list"
+MIMEDIR="$HOME/.local/share/mime/packages"
 
 #Check program requirements
 set -e
@@ -104,6 +106,7 @@ do
     echo "      ${file}"
     tar -xf $file -C $LIBDIR #Extract library to custom library path
 done
+cp *.py $LIBDIR #Copy remaining custom librariespa
 popd >/dev/null
 
 echo "Creating Shortcut"
@@ -117,4 +120,20 @@ cp assets/mc.png $ICONDIR/craftserversetup.png
 cp assets/crasftserversetup.desktop "${SHORTCUTDIR}/craftserversetup.desktop"
 sed -i "s@}@${ICONDIR}@g" "${SHORTCUTDIR}/craftserversetup.desktop"
 #Replace home path in shortcut file
-printf "${GREEN}Program installed successfully!${NC}\n"
+
+#Register mime type
+if [ ! -d $MIMEDIR ]; then
+    mkdir -p $MIMEDIR
+fi
+if [ ! -f $MIMEDIR/craftserversetup.xml ]; then
+    cp assets/mime.xml $MIMEDIR/craftserversetup.xml
+fi
+
+#Create file association
+if [ -f $FILEREGFILE ]; then
+    if ! grep -q "minecraft-server" "$FILEREGFILE"; then
+        echo "application/minecraft-server=craftserversetup.desktop" >> $FILEREGFILE
+    fi
+fi
+
+printf "${GREEN}CraftServerSetup installed successfully!${NC}\n"
