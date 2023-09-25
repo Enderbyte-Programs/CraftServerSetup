@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.17"#The semver version
+APP_UF_VERSION = "0.18-b1"#The semver version
 UPDATEINSTALLED = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
@@ -55,6 +55,7 @@ import requests                 #Networking Utilities
 import urllib.request
 import urllib.error
 import yaml                     #Parse YML Files
+from epadvertisements import *  #Advertisements library
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -204,16 +205,6 @@ __DEFAULTAPPDATA__ = {
         }
     ]
 }
-
-ADLIB_BASE = "https://pastebin.com/raw/Jm1NV9u6"#   I'm sorry I had to do this.
-ADS = []
-
-def gen_adverts():
-    d = requests.get(ADLIB_BASE).text
-    for ad in d.splitlines():
-        if ad == "":
-            continue
-        ADS.append(Advertisement(ad.split("|")[0],ad.split("|")[1].replace("\\n","\n")))
 
 def verify_product_key(key:str) -> bool:
     try:
@@ -554,7 +545,7 @@ def setupnewserver(stdscr):
             cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
     while True:
         curses.curs_set(1)
-        servername = cursesplus.cursesinput(stdscr,"What is the name of your server?").strip()
+        servername = cursesplus.cursesinput(stdscr,"Please choose a name for your server").strip()
         curses.curs_set(0)
         if not os.path.isdir(SERVERSDIR):
             os.mkdir(SERVERSDIR)
@@ -1493,7 +1484,7 @@ def managejavainstalls(stdscr):
     if "java" in [j["path"] for j in APPDATA["javainstalls"]]:
         pass
     else:
-        if os.system("java --help") == 0:
+        if os.system("java --help") != 127:
         
             APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
         stdscr.clear()
@@ -1671,14 +1662,6 @@ def import_server(stdscr):
         except:
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
     else: return
-
-class Advertisement:
-    def __init__(self,url:str,msg:str):
-        self.url = url
-        self.message = msg
-    def show(self,stdscr):
-        if cursesplus.messagebox.askyesno(stdscr,["Advertisement",""] + self.message.splitlines() + ["","Open website?","Upgrade with a product key to remove ads"]):
-            webbrowser.open(self.url)
 
 def show_ad(stdscr):
     if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
