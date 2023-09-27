@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18-b1"#The semver version
+APP_UF_VERSION = "0.18-b2"#The semver version
 UPDATEINSTALLED = False
+DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
@@ -56,6 +57,7 @@ import urllib.request
 import urllib.error
 import yaml                     #Parse YML Files
 from epadvertisements import *  #Advertisements library
+import epdoc
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -174,6 +176,7 @@ else:
     SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expandvars("%APPDATA%/crss_backup")
+DOCDOWNLOAD = TEMPDIR + "/craftserversetup.epdoc"
 
 if not os.path.isdir(APPDATADIR):
     os.mkdir(APPDATADIR)
@@ -517,7 +520,7 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
     wxfileout=wdir+"/"+sdata["name"]+".amc"
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])
     nwait.start()
-    package_server_script(wdir,wxfileout)
+    package_server_script(serverdir,wxfileout)
     nwait.stop()
     nwait.destroy()
     #if pr != 0:
@@ -1095,6 +1098,7 @@ def load_backup(stdscr):
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
+    global COLOURS_ACTIVE
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
     os.chdir(SERVER_DIR)
@@ -1686,6 +1690,17 @@ def settings_mgr(stdscr):
             elif selm["type"] == "str":
                 selm["value"] = cursesplus.cursesinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
             APPDATA["settings"][m-1] = selm
+
+def doc_system(stdscr):
+    if os.path.isfile(DOCDOWNLOAD):
+        os.remove(DOCDOWNLOAD)
+    
+    cursesplus.displaymsgnodelay(stdscr,["Downloading Documentation"])
+    urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
+    efile: epdoc.EPDocfile = epdoc.load_from_file(DOCDOWNLOAD,"Craft Server Setup")
+    efile.load()
+    efile.show_documentation(stdscr)
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -1788,14 +1803,15 @@ def main(stdscr):
         while True:
             stdscr.erase()
             show_ad(stdscr)
-            lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings"]
+            lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
             m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix}")
             if m == 2:
-
-                sys.exit(0)
+                cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
+                updateappdata()
+                return
             elif m == 0:
 
                 setupnewserver(stdscr)
@@ -1848,8 +1864,10 @@ def main(stdscr):
             elif m == 8:
                 settings_mgr(stdscr)
             elif m == 9:
-                product_key_page(stdscr)
+                doc_system(stdscr)
             elif m == 10:
+                product_key_page(stdscr)
+            elif m == 11:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
         error_handling(e,"A serious unspecified exception happened.")

@@ -6,26 +6,32 @@ import cursesplus
 class EPDocfile:
     textblocks = {}
     def __init__(self,filetext:str,program_name:str):
+        """Prepares an Enderbyte Programs Doc File. Run this.load() to read file."""
         self.text = filetext
         self.name = program_name
     def load(self):
+        """Read file and generate documentation sections (__INIT__ DOES NOT DO THIS AUTOMATICALLY)"""
         self.textblocks = {}
         flines = self.text.splitlines()
+        k = "Unknown Section"
         for line in flines:
-            k = ""
+            
             if line.startswith("$"):
                 k = line[1:]
-                self.textblocks[line[1:]] = ""
+                self.textblocks[k] = ""
             else:
                 self.textblocks[k] += line + "\n"
     def read_from_name(self,stdscr,block_name):
+        """show the text of a documentation section by providing the section name."""
         if not block_name in list(self.textblocks.keys()):
             cursesplus.messagebox.messagebox.showwarning(stdscr,["A documentation entry was not availble under this name"])
         else:
-            cursesplus.textview(stdscr,text=self.textblocks[block_name])
+            cursesplus.textview(stdscr,text=self.textblocks[block_name],message=f"{self.name} Documentation : {block_name}")
     def read_from_index(self,stdscr,index):
-        cursesplus.textview(stdscr,text=list(self.textblocks.items())[index])
-    def uf_tui(self,stdscr):
+        """show the text of a documentation section by providing the section index."""
+        cursesplus.textview(stdscr,text=list(self.textblocks.items())[index],message=f"{self.name} Documentation : {list(self.textblocks.keys())[index]}")
+    def show_documentation(self,stdscr):
+        """Show user-friendly cursesplus documentation menu"""
         while True:
             z = cursesplus.displayops(stdscr,["BACK"]+list(self.textblocks.keys()))
             if z == 0:
