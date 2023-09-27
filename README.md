@@ -7,6 +7,8 @@
 
 The Windows edition uses an installer. Follow the steps in the installer. All dependencies are included.
 
+You may have to dismiss warnings of uncommon programs or even malware from Windows. Please dismiss them as they are false alarms. If this program contains a virus that I have willingly included, you may sue me for a million dollars.
+
 ## Linux
 
 ### Dependencies not included
@@ -17,7 +19,7 @@ python3, xz, tar, coreutils, sed, grep
 
 ### Downloading
 
-First, download craftserversetup.tar.xz or download the github repo. Next, extract it into a build directory with the command: `mkdir crss_build;tar -xf craftserversetup.tar.xz -C crss_build;cd build`. Now you are in the source tree.
+First, download craftserversetup.tar.xz or download the github repo. Next, extract it into a build directory with the command: `mkdir crss_build;tar -xf craftserversetup.tar.xz -C crss_build;cd crss_build`. Now you are in the source tree.
 
 Now here there are two install methods
 
@@ -58,7 +60,7 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-0.18 - Help menu with some docs. Also include new user tutorials. And credits and stats
+0.18 - Help menu with some docs. MOTD and Dead Man's Switch. And credits and stats
 
 1.0-rc - As many bug fixes as I can
 

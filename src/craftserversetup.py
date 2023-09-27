@@ -156,6 +156,27 @@ def compatibilize_appdata(data:dict) -> dict:
     if not "pkd" in list(data.keys()):
         data["pkd"] = False
 
+    if not "idata" in data:
+        data["idata"] = {
+        "MOTD" : "No Message Yet",
+        "dead" : {
+            "active" : False,
+            "message" : "N/A"
+        }
+    }
+    svri = 0
+    for svr in APPDATA["servers"]:
+        if not "id" in svr:
+            APPDATA["servers"][svri]["id"] = random.randint(1111,9999)
+        svri += 1
+
+    svk = 0
+    for ji in APPDATA["javainstalls"]:
+        APPDATA["javainstalls"][svk] = {"path":ji["path"].replace("\\","/").replace("//","/"),"ver":ji["ver"]}
+
+        svk += 1
+
+
     return data
 
 def internet_on():
@@ -206,7 +227,14 @@ __DEFAULTAPPDATA__ = {
             "type" : "bool",
             "value":True
         }
-    ]
+    ],
+    "idata" : {
+        "MOTD" : "No Message Yet",
+        "dead" : {
+            "active" : False,
+            "message" : "N/A"
+        }
+    }
 }
 
 def verify_product_key(key:str) -> bool:
@@ -1096,6 +1124,14 @@ def load_backup(stdscr):
             APPDATA = __DEFAULTAPPDATA__
     APPDATA = compatibilize_appdata(APPDATA)
 
+def init_idata(stdscr):
+    global APPDATA
+    idata = requests.get("https://pastebin.com/raw/GLSGkysJ").json()
+    APPDATA["idata"] = idata
+    if idata["dead"]["active"]:
+        cursesplus.messagebox.showerror(stdscr,["This computer program has been locked.",f"REASON: {idata['dead']['message']}"])
+        sys.exit(3)
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -1701,6 +1737,21 @@ def doc_system(stdscr):
     efile.load()
     efile.show_documentation(stdscr)
 
+def oobe(stdscr):
+    global APPDATA
+    if not APPDATA["hasCompletedOOBE"]:
+        stdscr.clear()
+        cursesplus.displaymsg(stdscr,["CraftServerSetup OOBE","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
+        if not bool(APPDATA["javainstalls"]):
+            if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
+                managejavainstalls(stdscr)
+            else:
+                cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
+        APPDATA["settings"][0]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
+        cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
+        APPDATA["hasCompletedOOBE"] = True
+        updateappdata()
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -1751,45 +1802,17 @@ def main(stdscr):
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
-
-        #Graphics support loading
         
-        if not APPDATA["hasCompletedOOBE"]:
-            stdscr.clear()
-            cursesplus.displaymsg(stdscr,["CraftServerSetup OOBE","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
-            if not bool(APPDATA["javainstalls"]):
-                if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
-                    managejavainstalls(stdscr)
-                else:
-                    cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
-            APPDATA["settings"][0]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
-            cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
-
+        init_idata(stdscr)
+        oobe(stdscr)
 
         if len(sys.argv) > 1:
             if os.path.isfile(sys.argv[1]):
-                import_amc_server(stdscr,sys.argv[1])
-        APPDATA["hasCompletedOOBE"] = True
-        updateappdata()
-        mx,my = os.get_terminal_size()
+                import_amc_server(stdscr,sys.argv[1])        
         
         if not APPDATA["pkd"]:
             product_key_page(stdscr)
         APPDATA["pkd"] = True
-
-        #UPDATE APPDATA to 23.9.01 format
-        svri = 0
-        for svr in APPDATA["servers"]:
-            if not "id" in svr:
-                APPDATA["servers"][svri]["id"] = random.randint(1111,9999)
-            svri += 1
-
-        svk = 0
-        for ji in APPDATA["javainstalls"]:
-            APPDATA["javainstalls"][svk] = {"path":ji["path"].replace("\\","/").replace("//","/"),"ver":ji["ver"]}
-
-            svk += 1
-
         updateappdata()
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
@@ -1807,7 +1830,7 @@ def main(stdscr):
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
-            m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix}")
+            m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 2:
                 cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
                 updateappdata()

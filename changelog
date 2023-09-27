@@ -1,3 +1,16 @@
+0.18-b3:
+-Add idata
+-Add Dead Man's Switch
+-Add MOTD
+-Move oobe to oobe()
+0.18-b2:
+-Code epdocs.py
+-Fix bugs in epdocs.py
+-Add "Shutting down" screen
+-Add updateappdata() on normal shutdown
+0.18-b1:
+-Move advertisements to epadvertisements.py
+-Add epdocs.py
 0.17:
 -Add ban manager
 -Add admin manager
