@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18-b2"#The semver version
+APP_UF_VERSION = "0.18-b4"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -1752,6 +1752,23 @@ def oobe(stdscr):
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
 
+def stats_and_credits(stdscr):
+    cursesplus.textview(stdscr,text="""
+    CRAFT SERVER SETUP CREDITS
+    
+    === DEVELOPERS ===
+    Lead: Jordan Rahim
+
+    === TESTERS ===
+    Finn Komuniecki
+    Amyia Rowe
+    Jim Westwell
+    Mason Rowe
+    Kelsey Rahim
+    Rubens Rahim
+
+    """,message="CREDITS")
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -1826,7 +1843,7 @@ def main(stdscr):
         while True:
             stdscr.erase()
             show_ad(stdscr)
-            lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help"]
+            lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key","Donate"]
@@ -1889,8 +1906,10 @@ def main(stdscr):
             elif m == 9:
                 doc_system(stdscr)
             elif m == 10:
-                product_key_page(stdscr)
+                stats_and_credits(stdscr)
             elif m == 11:
+                product_key_page(stdscr)
+            elif m == 12:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
     except Exception as e:
         error_handling(e,"A serious unspecified exception happened.")
