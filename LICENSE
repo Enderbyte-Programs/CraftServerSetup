@@ -8,7 +8,7 @@ DEFINITIONS
 You, the end user, the User, Users, or Customers refers to YOU- The person who is using or installing this computer program.
 We, Us, Our, Enderbyte Programs, or The Company refers to Enderbyte Programs- The legal entity that is the company.
 The Developer or Enderbyte09 refers to the developer of this computer program. It is mentioned sparingly throughout these terms.
-The Program, the product, the software, or CraftServerSetup refer to the piece of software.
+The Program, the product, the Software, or CraftServerSetup refer to the piece of software.
 
 Begin Terms and Conditions
 
@@ -34,3 +34,40 @@ However, you may not hold the company legally responsible in any way for any dam
 3. Guarantees from the developer:
 
 This software, to the best of the developer's knowledge contains no malicious code
+
+4. Internet Transparency and more malware policies
+
+Enderbyte Programs has written this program to contact the following sites:
+
+-Official Minecraft apis
+    -To get lists of versions
+    -To get a player's uuid
+-Pastebin
+    -To get Message of the Day
+    -To get advertisements list
+-Enderbyte Programs API Servers
+    -To send telemetry (with permission)
+-Github
+    -To query updates
+
+MINECRAFT SERVERS MAY SEND INTERNET TRAFFIC TO MANY OTHER SERVERS. ENDERBYTE PROGRAMS IS NOT RESPONSIBLE IN ANY WAY FOR ANY INTERNET TRAFFIC SENT OR RECIEVED BY SERVERS OR MODS. NOR IS ENDERBYTE PROGRAMS RESPONSIBLE FOR THE CONTENT OF SUCH PAGES.
+
+5. Commercial Licenses
+
+This program uses optional product keys. If you choose not to use a product key (which costs $2), you will see advertisements. Advertisements appear 20% of the time you choose an option from the main menu or server management menu. Enderbyte Programs has to personally approve every ad that you see, so you need not worry about bad advertisements. If you purchase a product key, you send $2 to Enderbyte09 on PayPal. Then, send a message to Enderbyte09 using PayPal, Discord (@enderbyte09), or email (enderbyte09@gmail.com). Your product key will be sent as quickly as the developer can.
+
+6. Valid Uses of this Software
+
+You may
+    -Use this program
+    -Modify this program's source code
+
+DISTRIBUTION OF MODIFIED COPIES OF THIS SOFTWARE IS NOT PERMITTED WITHOUT PERMISSION (WHICH YOU CAN GET FROM MESSAGING ME.)
+
+You may also distribute UNACTIVATED AND UNMODIFIED copies of this software anytime without permission. However, you must not claim that you wrote the software in any way.
+
+RESALE OF COPIES OF THIS SOFTWARE IS NOT PERMITTED UNDER ANY CIRCUMSTANCE
+
+If you wish to contact Enderbyte Programs on any of these terms, please send an email to enderbyte09@gmail.com
+
+END TERMS AND CONDITIONS
