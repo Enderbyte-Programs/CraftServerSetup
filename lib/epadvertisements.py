@@ -8,8 +8,11 @@ import cursesplus       #Display ads
 
 ADLIB_BASE = "https://pastebin.com/raw/Jm1NV9u6"#   I'm sorry I had to do this.
 ADS = []
+POST_MESSAGE = ""
 
-def gen_adverts():
+def gen_adverts(message=""):
+    global POST_MESSAGE
+    POST_MESSAGE = message
     """Send a request and generate advertisements"""
     d = requests.get(ADLIB_BASE).text
     for ad in d.splitlines():
@@ -21,5 +24,5 @@ class Advertisement:
         self.url = url
         self.message = msg
     def show(self,stdscr):
-        if cursesplus.messagebox.askyesno(stdscr,["Advertisement",""] + self.message.splitlines() + ["","Open website?","Upgrade with a product key to remove ads"]):
+        if cursesplus.messagebox.askyesno(stdscr,["Advertisement",""] + self.message.splitlines() + ["","Open website?"]+[POST_MESSAGE]):
             webbrowser.open(self.url)

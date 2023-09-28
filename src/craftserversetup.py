@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18-b4"#The semver version
+APP_UF_VERSION = "0.18-b5"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -50,14 +50,12 @@ else:
     DEBUG = False
 #Third party libraries below here
 import cursesplus               #Terminal Display Control
-import cursesplus.messagebox
-import cursesplus.filedialog
 import requests                 #Networking Utilities
 import urllib.request
 import urllib.error
 import yaml                     #Parse YML Files
-from epadvertisements import *  #Advertisements library
-import epdoc
+from epadvertisements import *  #Advertisements library (BY ME)
+import epdoc                    #Documentations library (BY ME)
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -1803,7 +1801,7 @@ def main(stdscr):
             os.mkdir(BACKUPDIR)
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
-        gen_adverts()
+        gen_adverts("Upgrade with a product key to remove ads")
         VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):

@@ -1,3 +1,7 @@
+0.18-b5:
+-Modify epadverts
+-Add documentation
+-Upgrade to cursesplus 2.9
 0.18-b4:
 -Add credits
 0.18-b3:
