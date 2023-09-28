@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18-b5"#The semver version
+APP_UF_VERSION = "0.18-b6"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -142,6 +142,13 @@ def compatibilize_appdata(data:dict) -> dict:
             "type" : "bool",
             "value":True
         }]
+    if len(data["settings"]) == 1:
+        data["settings"].append({
+            "name" : "transitions",
+            "display" : "Show Transitions?",
+            "type" : "bool",
+            "value" : True
+        })
     elif type(data["settings"]) == dict:
         data["settings"] = [{
             "name":"telemetry",
@@ -224,6 +231,12 @@ __DEFAULTAPPDATA__ = {
             "display" : "Enable Telemetry?",
             "type" : "bool",
             "value":True
+        },
+        {
+            "name" : "transitions",
+            "display" : "Show Transitions?",
+            "type" : "bool",
+            "value" : True
         }
     ],
     "idata" : {
@@ -1136,7 +1149,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
     os.chdir(SERVER_DIR)
-
+    if APPDATA["settings"][1]["value"]:
+        cursesplus.transitions.vertical_bars(stdscr)
     #Manager server
     while True:
         show_ad(stdscr)
@@ -1146,9 +1160,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         if w == 0:
             stdscr.erase()
             os.chdir(_ODIR)
+            if APPDATA["settings"][1]["value"]:
+                cursesplus.transitions.random_blocks(stdscr)
             break
         
-        elif w == 1:
+        elif w == 1:           
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
             stdscr.refresh()
@@ -1849,7 +1865,7 @@ def main(stdscr):
             if m == 2:
                 cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
                 updateappdata()
-                return
+                break
             elif m == 0:
 
                 setupnewserver(stdscr)
@@ -1909,6 +1925,8 @@ def main(stdscr):
                 product_key_page(stdscr)
             elif m == 12:
                 cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
+        if APPDATA["settings"][1]["value"]:
+            cursesplus.transitions.horizontal_bars(stdscr)
     except Exception as e:
         error_handling(e,"A serious unspecified exception happened.")
 
