@@ -33,7 +33,7 @@ class EPDocfile:
     def show_documentation(self,stdscr):
         """Show user-friendly cursesplus documentation menu"""
         while True:
-            z = cursesplus.displayops(stdscr,["BACK"]+list(self.textblocks.keys()))
+            z = cursesplus.displayops(stdscr,["BACK"]+list(self.textblocks.keys()),"Please choose a documentation chapter")
             if z == 0:
                 return
             else:
