@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18-b6"#The semver version
+APP_UF_VERSION = "0.18-b7"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -170,17 +170,18 @@ def compatibilize_appdata(data:dict) -> dict:
         }
     }
     svri = 0
-    for svr in APPDATA["servers"]:
+    for svr in data["servers"]:
         if not "id" in svr:
-            APPDATA["servers"][svri]["id"] = random.randint(1111,9999)
+            data["servers"][svri]["id"] = random.randint(1111,9999)
         svri += 1
 
     svk = 0
-    for ji in APPDATA["javainstalls"]:
-        APPDATA["javainstalls"][svk] = {"path":ji["path"].replace("\\","/").replace("//","/"),"ver":ji["ver"]}
+    for ji in data["javainstalls"]:
+        data["javainstalls"][svk] = {"path":ji["path"].replace("\\","/").replace("//","/"),"ver":ji["ver"]}
 
         svk += 1
-
+    if not "license" in data:
+        data["license"] = False
 
     return data
 
@@ -245,7 +246,8 @@ __DEFAULTAPPDATA__ = {
             "active" : False,
             "message" : "N/A"
         }
-    }
+    },
+    "license" : False
 }
 
 def verify_product_key(key:str) -> bool:
@@ -1751,9 +1753,20 @@ def doc_system(stdscr):
     efile.load()
     efile.show_documentation(stdscr)
 
+def license(stdscr):
+    global APPDATA
+    if not APPDATA["license"]:
+        if not os.path.isfile(TEMPDIR+"/license"):
+            urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",TEMPDIR+"/license")
+        with open(TEMPDIR+"/license") as f:
+            dat = f.read()
+        cursesplus.textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
+        APPDATA["license"] = True
+
 def oobe(stdscr):
     global APPDATA
     if not APPDATA["hasCompletedOOBE"]:
+
         stdscr.clear()
         cursesplus.displaymsg(stdscr,["CraftServerSetup OOBE","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
         if not bool(APPDATA["javainstalls"]):
@@ -1768,18 +1781,18 @@ def oobe(stdscr):
 
 def stats_and_credits(stdscr):
     cursesplus.textview(stdscr,text="""
-    CRAFT SERVER SETUP CREDITS
-    
-    === DEVELOPERS ===
-    Lead: Jordan Rahim
+CRAFT SERVER SETUP CREDITS
 
-    === TESTERS ===
-    Finn Komuniecki
-    Amyia Rowe
-    Jim Westwell
-    Mason Rowe
-    Kelsey Rahim
-    Rubens Rahim
+=== DEVELOPERS ===
+Lead: Jordan Rahim
+
+=== TESTERS ===
+Finn Komuniecki
+Amyia Rowe
+Jim Westwell
+Mason Rowe
+Kelsey Rahim
+Rubens Rahim
 
     """,message="CREDITS")
 
@@ -1835,6 +1848,7 @@ def main(stdscr):
         APPDATA = compatibilize_appdata(APPDATA)
         
         init_idata(stdscr)
+        license(stdscr)
         oobe(stdscr)
 
         if len(sys.argv) > 1:
