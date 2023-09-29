@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18-b7"#The semver version
+APP_UF_VERSION = "0.18"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -1744,14 +1744,21 @@ def settings_mgr(stdscr):
             APPDATA["settings"][m-1] = selm
 
 def doc_system(stdscr):
-    if os.path.isfile(DOCDOWNLOAD):
-        os.remove(DOCDOWNLOAD)
-    
-    cursesplus.displaymsgnodelay(stdscr,["Downloading Documentation"])
-    urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
-    efile: epdoc.EPDocfile = epdoc.load_from_file(DOCDOWNLOAD,"Craft Server Setup")
-    efile.load()
-    efile.show_documentation(stdscr)
+    while True:
+        z = cursesplus.displayops(stdscr,["BACK","View documentation","Help on using text-based software"])
+        if z == 0:
+            break
+        elif z == 1:
+            if os.path.isfile(DOCDOWNLOAD):
+                os.remove(DOCDOWNLOAD)
+            
+            cursesplus.displaymsgnodelay(stdscr,["Downloading Documentation"])
+            urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
+            efile: epdoc.EPDocfile = epdoc.load_from_file(DOCDOWNLOAD,"Craft Server Setup")
+            efile.load()
+            efile.show_documentation(stdscr)
+        elif z == 2:
+            usertutorial(stdscr)
 
 def license(stdscr):
     global APPDATA
@@ -1765,10 +1772,11 @@ def license(stdscr):
 
 def oobe(stdscr):
     global APPDATA
-    if not APPDATA["hasCompletedOOBE"]:
-
+    if not APPDATA["hasCompletedOOBE"]:       
         stdscr.clear()
         cursesplus.displaymsg(stdscr,["CraftServerSetup OOBE","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
+        if not cursesplus.messagebox.askyesno(stdscr,["Do you know how to use a text-based program like this?"]):
+            usertutorial(stdscr)
         if not bool(APPDATA["javainstalls"]):
             if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
                 managejavainstalls(stdscr)
@@ -1779,12 +1787,23 @@ def oobe(stdscr):
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
 
+def usertutorial(stdscr):
+    cursesplus.messagebox.showinfo(stdscr,["This is a messagebox","Press enter to dismiss it"])
+    cursesplus.messagebox.showinfo(stdscr,["This software has no mouse","You will never have to use your mouse, only your keyboard"])
+    cursesplus.messagebox.askyesno(stdscr,["This is a question","Use the right and left arrows to change the highlighted options","or use Y and N on your keyboard.","Choose NO"])
+    cursesplus.displayops(stdscr,["Don't choose this","Don't Choose this","Choose this!"],"This is a vertical option menu. Choose the third option using the up and down arrow keys!")
+    cursesplus.messagebox.showinfo(stdscr,["Hit Ctrl-C to open up the quit menu"])
+
 def stats_and_credits(stdscr):
     cursesplus.textview(stdscr,text="""
 CRAFT SERVER SETUP CREDITS
 
 === DEVELOPERS ===
-Lead: Jordan Rahim
+Jordan Rahim
+
+=== ART ===
+Jordan Rahim
+Finn Komuniecki
 
 === TESTERS ===
 Finn Komuniecki

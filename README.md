@@ -49,6 +49,20 @@ analytics: The server side of the telemetry server (shown for transparency)
 
 assets: desktop files and icon files
 
+## BECOME A BETA TESTER!
+
+As CraftServerSetup reaches a milestone one (and thus the 1.0 update), I need some helpers to help me find the last bugs in this program so I can have a nice stable 1.0. To become a beta tester, please send me an email at enderbyte09@gmail.com or message me on discord @enderbyte09. 
+
+As a beta tester, you will need to just use the program, set servers up, screw around, do as much as you want. If you find any bugs, all you need to do is report in the Issues section of this GitHub page or send me an email or Discord.
+
+If you join the Beta Testing program, you will recieve the following rewards:
+
+1. Your name in the credits page of this program
+
+2. A free product key to this software (so you don't have to see any ads)
+
+3. One free infinite advertisement that will be put on the Enderbyte Programs ad network and displayed to all unupgraded CraftServerSetup users
+
 ## My Thoughts for Update 1.0
 
 I believe that CraftServerSetup is nearing completion, if not at least a major milestone. This major milestone is the 1.0 update which is coming soon. There are a few nyi(). My goal is to get rid of the not yet implemented error by 0.16.
@@ -60,8 +74,4 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-0.18 - Help menu with some docs. MOTD and Dead Man's Switch. And credits and stats
-
-1.0-rc - As many bug fixes as I can
-
-1.0 - GOAL!
+Fix as many bugs as possible
