@@ -1721,10 +1721,9 @@ def import_server(stdscr):
 
 def show_ad(stdscr):
     if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
-        if "DISPLAY" in os.environ:# Temp fix for bug
-            if random.randint(0,5) == 3:
-                ad = random.choice(ADS)
-                ad.show(stdscr) 
+        if random.randint(0,5) == 3:
+            ad = random.choice(ADS)
+            ad.show(stdscr) 
 
 def settings_mgr(stdscr):
     global APPDATA

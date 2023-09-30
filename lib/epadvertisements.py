@@ -26,3 +26,4 @@ class Advertisement:
     def show(self,stdscr):
         if cursesplus.messagebox.askyesno(stdscr,["Advertisement",""] + self.message.splitlines() + ["","Open website?"]+[POST_MESSAGE]):
             webbrowser.open(self.url)
+            stdscr.clear()
