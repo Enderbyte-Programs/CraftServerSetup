@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18"#The semver version
+APP_UF_VERSION = "0.18.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -1828,6 +1828,9 @@ def main(stdscr):
     curses.curs_set(0)
     try:
         cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup","Starting..."])
+        p = cursesplus.ProgressBar(stdscr,5,bar_type=cursesplus.ProgressBarTypes.SmallProgressBar,bar_location=cursesplus.ProgressBarLocations.BOTTOM,message="Startup")
+        p.step("Verifying internet connection")
+
         issue = False
         if not internet_on():
             if not cursesplus.messagebox.askyesno(stdscr,["WARNING","No internet connection could be found!","You may run in to errors","Are you sure you want to continue?"]):
@@ -1849,6 +1852,7 @@ def main(stdscr):
             os.mkdir(BACKUPDIR)
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
+        p.step("Loading AppData")
         gen_adverts("Upgrade with a product key to remove ads")
         VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
         APPDATAFILE = APPDATADIR+"/config.json"
@@ -1865,11 +1869,11 @@ def main(stdscr):
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
-        
+        p.step("Procurring internet data")
         init_idata(stdscr)
         license(stdscr)
         oobe(stdscr)
-
+        p.step("Finishing up...")
         if len(sys.argv) > 1:
             if os.path.isfile(sys.argv[1]):
                 import_amc_server(stdscr,sys.argv[1])        
@@ -1886,6 +1890,7 @@ def main(stdscr):
 
     #        if mx < 120 or my < 20:
     #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
+        p.done()
         threading.Thread(target=send_telemetry).start()
         while True:
             stdscr.erase()
