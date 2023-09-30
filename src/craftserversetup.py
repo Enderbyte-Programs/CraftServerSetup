@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.1"#The semver version
+APP_UF_VERSION = "0.18.2"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -284,7 +284,7 @@ def generate_product_key() -> str:
 
 def product_key_page(stdscr):
     while True:
-        o = cursesplus.displayops(stdscr,["Register Product key","How to register a product key","Use without product key :("],"You have not yet inserted a valid product key.")
+        o = cursesplus.displayops(stdscr,["Register Product key","How to register a product key","Use without product key"],"You have not yet inserted a valid product key.")
         if o == 2:
             cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
             return
@@ -1721,10 +1721,10 @@ def import_server(stdscr):
 
 def show_ad(stdscr):
     if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
-
-        if random.randint(0,5) == 3:
-            ad = random.choice(ADS)
-            ad.show(stdscr) 
+        if "DISPLAY" in os.environ:# Temp fix for bug
+            if random.randint(0,5) == 3:
+                ad = random.choice(ADS)
+                ad.show(stdscr) 
 
 def settings_mgr(stdscr):
     global APPDATA
@@ -1805,13 +1805,12 @@ Jordan Rahim
 Jordan Rahim
 Finn Komuniecki
 
-=== TESTERS ===
+=== BUG TESTERS ===
+MangyCat (1 bug)
+
+=== UI TESTERS ===
 Finn Komuniecki
-Amyia Rowe
 Jim Westwell
-Mason Rowe
-Kelsey Rahim
-Rubens Rahim
 
     """,message="CREDITS")
 
@@ -1898,7 +1897,7 @@ def main(stdscr):
             lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
-                lz += ["Insert Product Key","Donate"]
+                lz += ["Insert Product Key"]
             m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 2:
                 cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
@@ -1961,12 +1960,10 @@ def main(stdscr):
                 stats_and_credits(stdscr)
             elif m == 11:
                 product_key_page(stdscr)
-            elif m == 12:
-                cursesplus.messagebox.showinfo(stdscr,["Donate to @enderbyte09 on PayPal"])
         if APPDATA["settings"][1]["value"]:
             cursesplus.transitions.horizontal_bars(stdscr)
     except Exception as e:
-        error_handling(e,"A serious unspecified exception happened.")
+        error_handling(e,"A serious unspecified exception happened")
 
 if __name__ == "__main__":
     curses.wrapper(main)

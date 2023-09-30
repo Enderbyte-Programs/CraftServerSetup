@@ -1,3 +1,9 @@
+0.18.2:
+-Remove Donate option
+-Ads no longer appear when not in an X server (POTENTIAL FIX FOR #1)
+0.18.1:
+-Improve Windows build system
+-Add progress bar on startup
 0.18:
 -Culminated betas
 -Add cursesplus usage tutorial
