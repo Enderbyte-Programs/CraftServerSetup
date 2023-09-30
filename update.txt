@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.18/CraftServerSetup-0.18-installer.exe|0.18.0|Fix bug
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.18.1/CraftServerSetup-0.18.1-installer.exe|0.18.1|Add startup progress bar
