@@ -63,10 +63,9 @@ If you join the Beta Testing program, you will recieve the following rewards:
 
 3. One free infinite advertisement that will be put on the Enderbyte Programs ad network and displayed to all unupgraded CraftServerSetup users
 
-## My Thoughts for Update 1.0
+## The future
 
-I believe that CraftServerSetup is nearing completion, if not at least a major milestone. This major milestone is the 1.0 update which is coming soon. There are a few nyi(). My goal is to get rid of the not yet implemented error by 0.16.
-The next updates will get in the last few things I want to have. After this, I will do a lot of things to look for bugs, fix as many as I can and that will be 1.0!
+MangyCat has suggested that I convert this to a web ui. To do this first, the backend must be detached from the frontend
 
 ## Product Keys and Ads
 
