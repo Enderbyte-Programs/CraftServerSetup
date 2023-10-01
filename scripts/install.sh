@@ -93,11 +93,6 @@ cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
 ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/mcserver"
 ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
 
-#Copy prebuild util scripts
-echo "Copying scripts"
-cp -r src/utils "$LIBDIR"
-chmod -R +rx "$LIBDIR/utils" 
-
 echo "Installing libraries: "
 pushd lib >/dev/null
 #Copy prebuilt python library

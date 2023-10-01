@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.2"#The semver version
+APP_UF_VERSION = "0.18.3"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -29,6 +29,7 @@ import webbrowser               #Advertisements
 import tarfile                  #Create archives
 import gzip                     #Compression utilities
 import time                     #Timezone data
+import textwrap                 #Text wrapping
 
 WINDOWS = platform.system() == "Windows"
 
@@ -39,13 +40,10 @@ if not WINDOWS:#Windows edition will package libraries already
         sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
         sys.path.insert(1,"/usr/lib/craftserversetup")
         DEBUG=False
-        if os.path.isdir("/usr/lib/craftserversetup"):
-            UTILDIR="/usr/lib/craftserversetup/utils"
-        else:
-            UTILDIR = os.path.expanduser("~/.local/lib/craftserversetup/utils")
+        
     else:
         DEBUG=True
-        UTILDIR="src/utils"
+        
 else:
     DEBUG = False
 #Third party libraries below here
@@ -141,6 +139,16 @@ def compatibilize_appdata(data:dict) -> dict:
             "display" : "Enable Telemetry?",
             "type" : "bool",
             "value":True
+        },{
+            "name" : "transitions",
+            "display" : "Show Transitions?",
+            "type" : "bool",
+            "value" : True
+        },{
+            "name" : "oldmenu",
+            "display" : "Use legacy style menus?",
+            "type" : "bool",
+            "value" : False
         }]
     if len(data["settings"]) == 1:
         data["settings"].append({
@@ -149,13 +157,14 @@ def compatibilize_appdata(data:dict) -> dict:
             "type" : "bool",
             "value" : True
         })
-    elif type(data["settings"]) == dict:
-        data["settings"] = [{
-            "name":"telemetry",
-            "display" : "Enable Telemetry?",
+    elif len(data["settings"]) == 2:
+        data["settings"].append({
+            "name" : "oldmenu",
+            "display" : "Use legacy style menus?",
             "type" : "bool",
-            "value":True
-        }]
+            "value" : False
+        })
+
     if not "productKey" in list(data.keys()):
         data["productKey"] = ""
     if not "pkd" in list(data.keys()):
@@ -238,6 +247,12 @@ __DEFAULTAPPDATA__ = {
             "display" : "Show Transitions?",
             "type" : "bool",
             "value" : True
+        },
+        {
+            "name" : "oldmenu",
+            "display" : "Use legacy style menus?",
+            "type" : "bool",
+            "value" : False
         }
     ],
     "idata" : {
@@ -284,7 +299,7 @@ def generate_product_key() -> str:
 
 def product_key_page(stdscr):
     while True:
-        o = cursesplus.displayops(stdscr,["Register Product key","How to register a product key","Use without product key"],"You have not yet inserted a valid product key.")
+        o = crss_custom_ad_menu(stdscr,["Register Product key","How to register a product key","Use without product key"],"You have not yet inserted a valid product key.")
         if o == 2:
             cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
             return
@@ -359,7 +374,8 @@ def package_server_script(indir:str,outfile:str) -> int:
 
 def unpackage_server(infile:str,outdir:str) -> int:
     try:
-        os.mkdir(outdir)
+        if not os.path.isdir(outdir):
+            os.mkdir(outdir)
         pushd(outdir)
         with tarfile.open(infile,"r:xz") as tar:
             tar.extractall(".")
@@ -505,7 +521,7 @@ def manage_whitelist(stdscr,whitefile:str):
     with open(whitefile) as f:
         dat = json.load(f)
     while True:
-        dop = cursesplus.displayops(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove")
+        dop = crss_custom_ad_menu(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove")
         if dop == 1:
             with open(whitefile,"w+") as f:
                 f.write(json.dumps(dat))
@@ -571,7 +587,7 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
     
 def setupnewserver(stdscr):
     stdscr.erase()
-    serversoftware = cursesplus.displayops(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
+    serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
     if serversoftware == 0:
         return
     elif serversoftware == 1:
@@ -579,7 +595,7 @@ def setupnewserver(stdscr):
         
         stdscr.clear()
         stdscr.erase()
-        downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+        downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
         if downloadversion == 0:
             return
         else:
@@ -648,7 +664,7 @@ def setupnewserver(stdscr):
     elif serversoftware == 3:
         VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
         stdscr.erase()
-        pxver = list(reversed(VMAN["versions"]))[cursesplus.optionmenu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+        pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
         BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
         buildslist = list(reversed(BMAN["builds"]))
         
@@ -656,7 +672,7 @@ def setupnewserver(stdscr):
             builddat = buildslist[0]
         else:
             stdscr.erase()
-            builddat = buildslist[cursesplus.optionmenu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+            builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
         bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
         #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
         p.step("Downloading",True)
@@ -744,7 +760,7 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
             break
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to use a custom seed?","Answer no for a random seed"]):
         dpp["level-seed"] = cursesplus.cursesinput(stdscr,"What should the seed be?")
-    wtype = cursesplus.displayops(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
+    wtype = crss_custom_ad_menu(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
     if wtype == 7:
         wname = cursesplus.cursesinput(stdscr,"Please type the full name of the custom world type")
     elif wtype == 0:
@@ -775,8 +791,8 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this world?"])
         dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this world?"])
         dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this world?"])
-        dpp["difficulty"] = str(cursesplus.optionmenu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your world"))
-        dpp["gamemode"] = str(cursesplus.optionmenu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of this world"))
+        dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your world"))
+        dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of this world"))
         dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on this world?"])
         dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
         dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
@@ -787,7 +803,7 @@ def setup_server_properties(stdscr) -> dict:
     dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
     cursesplus.showcursor()
     while True:
-        lssl = cursesplus.displayops(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
+        lssl = crss_custom_ad_menu(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
         #Go through all of the properties 1 by 1...
         if lssl == 4:
             cursesplus.hidecursor()
@@ -812,7 +828,7 @@ def setup_server_properties(stdscr) -> dict:
             dpp["broadcast-console-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable verbose output to operators?"])
             dpp["entity-broadcast-range-percentage"] = cursesplus.numericinput(stdscr,"What distance percentage should entities be sent to the client?",minimum=10,maximum=1000,prefillnumber=100)
             #dpp["enforce-secure-profile"] = not cursesplus.messagebox.askyesno(stdscr,["Do you want to allow cracked accounts to join?"])
-            seclevel = cursesplus.displayops(stdscr,["Maximum (reccommended) - Secure profile and valid account","Moderate - Valid account, secure profile not required","Minimum - Cracked / illegal accounts permitted"],"Please choose a security option")
+            seclevel = crss_custom_ad_menu(stdscr,["Maximum (reccommended) - Secure profile and valid account","Moderate - Valid account, secure profile not required","Minimum - Cracked / illegal accounts permitted"],"Please choose a security option")
             if seclevel == 0:
                 dpp["enforce-secure-profile"] = True
                 dpp["online-mode"] = True
@@ -829,7 +845,7 @@ def setup_server_properties(stdscr) -> dict:
                 if cursesplus.messagebox.askyesno(stdscr,["Do you want to enfore the white list?"]):
                     dpp["enforce-whitelist"] = True
             dpp["force-gamemode"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to force players to use the default game mode?"])
-            dpp["function-permission-level"] = cursesplus.displayops(stdscr,["1 (Bypass spawn protection)","2 (Singleplayer commands)","3 (Player management (ban/kick))","4 (Manage server)"],"Please choose the default op admin level") + 1
+            dpp["function-permission-level"] = crss_custom_ad_menu(stdscr,["1 (Bypass spawn protection)","2 (Singleplayer commands)","3 (Player management (ban/kick))","4 (Manage server)"],"Please choose the default op admin level") + 1
             dpp["max-chained-neighbor-updates"] = cursesplus.numericinput(stdscr,"Please input maximum chained neighboue updates",allownegatives=True,minimum=-1,prefillnumber=1000000)
             dpp["max-tick-time"] = cursesplus.numericinput(stdscr,"How many milliseconds should watchdog wait?",False,True,-1,2**32,60000)
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to enable anti-afk?"]):
@@ -843,8 +859,8 @@ def setup_server_properties(stdscr) -> dict:
             dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this server?"])
             dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this server?"])
             dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this server?"])
-            dpp["difficulty"] = str(cursesplus.optionmenu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
-            dpp["gamemode"] = str(cursesplus.optionmenu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
+            dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
+            dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
             dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
             dpp["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed? (max players)",minimum=1,maximum=1000000,prefillnumber=20)
             dpp["motd"] = "\\n".join(cursesplus.cursesinput(stdscr,"What should your server message say?",2,59).splitlines())
@@ -863,7 +879,7 @@ def setup_server_properties(stdscr) -> dict:
 
 def resource_pack_setup(stdscr,dpp:dict) -> dict:
     while True:
-        z = cursesplus.displayops(stdscr,["Done","Set Resource pack URL","Change resource pack settings","Disable resource pack"])
+        z = crss_custom_ad_menu(stdscr,["Done","Set Resource pack URL","Change resource pack settings","Disable resource pack"])
         if z == 0:
             return dpp
         elif z == 1:
@@ -887,7 +903,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 def servermgrmenu(stdscr):
     stdscr.clear()
     global APPDATA
-    chosenserver = cursesplus.displayops(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
+    chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
     if chosenserver == 0:
         return
     else:
@@ -939,7 +955,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = cursesplus.displayops(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST])
+        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST])
         if spldi == 0:
             return
         elif spldi == 1:
@@ -1008,7 +1024,7 @@ def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
 def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     stdscr.erase()
-    downloadversion = cursesplus.displayops(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+    downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
     if downloadversion == 0:
         return
     else:
@@ -1069,7 +1085,7 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     stdscr.erase()
     VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
     stdscr.erase()
-    pxver = list(reversed(VMAN["versions"]))[cursesplus.optionmenu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+    pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
     BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
     buildslist = list(reversed(BMAN["builds"]))
     
@@ -1077,7 +1093,7 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
         builddat = buildslist[0]
     else:
         stdscr.erase()
-        builddat = buildslist[cursesplus.optionmenu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+        builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
     bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
     #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     stdscr.clear()
@@ -1097,7 +1113,7 @@ def view_server_logs(stdscr,server_dir:str):
             return
         while True:
             availablelogs = [l for l in os.listdir(logsdir) if os.path.isfile(l)]
-            chosenlog = cursesplus.displayops(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
+            chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
             if chosenlog == 0:
                 popd()
                 return
@@ -1155,10 +1171,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         cursesplus.transitions.vertical_bars(stdscr)
     #Manager server
     while True:
-        show_ad(stdscr)
+
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans"]
-        w = cursesplus.displayops(stdscr,x__ops)
+        #w = crss_custom_ad_menu(stdscr,x__ops)
+        w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
             stdscr.erase()
             os.chdir(_ODIR)
@@ -1184,7 +1201,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 curses.reset_prog_mode()
                 curses.curs_set(0)
                 restart_colour()
-            if lretr != 0:
+            if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
                 displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
                 if displog:
                     view_server_logs(stdscr,SERVER_DIR)
@@ -1204,7 +1221,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
-            __l = cursesplus.displayops(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration"])
+            __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration"])
             if __l == 0:
                 continue
             elif __l == 1:
@@ -1214,7 +1231,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     with open("server.properties") as f:
                         config = PropertiesParse.load(f.read())
                     while True:
-                        chc = cursesplus.optionmenu(stdscr,["BACK"]+[f for f in list(config.keys())])
+                        chc = crss_custom_ad_menu(stdscr,["BACK"]+[f for f in list(config.keys())])
                         if chc == 0:
                             break
                         else:
@@ -1229,7 +1246,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             elif __l == 2:
                 dt = APPDATA["servers"][chosenserver-1]
                 while True:
-                    dx = cursesplus.optionmenu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
+                    dx = crss_custom_ad_menu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
                     if dx == 0:
                         APPDATA["servers"][chosenserver-1] = dt
                         break
@@ -1343,7 +1360,7 @@ def manage_ops(stdscr,serverdir):
             data = json.load(f)
         
         while True:
-            dz = cursesplus.displayops(stdscr,["BACK","ADD ADMIN"]+[d["name"] for d in data])
+            dz = crss_custom_ad_menu(stdscr,["BACK","ADD ADMIN"]+[d["name"] for d in data])
             if dz == 0:
                 with open(opdir,"w+") as f:
                     f.write(json.dumps(data))
@@ -1356,7 +1373,7 @@ def manage_ops(stdscr,serverdir):
                     cursesplus.messagebox.showerror(stdscr,["This player does not exist."])
                 else:
                     bypass = cursesplus.messagebox.askyesno(stdscr,["Should this player be able","to bypass player limits?"])
-                    oplevel = cursesplus.displayops(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
+                    oplevel = crss_custom_ad_menu(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
                     data.append(
                         {
                             "name" : player,
@@ -1388,7 +1405,7 @@ def manage_ops(stdscr,serverdir):
                         break
                     elif ch == 99:
                         bypass = cursesplus.messagebox.askyesno(stdscr,["Should this player be able","to bypass player limits?"])
-                        oplevel = cursesplus.displayops(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
+                        oplevel = crss_custom_ad_menu(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
                         activel["level"] = oplevel
                         activel["bypassesPlayerLimit"] = bypass
                         data[dz-2] = activel
@@ -1422,7 +1439,7 @@ def manage_bans(stdscr,serverdir):
             data = json.load(f)
         
         while True:
-            dz = cursesplus.displayops(stdscr,["BACK","ADD BAN"]+[d["name"] for d in data])
+            dz = crss_custom_ad_menu(stdscr,["BACK","ADD BAN"]+[d["name"] for d in data])
             if dz == 0:
                 with open(opdir,"w+") as f:
                     f.write(json.dumps(data))
@@ -1489,7 +1506,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
     if not os.path.isdir(LBKDIR):
         os.mkdir(LBKDIR)
     while True:
-        z = cursesplus.displayops(stdscr,["Back","Create a Backup","Load a Backup"])
+        z = crss_custom_ad_menu(stdscr,["Back","Create a Backup","Load a Backup"])
         if z == 0:
             break
         elif z == 1:
@@ -1529,7 +1546,7 @@ def choose_java_install(stdscr) -> str:
     #Return path of selected java
     while True:
         stdscr.erase()
-        jsl = cursesplus.optionmenu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]],"Please choose a Java installation from the list")
+        jsl = crss_custom_ad_menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]],"Please choose a Java installation from the list")
         if jsl == 0:
             managejavainstalls(stdscr)
         else:
@@ -1546,7 +1563,7 @@ def managejavainstalls(stdscr):
         stdscr.clear()
     while True:
         stdscr.erase()
-        jmg = cursesplus.optionmenu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
+        jmg = crss_custom_ad_menu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
         if jmg == 0:
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
             if os.system(njavapath.replace("\\","/")+" -help") != 0:
@@ -1628,7 +1645,6 @@ def import_amc_server(stdscr,chlx):
     smd5 = file_get_md5(chlx)
     if os.path.isdir(f"{TEMPDIR}/{smd5}"):
         shutil.rmtree(f"{TEMPDIR}/{smd5}")
-    #s = os.system(f"bash {UTILDIR}/unpackage_server.sh \"{chlx}\" \"{TEMPDIR}/{smd5}\"")
     s = unpackage_server(chlx,f"{TEMPDIR}/{smd5}")
     nwait.stop()
     if s != 0:
@@ -1660,8 +1676,88 @@ def import_amc_server(stdscr,chlx):
     except:
         cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
 
+def str_contains_word(s:str,string:str) -> bool:
+    d = s.lower().split(" ")
+    return string in d
+
+def list_get_maxlen(l:list) -> int:
+    return max([len(s) for s in l])
+
+def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=True) -> int:
+    """An alternate optionmenu that will be used in primary areas. has an ad"""
+    try:
+        uselegacy = APPDATA["settings"][2]["value"]
+    except:
+        uselegacy = True
+    
+    if uselegacy:
+        return cursesplus.displayops(stdscr,options,title)
+    selected = 0
+    offset = 0
+    chosenad = random.choice(ADS)
+    maxl = list_get_maxlen(options)
+    while True:
+        stdscr.clear()
+        mx,my = os.get_terminal_size()
+        
+        cursesplus.filline(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        cursesplus.filline(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        stdscr.addstr(0,0,title,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        oi = 0
+        for op in options[offset:offset+my-7]:
+            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel"):
+                col = cursesplus.RED
+            elif str_contains_word(op,"start") or str_contains_word(op,"new"):
+                col = cursesplus.GREEN
+            elif op.upper() == op:
+                col = cursesplus.CYAN
+            elif str_contains_word(op,"update"):
+                col = cursesplus.MAGENTA
+            else:
+                col = cursesplus.WHITE
+            if not oi == selected-offset:
+                stdscr.addstr(oi+3,7,op,cursesplus.set_colour(cursesplus.BLACK,col))
+            else:
+                stdscr.addstr(oi+3,7,op,cursesplus.set_colour(cursesplus.BLACK,col) | curses.A_UNDERLINE | curses.A_BOLD)
+            oi += 1
+        stdscr.addstr(selected+3-offset,1,"-->")
+        stdscr.addstr(selected+3-offset,maxl+9,"<--")
+        stdscr.addstr(oi+3,0,"━"*(mx-1))
+        if offset > 0:
+            stdscr.addstr(3,maxl+15,f"{offset} options above")
+        if len(options) > offset+my-8:
+            stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+8} options below")
+        if ads_available() and show_ad:
+            adx = oi + 5
+            stdscr.addstr(adx-1,0,"ADVERTISEMENT (Insert product key to remove)")
+            adl = textwrap.wrap(chosenad.message,mx-1)
+            li = 0
+            for l in adl:
+                stdscr.addstr(adx+li,0,l,curses.A_BOLD)
+                li += 1
+            stdscr.addstr(adx+li,0,"Press A to check it out in your web browser!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.MAGENTA)|curses.A_BOLD)
+        stdscr.refresh()
+        ch = stdscr.getch()
+        if ch == curses.KEY_DOWN and selected < len(options)-1:
+            
+            selected += 1
+            if selected > my-8:
+                offset += 1
+        elif ch == curses.KEY_UP and selected > 0:
+            
+            selected -= 1
+            if selected < offset:
+                offset -= 1
+        elif ch == 10 or ch == 13 or ch == curses.KEY_ENTER:
+            return selected
+        elif ch == 97:
+            webbrowser.open(chosenad.url)
+            stdscr.erase()
+            stdscr.clear()
+
 def import_server(stdscr):
-    umethod = cursesplus.displayops(stdscr,["Import from .amc file","Import from folder","Cancel (Go Back)"])
+    umethod = crss_custom_ad_menu(stdscr,["Import from .amc file","Import from folder","Cancel (Go Back)"])
     if umethod == 0:
         chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
         import_amc_server(stdscr,chlx)
@@ -1711,7 +1807,7 @@ def import_server(stdscr):
             xdat["memory"] = memorytoall
             xdat["version"] = cursesplus.cursesinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?"])
-            xdat["software"] = cursesplus.displayops(stdscr,["Vanilla","Spigot","Paper"],"What software is this server running") + 1
+            xdat["software"] = crss_custom_ad_menu(stdscr,["Vanilla","Spigot","Paper"],"What software is this server running") + 1
             xdat["script"] = generate_script(xdat)
             APPDATA["servers"].append(xdat)
             cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
@@ -1719,23 +1815,22 @@ def import_server(stdscr):
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
     else: return
 
-def show_ad(stdscr):
+def ads_available() -> bool:
     if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
-        if random.randint(0,5) == 3:
-            ad = random.choice(ADS)
-            ad.show(stdscr) 
-
+        return True
+    else:
+        return False
 def settings_mgr(stdscr):
     global APPDATA
     while True:
-        m = cursesplus.displayops(stdscr,["BACK"]+[d["display"] + " : " + str(d["value"]) for d in APPDATA["settings"]],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK"]+[d["display"] + " : " + str(d["value"]) for d in APPDATA["settings"]],"Please choose a setting to modify")
         if m == 0:
             updateappdata()
             return
         else:
             selm = APPDATA["settings"][m-1]
             if selm["type"] == "bool":
-                selm["value"] = cursesplus.displayops(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
+                selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
                 selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
             elif selm["type"] == "str":
@@ -1744,7 +1839,7 @@ def settings_mgr(stdscr):
 
 def doc_system(stdscr):
     while True:
-        z = cursesplus.displayops(stdscr,["BACK","View documentation","Help on using text-based software"])
+        z = crss_custom_ad_menu(stdscr,["BACK","View documentation","Help on using text-based software"])
         if z == 0:
             break
         elif z == 1:
@@ -1790,7 +1885,7 @@ def usertutorial(stdscr):
     cursesplus.messagebox.showinfo(stdscr,["This is a messagebox","Press enter to dismiss it"])
     cursesplus.messagebox.showinfo(stdscr,["This software has no mouse","You will never have to use your mouse, only your keyboard"])
     cursesplus.messagebox.askyesno(stdscr,["This is a question","Use the right and left arrows to change the highlighted options","or use Y and N on your keyboard.","Choose NO"])
-    cursesplus.displayops(stdscr,["Don't choose this","Don't Choose this","Choose this!"],"This is a vertical option menu. Choose the third option using the up and down arrow keys!")
+    crss_custom_ad_menu(stdscr,["Don't choose this","Don't Choose this","Choose this!"],"This is a vertical option menu. Choose the third option using the up and down arrow keys!")
     cursesplus.messagebox.showinfo(stdscr,["Hit Ctrl-C to open up the quit menu"])
 
 def stats_and_credits(stdscr):
@@ -1805,13 +1900,69 @@ Jordan Rahim
 Finn Komuniecki
 
 === BUG TESTERS ===
-MangyCat (1 bug)
+MangyCat (2 bugs)
 
 === UI TESTERS ===
 Finn Komuniecki
 Jim Westwell
 
     """,message="CREDITS")
+
+def do_linux_update(stdscr) -> bool:
+    try:
+        cursesplus.displaymsgnodelay(stdscr,["Querrying updates"])
+        r = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/releases/latest")
+        mostrecentreleasedversion = r.url.split("/")[-1][1:]
+        if compare_versions(mostrecentreleasedversion,APP_UF_VERSION) == 1:
+            #New update
+            if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{mostrecentreleasedversion} over {APP_UF_VERSION}","Would you like to install it?"]):
+                cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
+                downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.tar.xz"
+                if os.path.isdir("/tmp/crssupdate"):
+                    shutil.rmtree("/tmp/crssupdate")
+                os.mkdir("/tmp/crssupdate")
+                urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.tar.xz")
+                cursesplus.displaymsgnodelay(stdscr,["Installing update"])
+                if unpackage_server("/tmp/crssupdate/craftserversetup.tar.xz","/tmp/crssupdate") == 1:
+                    cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
+                    return False
+                pushd("/tmp/crssupdate")
+                with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
+                    r = subprocess.call(["bash",f"/tmp/crssupdate/scripts/install.sh"],stdout=std0,stderr=std0)
+                popd()
+                if r == 0:
+                    return True
+                else:
+                    cursesplus.messagebox.showwarning(stdscr,["Update failed."])
+                
+                # Equivilant of tar -xf
+            else:
+                return False#Quit by user preference
+        else:
+            cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
+            return False#Quit because no update
+    except:
+        cursesplus.messagebox.showerror(stdscr,["There was an error applying an update"])
+        return False#Quit because errpr
+
+
+def global_backup_mgr(stdscr):
+    while True:
+        bkm = crss_custom_ad_menu(stdscr,["Back","Create backup","Load backup"])
+        if bkm == 1:
+            if cursesplus.messagebox.askyesno(stdscr,["This will create a backup of your entire crss installation including configuration","To create a backup of each server","Go to its management page"]):
+                cursesplus.displaymsgnodelay(stdscr,["Calculating..."])
+                mb = round(get_tree_size(APPDATADIR)/1000000,3)
+                if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {mb} MB of space.","Are you sure you want to proceed?"]):
+                    foln = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
+                    cursesplus.displaymsgnodelay(stdscr,["Creating..."])
+                    p = create_global_backup(foln)
+                    if p != 0:
+                        cursesplus.messagebox.showerror(stdscr,["There was an error creating your backup"])
+        elif bkm == 0:
+            break
+        elif bkm == 2:
+            load_backup(stdscr)   
 
 def main(stdscr):
     global VERSION_MANIFEST
@@ -1892,12 +2043,12 @@ def main(stdscr):
         threading.Thread(target=send_telemetry).start()
         while True:
             stdscr.erase()
-            show_ad(stdscr)
             lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key"]
-            m = cursesplus.displayops(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
+            #m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
+            m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 2:
                 cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
                 updateappdata()
@@ -1916,38 +2067,13 @@ def main(stdscr):
                 if WINDOWS:
                     windows_update_software(stdscr)
                     continue
-                if not os.path.isfile(UTILDIR+"/run_update.sh"):
-                    cursesplus.messagebox.showerror(stdscr,["The update script could not be found.","Try reinstalling the program."])
-                else:
-                    stdscr.clear()
-                    stdscr.refresh()
-                    curses.reset_shell_mode()
-                    COLOURS_ACTIVE = False
-                    r = subprocess.call(["bash",f"{UTILDIR}/run_update.sh"])
-                    curses.reset_prog_mode()
-                    restart_colour()
-                    if r == 0:
-                        UPDATEINSTALLED = True
-                        return#Exit for update
-                    else:
-                        cursesplus.messagebox.showwarning(stdscr,["Update failed."])
+                #OLD UPDATE MAY BE REMOVED IN 0.18.3
+                if do_linux_update(stdscr):
+                    UPDATEINSTALLED = True
+                    return
+
             elif m == 6:
-                while True:
-                    bkm = cursesplus.optionmenu(stdscr,["Back","Create backup","Load backup"])
-                    if bkm == 1:
-                        if cursesplus.messagebox.askyesno(stdscr,["This will create a backup of your entire crss installation including configuration","To create a backup of each server","Go to its management page"]):
-                            cursesplus.displaymsgnodelay(stdscr,["Calculating..."])
-                            mb = round(get_tree_size(APPDATADIR)/1000000,3)
-                            if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {mb} MB of space.","Are you sure you want to proceed?"]):
-                                foln = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
-                                cursesplus.displaymsgnodelay(stdscr,["Creating..."])
-                                p = create_global_backup(foln)
-                                if p != 0:
-                                    cursesplus.messagebox.showerror(stdscr,["There was an error creating your backup"])
-                    elif bkm == 0:
-                        break
-                    elif bkm == 2:
-                        load_backup(stdscr)   
+                global_backup_mgr(stdscr)
             elif m == 7:
                 webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
                 cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
@@ -1962,12 +2088,12 @@ def main(stdscr):
         if APPDATA["settings"][1]["value"]:
             cursesplus.transitions.horizontal_bars(stdscr)
     except Exception as e:
-        error_handling(e,"A serious unspecified exception happened")
+        error_handling(e,"A serious error has occured")
 
 if __name__ == "__main__":
     curses.wrapper(main)
     if UPDATEINSTALLED:
         print("""
-    =============================
-    Update installed successfully
-    =============================""")
+=============================
+Update installed successfully
+=============================""")
