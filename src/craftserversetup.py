@@ -371,7 +371,6 @@ def package_server_script(indir:str,outfile:str) -> int:
         return 1
     return 0
 
-
 def unpackage_server(infile:str,outdir:str) -> int:
     try:
         if not os.path.isdir(outdir):
@@ -1712,7 +1711,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
                 col = cursesplus.GREEN
             elif op.upper() == op:
                 col = cursesplus.CYAN
-            elif str_contains_word(op,"update"):
+            elif str_contains_word(op,"update") or str_contains_word(op,"help"):
                 col = cursesplus.MAGENTA
             else:
                 col = cursesplus.WHITE
@@ -1821,14 +1820,73 @@ def ads_available() -> bool:
     else:
         return False
 def settings_mgr(stdscr):
+    global COLOURS_ACTIVE
     global APPDATA
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK"]+[d["display"] + " : " + str(d["value"]) for d in APPDATA["settings"]],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS"]+[d["display"] + " : " + str(d["value"]) for d in APPDATA["settings"]],"Please choose a setting to modify")
         if m == 0:
             updateappdata()
             return
+        elif m == 1:
+            while True:
+                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","De-register product key","Emergency debug prompt"])
+                if n == 0:
+                    break
+                elif n == 1:
+                    APPDATA["settings"] = [
+                    {
+                        "name":"telemetry",
+                        "display" : "Enable Telemetry?",
+                        "type" : "bool",
+                        "value":True
+                    },
+                    {
+                        "name" : "transitions",
+                        "display" : "Show Transitions?",
+                        "type" : "bool",
+                        "value" : True
+                    },
+                    {
+                        "name" : "oldmenu",
+                        "display" : "Use legacy style menus?",
+                        "type" : "bool",
+                        "value" : False
+                    }
+                    ]
+                    updateappdata()
+                elif n == 2:
+                    if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
+                        if not cursesplus.messagebox.askyesno(stdscr,["THIS IS YOUR LAST CHANCE!","To make sure that you actually intend to reset,","SELECT NO TO WIPE"]):
+                            if cursesplus.messagebox.askyesno(stdscr,["Last chance. For real this time","Are you sure you want to reset?"]):
+                                os.chdir("/")
+                                shutil.rmtree(APPDATADIR)
+                                cursesplus.messagebox.showinfo(stdscr,["Program reset."])
+                                sys.exit()
+                elif n == 3:
+                    APPDATA["productKey"] = ""
+                elif n == 4:
+                    stdscr.clear()
+                    stdscr.erase()
+                    stdscr.refresh()
+                    curses.reset_shell_mode()
+                    COLOURS_ACTIVE = False
+                    print("Run exit to return")
+                    cursesplus.showcursor()
+                    while True:
+                        
+                        epp = input("Python >")
+                        if epp == "exit":
+                            break
+                        try:
+                            exec(epp)
+                        except Exception as ex:    
+                            print(f"ER {type(ex)}\nMSG {str(ex)}")
+                    curses.reset_prog_mode()
+                    cursesplus.hidecursor()
+                    restart_colour()
+
         else:
-            selm = APPDATA["settings"][m-1]
+            selm = APPDATA["settings"][m-2]
             if selm["type"] == "bool":
                 selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
