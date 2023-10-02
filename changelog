@@ -3,6 +3,7 @@
 -Help is now highlighted by the new option menu
 -TODO Rewrite linux installer
 -TODO Write docs
+-Improve telemetry (sender and server)
 0.18.3:
 -Add new crss menu
 -Potential replacement for displayops?

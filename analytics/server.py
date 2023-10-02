@@ -40,7 +40,7 @@ class MyTCPHandler(http.server.BaseHTTPRequestHandler):
         else:
             print("Server recieved packet greater than 10 KB!")
         page = self.data.decode().splitlines()[0].split(" ")[1]
-        print(page)
+        #print(page)
         if page == "/":
             self.request.sendall("HTTP/1.1 200 OK\nContent-Type: text/html\n\n<html><p>You are using a browser. This is an API server. Head over to port 10223.</p></html>".encode())
         elif "/api/amcs/" in page:
@@ -54,6 +54,7 @@ class MyTCPHandler(http.server.BaseHTTPRequestHandler):
             am["requests"].append(analyticsd)
             with open("amcs.json","w+") as f:
                 f.write(json.dumps(am))
+            print(f"{self.client_address[0]} : CRSS")
             
             
 

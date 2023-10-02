@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.3"#The semver version
+APP_UF_VERSION = "0.18.4"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -391,7 +391,7 @@ def send_telemetry():
         try:
             s = socket.socket()
             s.connect(('enderbyteprograms.ddnsfree.com',11111))
-            s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION} HTTP/1.1".encode())
+            s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION}&activated={APPDATA['productKey'] != ''}".encode())
             s.close()
         except:
             pass
