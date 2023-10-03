@@ -1,12 +1,3 @@
----
-name: Bug report
-about: Create a report of an issue
-title: ''
-labels: ''
-assignees: ''
-
----
-
 **Describe the bug**
 A clear and concise description of what the bug is.
 
@@ -25,3 +16,17 @@ If applicable, add screenshots to help explain your problem.
 -CraftServerSetup version
 
 **Additional context**
+
+** SEVERITY **
+
+Please choose one of the options below:
+
+Very low (spelling mistake or related)
+
+Low (Minor cosmetic issues)
+
+Moderate (Causing annoyance and problems)
+
+High (Makes it difficult to use program)
+
+Severe (Causes loss of data)
