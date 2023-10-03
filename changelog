@@ -1,7 +1,6 @@
 0.18.4:
 -Add settings advanced options
 -Help is now highlighted by the new option menu
--TODO Rewrite linux installer
 -TODO Write docs
 -Improve telemetry (sender and server)
 0.18.3:
