@@ -460,10 +460,8 @@ def error_handling(e:Exception,message="A serious error has occured"):
                         _SCREEN.erase()
                         _SCREEN.refresh()
                         curses.reset_shell_mode()
-                        COLOURS_ACTIVE = False
                         z = os.system(REPAIR_SCRIPT.replace("$1","\""+flz+"\""))
                         curses.reset_prog_mode()
-                        restart_colour()
                         if z != 0:
                             cursesplus.messagebox.showwarning(_SCREEN,["Error repairing","Please try a manual repair"])
                 elif aerz == 3:
@@ -573,16 +571,17 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
         f.write(json.dumps(sdata))
         #Write server data into a temporary file
     wdir=cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a folder for the output server file")
-    wxfileout=wdir+"/"+sdata["name"]+".amc"
-    nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])
-    nwait.start()
-    package_server_script(serverdir,wxfileout)
-    nwait.stop()
-    nwait.destroy()
-    #if pr != 0:
-    #    cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
-    os.remove(serverdir+"/exdata.json")
-    cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
+    if os.path.isdir(wdir):
+        wxfileout=wdir+"/"+sdata["name"]+".amc"
+        nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])
+        nwait.start()
+        package_server_script(serverdir,wxfileout)
+        nwait.stop()
+        nwait.destroy()
+        #if pr != 0:
+        #    cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
+        os.remove(serverdir+"/exdata.json")
+        cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
     
 def setupnewserver(stdscr):
     stdscr.erase()
@@ -1104,30 +1103,28 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
 
 def view_server_logs(stdscr,server_dir:str):
-    try:
-        logsdir = server_dir+"/logs"
-        pushd(logsdir)
-        if not os.path.isdir(logsdir):
-            cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
+    logsdir = server_dir+"/logs"
+    
+    if not os.path.isdir(logsdir):
+        cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
+        return
+    pushd(logsdir)
+    while True:
+        availablelogs = [l for l in os.listdir(logsdir) if os.path.isfile(l)]
+        chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
+        if chosenlog == 0:
+            popd()
             return
-        while True:
-            availablelogs = [l for l in os.listdir(logsdir) if os.path.isfile(l)]
-            chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
-            if chosenlog == 0:
-                popd()
-                return
+        else:
+            cl = availablelogs[chosenlog-1]
+            if cl.endswith(".gz"):
+                with open(cl,'rb') as f:
+                    data = gzip.decompress(f.read()).decode()
             else:
-                cl = availablelogs[chosenlog-1]
-                if cl.endswith(".gz"):
-                    with open(cl,'rb') as f:
-                        data = gzip.decompress(f.read()).decode()
-                else:
-                    with open(cl) as f:
-                        data = f.read()
-                
-                cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
-    except:
-        cursesplus.messagebox.showwarning(stdscr,["There was an error viewing logs."])
+                with open(cl) as f:
+                    data = f.read()
+            
+            cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
 
 def load_backup(stdscr):
     backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
@@ -1204,11 +1201,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             else:
                 curses.curs_set(1)
                 curses.reset_shell_mode()
-                COLOURS_ACTIVE = False
+                #COLOURS_ACTIVE = False
                 lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
                 curses.reset_prog_mode()
                 curses.curs_set(0)
-                restart_colour()
+                #restart_colour()
             if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
                 displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
                 if displog:
@@ -1903,7 +1900,6 @@ def settings_mgr(stdscr):
                     stdscr.erase()
                     stdscr.refresh()
                     curses.reset_shell_mode()
-                    COLOURS_ACTIVE = False
                     print("Run exit to return")
                     cursesplus.showcursor()
                     while True:
@@ -1917,7 +1913,6 @@ def settings_mgr(stdscr):
                             print(f"ER {type(ex)}\nMSG {str(ex)}")
                     curses.reset_prog_mode()
                     cursesplus.hidecursor()
-                    restart_colour()
 
         else:
             selm = APPDATA["settings"][m-2]
