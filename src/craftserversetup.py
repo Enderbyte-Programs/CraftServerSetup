@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.5"#The semver version
+APP_UF_VERSION = "0.18.6"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -1160,6 +1160,15 @@ def init_idata(stdscr):
         cursesplus.messagebox.showerror(stdscr,["This computer program has been locked.",f"REASON: {idata['dead']['message']}"])
         sys.exit(3)
 
+def find_world_folders(directory) -> list[str]:
+    final = []
+    drs = os.listdir(directory)
+    for fx in drs:
+        if os.path.isdir(directory+"/"+fx):
+            if os.path.isfile(directory+"/"+fx+"/"+"level.dat"):
+                final.append( fx )
+    return final
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -1171,7 +1180,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     #Manager server
     while True:
 
-        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Set up new world","Update Server software","Manage plugins"]
+        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
@@ -1285,11 +1294,36 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             with open("server.properties") as f:
 
                 dpp = PropertiesParse.load(f.read())
+
+            while True:
+                po = find_world_folders(SERVER_DIR)
+                n = crss_custom_ad_menu(stdscr,["BACK","CREATE NEW WORLD"]+po)
+                if n == 0:
+                    with open("server.properties","w+") as f:
+                        f.write(PropertiesParse.dump(dpp))   
+                    break
+                elif n == 1:
+                    dppx = setup_new_world(stdscr,dpp,SERVER_DIR,False)
+                    if dppx is not None:
+                        dpp = dppx#Fix bug
+                else:
+                    cursesplus.displaymsgnodelay(stdscr,["Calculating world size"])
+                    svrx = po[n-2]
+                    svrd = SERVER_DIR+"/"+svrx
+                    os.chdir(SERVER_DIR)
+                    svrs = get_tree_size(svrd)
+                    stdscr.clear()
+                    stdscr.addstr(0,0,"World Name:")
+                    stdscr.addstr(1,0,"World Size:")
+                    stdscr.addstr(3,0,"PRESS D TO DELETE. PRESS ANY OTHER KEY TO GO BACK")
+                    stdscr.addstr(0,20,svrx)
+                    stdscr.addstr(1,20,parse_size(svrs))
+                    stdscr.refresh()
+                    ch = stdscr.getch()
+                    if ch == 100:
+                        cursesplus.displaymsgnodelay(stdscr,["Removing world"])
+                        shutil.rmtree(svrd)
             
-            dpp = setup_new_world(stdscr,dpp,SERVER_DIR,False)
-            with open("server.properties","w+") as f:
-                f.write(PropertiesParse.dump(dpp))
-        
         elif w == 6:
             if not APPDATA["servers"][chosenserver-1]["moddable"]:
                 update_vanilla_software(stdscr,os.getcwd(),chosenserver)
