@@ -134,37 +134,45 @@ def compatibilize_appdata(data:dict) -> dict:
         data["version"] = APP_VERSION
 
     if not "settings" in data:
-        data["settings"] = [{
-            "name":"telemetry",
+        data["settings"] = {
+        "telemetry":{
             "display" : "Enable Telemetry?",
             "type" : "bool",
             "value":True
-        },{
-            "name" : "transitions",
+        },
+        "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
             "value" : True
-        },{
+        },
+        "oldmenu":{
             "name" : "oldmenu",
             "display" : "Use legacy style menus?",
             "type" : "bool",
             "value" : False
-        }]
-    if len(data["settings"]) == 1:
-        data["settings"].append({
-            "name" : "transitions",
+        }
+    }
+    elif type(data["settings"]) == list:
+        #Update data
+        data["settings"] = {
+        "telemetry":{
+            "display" : "Enable Telemetry?",
+            "type" : "bool",
+            "value":data["settings"][0]["value"]
+        },
+        "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
-            "value" : True
-        })
-    elif len(data["settings"]) == 2:
-        data["settings"].append({
+            "value" : data["settings"]["transitions"]["value"]
+        },
+        "oldmenu":{
             "name" : "oldmenu",
             "display" : "Use legacy style menus?",
             "type" : "bool",
-            "value" : False
-        })
+            "value" : data["settings"][2]["value"]
+        }
 
+        }
     if not "productKey" in list(data.keys()):
         data["productKey"] = ""
     if not "pkd" in list(data.keys()):
@@ -235,26 +243,24 @@ __DEFAULTAPPDATA__ = {
     ],
     "productKey" : "",
     "pkd" : False,
-    "settings" : [
-        {
-            "name":"telemetry",
+    "settings" : {
+        "telemetry":{
             "display" : "Enable Telemetry?",
             "type" : "bool",
             "value":True
         },
-        {
-            "name" : "transitions",
+        "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
             "value" : True
         },
-        {
+        "oldmenu":{
             "name" : "oldmenu",
             "display" : "Use legacy style menus?",
             "type" : "bool",
             "value" : False
         }
-    ],
+    },
     "idata" : {
         "MOTD" : "No Message Yet",
         "dead" : {
@@ -387,7 +393,7 @@ def unpackage_server(infile:str,outdir:str) -> int:
 
 def send_telemetry():
     global APPDATA
-    if APPDATA["settings"][0]["value"]:
+    if APPDATA["settings"]["telemetry"]["value"]:
         try:
             s = socket.socket()
             s.connect(('enderbyteprograms.ddnsfree.com',11111))
@@ -1172,7 +1178,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
     os.chdir(SERVER_DIR)
-    if APPDATA["settings"][1]["value"]:
+    if APPDATA["settings"]["transitions"]["value"]:
         cursesplus.transitions.vertical_bars(stdscr)
     #Manager server
     while True:
@@ -1184,7 +1190,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         if w == 0:
             stdscr.erase()
             os.chdir(_ODIR)
-            if APPDATA["settings"][1]["value"]:
+            if APPDATA["settings"]["transitions"]["value"]:
                 cursesplus.transitions.random_blocks(stdscr)
             break
         
@@ -1716,7 +1722,7 @@ def list_get_maxlen(l:list) -> int:
 def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=True) -> int:
     """An alternate optionmenu that will be used in primary areas. has an ad"""
     try:
-        uselegacy = APPDATA["settings"][2]["value"]
+        uselegacy = APPDATA["settings"]["oldmenu"]["value"]
     except:
         uselegacy = True
     
@@ -1854,7 +1860,7 @@ def settings_mgr(stdscr):
     global COLOURS_ACTIVE
     global APPDATA
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS"]+[d["display"] + " : " + str(d["value"]) for d in APPDATA["settings"]],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
             updateappdata()
             return
@@ -1864,26 +1870,24 @@ def settings_mgr(stdscr):
                 if n == 0:
                     break
                 elif n == 1:
-                    APPDATA["settings"] = [
-                    {
-                        "name":"telemetry",
+                    APPDATA["settings"] = {
+                    "telemetry":{
                         "display" : "Enable Telemetry?",
                         "type" : "bool",
                         "value":True
                     },
-                    {
-                        "name" : "transitions",
+                    "transitions":{
                         "display" : "Show Transitions?",
                         "type" : "bool",
                         "value" : True
                     },
-                    {
+                    "oldmenu":{
                         "name" : "oldmenu",
                         "display" : "Use legacy style menus?",
                         "type" : "bool",
                         "value" : False
                     }
-                    ]
+                    }
                     updateappdata()
                 elif n == 2:
                     if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
@@ -1915,14 +1919,15 @@ def settings_mgr(stdscr):
                     cursesplus.hidecursor()
 
         else:
-            selm = APPDATA["settings"][m-2]
+            selm = list(APPDATA["settings"].values())[m-2]
+            selk = list(APPDATA["settings"].keys())[m-2]
             if selm["type"] == "bool":
                 selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
                 selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
             elif selm["type"] == "str":
                 selm["value"] = cursesplus.cursesinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
-            APPDATA["settings"][m-1] = selm
+            APPDATA["settings"][selk] = selm
 
 def doc_system(stdscr):
     while True:
@@ -2173,7 +2178,7 @@ def main(stdscr):
                 stats_and_credits(stdscr)
             elif m == 11:
                 product_key_page(stdscr)
-        if APPDATA["settings"][1]["value"]:
+        if APPDATA["settings"]["transitions"]["value"]:
             cursesplus.transitions.horizontal_bars(stdscr)
     except Exception as e:
         error_handling(e,"A serious error has occured")

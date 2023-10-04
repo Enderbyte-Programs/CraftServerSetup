@@ -1,6 +1,7 @@
 0.18.6:
 -Add manage world menu inplace of new world
--TODO FIX BAD SETTINGS DESIGN
+-Fix poor design in settings
+-Fix bugs on Windows
 0.18.5:
 -Fix problem on server updates where UI would stall
 0.18.4:
