@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.4"#The semver version
+APP_UF_VERSION = "0.18.5"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
@@ -1097,7 +1097,7 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     stdscr.clear()
     stdscr.addstr(0,0,"Downloading file...")
-
+    stdscr.refresh()
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
     PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
@@ -1959,6 +1959,7 @@ Finn Komuniecki
 
 === BUG TESTERS ===
 MangyCat (2 bugs)
+kbence (1 bug)
 
 === UI TESTERS ===
 Finn Komuniecki
