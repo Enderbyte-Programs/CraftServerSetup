@@ -74,3 +74,9 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 ## My TODO List
 
 Fix as many bugs as possible
+
+Prevent the Feature Creep. After 1.0 try:
+
+Pop-out minecraft server window if in display manager
+
+Special tools for common plugins
