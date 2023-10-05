@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.18.3/CraftServerSetup-0.18.3-installer.exe|0.18.3|Redisgn menus
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.18.7/CraftServerSetup-0.18.7-installer.exe|0.18.7|Fix Windows bugs and fix settings
