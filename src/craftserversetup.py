@@ -1,11 +1,14 @@
 #!/usr/bin/python3
+#Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.6"#The semver version
+APP_UF_VERSION = "0.18.7"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
+
+### Standard Library Imports ###
 
 import shutil                   #File utilities
 import sys                      #C Utilities
@@ -163,7 +166,7 @@ def compatibilize_appdata(data:dict) -> dict:
         "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
-            "value" : data["settings"]["transitions"]["value"]
+            "value" : data["settings"][1]["value"]
         },
         "oldmenu":{
             "name" : "oldmenu",
@@ -276,7 +279,7 @@ def verify_product_key(key:str) -> bool:
         if len(key) < 8:
             return False
         else:
-            if int(key) == 0:
+            if int(key) == 0 or int(key) == 12345678:#Not so fast
                 return False
             elif (int(key[0]) + int(key[2]) == int(key[3])) and (int(key[6]) - int(key[4]) == int(key[1])) and (int(key[7]) * int(key[5]) < 50):
                 return True
