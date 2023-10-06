@@ -2,3 +2,19 @@ $Introduction:
 Welcome to CraftServerSetup, the best way to create a Minecraft server on your computer! This documentation, when completed will give you a comprehensive guide on how to use this program in a productive and efficient manner
 $A Notice:
 This documentation is not yet complete
+$Installing Craft Server Setup (Windows):
+The Windows installation is brought to you in two versions: Portable and Installer. The installer edition is an exe and the file name is "craftserversetup-1.2.3-installer.exe" or something like that. The portable edition before 0.18.5 is a singular craftserversetup.exe. In versions newer than that, a portable edition is provided as a ZIP.
+
+For more information on the Portable edition, see some other chapter.
+
+The installer is a typical Inno-Setup installer. There are some optional components but if you have used Microsoft Windows for more than a few days, you probably know how to install it. When you are done, the insta;;er will prompt you to start CraftServerSetup and complete the OOBE. For more information on the OOBE, see some other chapter
+$The Windows Portable Edition:
+The Windows Portable edition is only on 0.18.8 and newer. 
+
+The Portable Edition is a modified version of CraftServerSetup. It is provided as a ZIP file. On Windows, no dependancies are required. As of 0.18.8, this is a true portable edition and creates no files on the user's device that aren't in its own folder. The folder contains three files: _internal, craftserversetup.exe, and startupflags.txt
+
+You should always run craftserversetup.exe and kindly don't bother messing with the other files unless you know what you are doing.
+
+_internal contains Python DLLs and other files that are required for program execution
+
+startupflags.txt tells CraftServerSetup that it is running a portable edition. If you remove it, CraftServerSetup will act like the normal installed edition.
