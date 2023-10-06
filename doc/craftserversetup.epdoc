@@ -7,7 +7,7 @@ The Windows installation is brought to you in two versions: Portable and Install
 
 For more information on the Portable edition, see some other chapter.
 
-The installer is a typical Inno-Setup installer. There are some optional components but if you have used Microsoft Windows for more than a few days, you probably know how to install it. When you are done, the insta;;er will prompt you to start CraftServerSetup and complete the OOBE. For more information on the OOBE, see some other chapter
+The installer is a typical Inno-Setup installer. There are some optional components but if you have used Microsoft Windows for more than a few days, you probably know how to install it. When you are done, the installer will prompt you to start CraftServerSetup and complete the OOBE. For more information on the OOBE, see some other chapter
 $The Windows Portable Edition:
 The Windows Portable edition is only on 0.18.8 and newer. 
 
@@ -17,4 +17,52 @@ You should always run craftserversetup.exe and kindly don't bother messing with 
 
 _internal contains Python DLLs and other files that are required for program execution
 
-startupflags.txt tells CraftServerSetup that it is running a portable edition. If you remove it, CraftServerSetup will act like the normal installed edition.
+startupflags.txt tells CraftServerSetup that it is running a portable edition. If you remove it, CraftServerSetup wi0ll act like the normal installed edition.
+
+In the Portable edition, appdata is created in the AppData folder within the same directory as craftserversetup.exe
+$Installing Craft Server Setup (Linux 0.16 - 0.18.8):
+The Linux edition of the software between 0.16 and 0.18.8 contains a very simple program in the root folder: install.py. It is interactive. Run python3 install.py to start it. Press I to install, R to remove and Q to quit. If the text on the top of the screen ever turns red, that means that there has been an error during installation and you should check recent.log. Recent.log contains output from install.sh which is located within the scripts directory. You may run install.sh directly if you wish
+$Installing CraftServerSetup (Linux 0.8 - 0.16):
+In 0.8 the build system of CraftServerSetup (or automcserver) was redesigned. Inside of the source tree, run bash scripts/install.sh to install the program. Some dependancies are required. These vary between versions but in general, the higher the version, the fewer dependancies there are as the system has been optimized.
+
+Within the scripts directory are more scripts you can use to perform other installation functions like removal and resetting.
+$Installing AutoMCServer (the old name) (Linux 0.1 - 0.7):
+The oldest versions of CraftServerSetup (which was named AutoMCServer) are probably not the best to install. Run bash install.sh -h to get a list of options. Notice that there is only one unified script file. Please note that there may be some inconsistencies upgrading from the old build system to the new build system so if you have a very old installation there may be some brokens symlinks.
+$The Modern Structure of source files:
+This page of the documentation will help you to understand all of the weird files and folders within the source download that is provided with your craftserversetup.tar.xz.
+
+The src folder contains the source python file.
+
+The scripts folder contains some bash scripts that perform various install actions
+
+The dev folder if it exists means that you have somehow gotten your hands on my copy of the code. You should discount it and delete it
+
+The assets folder contains icon files and MIME xml files that will be installed to create user-friendly shortcuts if you are using a Desktop environment.
+
+The doc folder contains only this documentation file for now.
+
+The dist folder contains a finished copy of the craftserversetup executable. As of 0.18.7 it automatically removes itself.
+$Command Line Arguments:
+As of 0.18.8, CraftServerSetup has two command line options: -d and -p.
+
+-p starts portable mode which disables updates and sets the app data directory to the same directory as the executable
+
+-d starts developer mode which enables developer features that the standard user shouldn't know about.
+$startupflags.txt:
+If you wish to enable some command line options by default and without running it from a command prompt, you should use startupflags.txt. Currently, the program looks for two words in startupflags.txt. If the word portable is found, portable mode is enabled. If the word developer is found, developer is enabled. startupflags.txt MUST be placed in the same directory as the craftserversetup executable
+$The OOBE:
+The OOBE or out-of-box experience is a series of menus you recieve when you first start up CraftServerSetup. You can manually trigger the OOBE by setting the hasCompletedOOBE flag in config.json to false. If you have not agreed to the license, you will be forced to before you can use the program. The oobe is a rectangle saying CRSS OOBE. Press any key to proceed. 
+
+The first thing you will be asked is if you have used a text-based program before. For more information on this, see another section just below this.
+
+You will be asked many things such as what java installations you want, if you have permission to send telemetry, etc. You will finish on the main menu.
+
+In versions 0.13 and prior, you had the opportunity to set up a server before you have seen the main menu. This has been removed.
+$Using Text Based Programs:
+CraftServerSetup is a text-based computer program. Officially, it is a TUI or Terminal User Interface. You will NEVER need to use your mouse at any point during use. Everything is done entirely with the keyboard. 
+
+The most important keys are the arrow keys and enter. These are used to navigate around the option menus. Option menus come in two types: Legacy and New. Legacy option menus show the highlighted option in an inverted colour pattern. New option menus show the highlighted option with bold, underline, and an arrow pointing to it. New option menus also show how many options are under the screen.
+
+Message boxes are dismissed with the enter key and navigated around with the left and right arrow keys. Message boxes are in a rectangle and do not take up the full screen.
+
+In most widgets, all of the key-bindings are layed out for you. The only exception to this is the file dialogues. If you need help with keybinds on the file dialog boxes, simply press H to bring up a list.
