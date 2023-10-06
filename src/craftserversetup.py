@@ -2,9 +2,10 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.7"#The semver version
+APP_UF_VERSION = "0.18.8"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
+DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
@@ -46,6 +47,14 @@ if not WINDOWS:#Windows edition will package libraries already
         
     else:
         DEBUG=True
+        rpr = sys.argv[0]
+        if not sys.argv[0].startswith("/"):
+            rpr = os.getcwd()+"/"+rpr
+        ddr = os.path.split(os.path.split(rpr)[0])[0]+"/lib"
+        
+        print(ddr)
+        if os.path.isdir(ddr):
+            sys.path.insert(1,ddr)#Add lib dir to path
         
 else:
     DEBUG = False
@@ -207,17 +216,35 @@ def compatibilize_appdata(data:dict) -> dict:
 
 def internet_on():
     try:
-        urllib.request.urlopen('http://google.com', timeout=5)
+        urllib.request.urlopen('http://google.com', timeout=10)
         return True
     except urllib.error.URLError as err: 
         return False
+
+### DETECT PORTABLE INSTALLATION ###
+ogpath = sys.argv[0]
+execdir = os.path.split(ogpath)[0]
+PORTABLE = False
+#Read startup flag
+if os.path.isdir(execdir):
+    if os.path.isfile(execdir+"/startupflags.txt"):
+        with open(execdir+"/startupflags.txt") as f:
+            sfd = f.read().lower()
+        if "portable" in sfd or "-p" in sys.argv:
+            PORTABLE = True
+        if "developer" in sfd or "-d" in sys.argv:
+            DEVELOPER = True
 if not WINDOWS:
     APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
+    if PORTABLE:
+        APPDATADIR = execdir+"/AppData"
     SERVERSDIR = APPDATADIR + "/servers"
     SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
 else:
+    if PORTABLE:
+        APPDATADIR = execdir+"/AppData"
     APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
     SERVERSDIR = APPDATADIR + "/servers"
     SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
@@ -427,7 +454,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     
     while True:
-        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options"],f"{message}. What do you want to do?")
+        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f"{message}. What do you want to do?")
         if erz == 0:
             sys.exit(1)
         elif erz == 1:
@@ -455,7 +482,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
             main(_SCREEN)
         elif erz == 3:
             while True:
-                aerz = cursesplus.displayops(_SCREEN,["Back","Restore a backup","Repair CraftServerSetup","Reset CraftServerSetup","Use emergency command prompt"],"Please choose an advanced option")
+                aerz = cursesplus.displayops(_SCREEN,["Back","Restore a backup","Repair CraftServerSetup","Reset CraftServerSetup"],"Please choose an advanced option")
                 if aerz == 0:
                     break
                 elif aerz == 1:
@@ -482,28 +509,10 @@ def error_handling(e:Exception,message="A serious error has occured"):
                             sys.exit(1)
                         except:
                             cursesplus.messagebox.showerror(_SCREEN,["Failed to wipe"])
-                elif aerz == 4:
-                    _SCREEN.clear()
-                    _SCREEN.erase()
-                    _SCREEN.bkgd(cursesplus.set_color(cursesplus.BLACK,cursesplus.WHITE))
-                    _SCREEN.refresh()
-                    curses.reset_shell_mode()
-                    COLOURS_ACTIVE = False
-                    print("Run exit to return")
-                    cursesplus.showcursor()
-                    while True:
-                        
-                        epp = input("Python >")
-                        if epp == "exit":
-                            break
-                        try:
-                            exec(epp)
-                        except Exception as ex:    
-                            print(f"ER {type(ex)}\nMSG {str(ex)}")
-                    curses.reset_prog_mode()
-                    cursesplus.hidecursor()
-                    restart_colour()
-                    _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        elif erz == 4:
+            webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
+            _SCREEN.erase()
+            cursesplus.displaymsg(_SCREEN,["In your bug report, please make sure to include","the contents of the","View Error Info screen"])
     
 __DIR_LIST__ = [os.getcwd()]
 def pushd(directory:str):
@@ -1869,7 +1878,7 @@ def settings_mgr(stdscr):
             return
         elif m == 1:
             while True:
-                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","De-register product key","Emergency debug prompt"])
+                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","De-register product key"])
                 if n == 0:
                     break
                 elif n == 1:
@@ -1902,25 +1911,6 @@ def settings_mgr(stdscr):
                                 sys.exit()
                 elif n == 3:
                     APPDATA["productKey"] = ""
-                elif n == 4:
-                    stdscr.clear()
-                    stdscr.erase()
-                    stdscr.refresh()
-                    curses.reset_shell_mode()
-                    print("Run exit to return")
-                    cursesplus.showcursor()
-                    while True:
-                        
-                        epp = input("Python >")
-                        if epp == "exit":
-                            break
-                        try:
-                            exec(epp)
-                        except Exception as ex:    
-                            print(f"ER {type(ex)}\nMSG {str(ex)}")
-                    curses.reset_prog_mode()
-                    cursesplus.hidecursor()
-
         else:
             selm = list(APPDATA["settings"].values())[m-2]
             selk = list(APPDATA["settings"].keys())[m-2]
@@ -1971,7 +1961,7 @@ def oobe(stdscr):
                 managejavainstalls(stdscr)
             else:
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
-        APPDATA["settings"][0]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
+        APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
         cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
@@ -1996,7 +1986,9 @@ Finn Komuniecki
 
 === BUG TESTERS ===
 MangyCat (2 bugs)
-kbence (1 bug)
+kbence (2 bug)
+
+Thank you very much, beta testers
 
 === UI TESTERS ===
 Finn Komuniecki
@@ -2060,6 +2052,38 @@ def global_backup_mgr(stdscr):
         elif bkm == 2:
             load_backup(stdscr)   
 
+def devtools(stdscr):
+    while True:
+        m = crss_custom_ad_menu(stdscr,["BACK","Python debug prompt","Test exception handling","Global variable dump"])
+        if m == 0:
+            return
+        elif m == 1:
+            stdscr.clear()
+            stdscr.erase()
+            stdscr.refresh()
+            curses.reset_shell_mode()
+            print("Run exit to return")
+            cursesplus.showcursor()
+            while True:
+                
+                epp = input("Python >")
+                if epp == "exit":
+                    break
+                try:
+                    exec(epp)
+                except Exception as ex:    
+                    print(f"ER {type(ex)}\nMSG {str(ex)}")
+            curses.reset_prog_mode()
+            cursesplus.hidecursor()
+        elif m == 2:
+            raise RuntimeError("Manually triggered exception")
+        elif m == 3:
+            final = ""
+            glv = globals()
+            for g in list(glv.items()):
+                final += f"NAME: {g[0]} VAL: {str(g[1])}\n"
+            cursesplus.textview(stdscr,text=final)
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -2092,7 +2116,7 @@ def main(stdscr):
             stdscr.refresh()
             issue = True
         if issue:
-            sleep(5)
+            sleep(1)
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
         global APPDATA
@@ -2143,6 +2167,8 @@ def main(stdscr):
             
             if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
                 lz += ["Insert Product Key"]
+            if DEVELOPER:
+                lz += ["Developer Tools"]
             #m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 2:
@@ -2179,6 +2205,8 @@ def main(stdscr):
                 doc_system(stdscr)
             elif m == 10:
                 stats_and_credits(stdscr)
+            elif DEVELOPER and lz[m] == "Developer Tools":
+                devtools(stdscr)
             elif m == 11:
                 product_key_page(stdscr)
         if APPDATA["settings"]["transitions"]["value"]:

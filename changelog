@@ -1,3 +1,18 @@
+0.18.8:
+-Update cursesplus to 2.11.
+-dist directory is now removed.
+-Fix problems with direct running
+-add startupflags.txt
+    -Create in same directory as executable
+    -Can contain PORTABLE (or use -p arg)
+        -Creates AppData folder in same folder, thus not installing anything to the user's computer
+    -Can conain DEVELOPER (or use -d arg)
+        -Enables usage of the debug command prompt from the settings menu and forced crashing
+-Increase internet timeout from 5 to 10 seconds
+-Remove access to dev command prompt from crash menu
+-Add developer tools menu
+-Fix another stupid oobe problem
+-Add report bug option from crash menu
 0.18.7:
 -Fix critical bug (thanks to find-replace)
 -12345678 is no longer a valid product key.

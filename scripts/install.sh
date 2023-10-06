@@ -132,5 +132,5 @@ if [ -f $FILEREGFILE ]; then
 fi
 
 cp doc/craftserversetup.epdoc $LIBDIR
-
+rm -rf dist
 printf "${GREEN}CraftServerSetup installed successfully!${NC}\n"

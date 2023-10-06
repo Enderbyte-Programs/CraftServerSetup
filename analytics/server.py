@@ -59,7 +59,7 @@ class MyTCPHandler(http.server.BaseHTTPRequestHandler):
             
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 11111
+    HOST, PORT = "", 11111
     try:
         with open("users.json") as f:
             vd = json.load(f)
