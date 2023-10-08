@@ -243,9 +243,10 @@ if not WINDOWS:
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
 else:
+    
+    APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
     if PORTABLE:
         APPDATADIR = execdir+"/AppData"
-    APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
     SERVERSDIR = APPDATADIR + "/servers"
     SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
     TEMPDIR = APPDATADIR + "/temp"
@@ -2185,7 +2186,9 @@ def main(stdscr):
             elif m == 4:
                 import_server(stdscr)
             elif m == 5:
-
+                if PORTABLE:
+                    cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
+                    continue
                 if WINDOWS:
                     windows_update_software(stdscr)
                     continue

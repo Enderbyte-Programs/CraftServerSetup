@@ -1,3 +1,6 @@
+1.0:
+-Everything listed below
+-Users in portable mode can no longer update
 0.18.8:
 -Update cursesplus to 2.11.
 -dist directory is now removed.
