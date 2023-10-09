@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.8"#The semver version
+APP_UF_VERSION = "0.18.9"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -426,6 +426,7 @@ def send_telemetry():
     global APPDATA
     if APPDATA["settings"]["telemetry"]["value"]:
         try:
+            #socket.setdefaulttimeout(10)
             s = socket.socket()
             s.connect(('enderbyteprograms.ddnsfree.com',11111))
             s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION}&activated={APPDATA['productKey'] != ''}".encode())
@@ -2170,7 +2171,6 @@ def main(stdscr):
                 lz += ["Insert Product Key"]
             if DEVELOPER:
                 lz += ["Developer Tools"]
-            #m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 2:
                 cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
