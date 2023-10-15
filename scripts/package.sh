@@ -1,13 +1,12 @@
 #!/usr/bin/bash
-#This program is not meant to be used by common users
+#This program is not meant to be used by common users. It automatically uses MY SPECIAL SOURCE directory to build packages meant for release.
 
 echo " ===> Creating standard package"
-rm -rf *.xz *.amc dist *.log >/dev/null
+rm -rf deb
+rm -rf *.xz *.amc dist *.log *.deb *.zst >/dev/null
 tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dev' --exclude='./deb' -cJf craftserversetup.tar.xz ./*
 echo " ===> Creating Debian Package"
 #Create deb directories. Ignore if they don't exist
-
-rm -rf deb
 rm craftserversetup.deb
 mkdir deb
 mkdir deb/DEBIAN
@@ -50,14 +49,20 @@ cp *.py "../$DEBLIBFOLDER" #Copy remaining custom librariespa
 popd >/dev/null
 
 #Move desktop and icon files
-cp assets/mc.png deb/usr/share/pixmaps
+cp assets/mc.png deb/usr/share/pixmaps/craftserversetup.png
 cp assets/craftserversetup.desktop deb/usr/share/applications
+sed -i "s@}@/usr/share/pixmaps@g" "deb/usr/share/applications/craftserversetup.desktop"
 
 #Move MIME into temporary directory
 cp assets/mime.xml $DEBTEMPFOLDER
+cp assets/defaulticon.png $DEBTEMPFOLDER
+cp doc/* $DEBTEMPFOLDER
+cp LICENSE $DEBTEMPFOLDER
 
 #Copy postinstall
 cp scripts/debian/postinstall.sh deb/DEBIAN/postinst
 chmod +x deb/DEBIAN/postinst
 
 dpkg-deb --build deb craftserversetup.deb
+echo " ===> Creating Arch package"
+debtap craftserversetup.deb

@@ -16,7 +16,17 @@ if [ ! -d $MIMEDIR ]; then
     mkdir -p $MIMEDIR
 fi
 if [ ! -f $MIMEDIR/craftserversetup.xml ]; then
-    cp /usr/lib/craftserversetup/tempdeb $MIMEDIR/craftserversetup.xml
+    cp /usr/lib/craftserversetup/tempdeb/mime.xml $MIMEDIR/craftserversetup.xml
 fi
 
+if [ ! -d "~/.local/share/mcserver/assets" ]; then
+    mkdir -p "~/.local/share/mcserver/assets"
+fi
+cp /usr/lib/craftserversetup/tempdeb/* "~/.local/share/mcserver/assets" #Copy docs and license and such
+
 rm -rf /usr/lib/craftserversetup/tempdeb
+
+#Create symlinks
+INSTALLDIR="/usr/bin"
+ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/mcserver"
+ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"

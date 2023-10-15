@@ -54,6 +54,7 @@ else
     SHORTCUTDIR="/usr/share/applications"
 fi
 APPDATADIR="$HOME/.local/share/mcserver"
+ASSETSDIR="$APPDATADIR/assets"
 if [ ! -d "$APPDATADIR" ]; then
     mkdir -p "$APPDATADIR"
 fi
@@ -69,6 +70,14 @@ if [ ! -d "$INSTALLDIR" ]; then
     fi
 
 fi
+
+if [ ! -d $ASSETSDIR ]; then
+    mkdir $ASSETSDIR
+fi
+
+cp -r doc/* $ASSETSDIR # Copy assets
+cp assets/defaulticon.png $ASSETSDIR
+cp LICENSE $ASSETSDIR
 
 echo "Building"
 if [ -d "dist" ]; then

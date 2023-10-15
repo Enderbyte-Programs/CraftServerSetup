@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.9"#The semver version
+APP_UF_VERSION = "0.18.11"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -66,6 +66,7 @@ import urllib.error
 import yaml                     #Parse YML Files
 from epadvertisements import *  #Advertisements library (BY ME)
 import epdoc                    #Documentations library (BY ME)
+import pngdim                   #Calculate dimensions of a PNG file
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -242,6 +243,7 @@ if not WINDOWS:
     SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
+    ASSETSDIR = APPDATADIR + "/assets"
 else:
     
     APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
@@ -251,7 +253,8 @@ else:
     SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expandvars("%APPDATA%/crss_backup")
-DOCDOWNLOAD = TEMPDIR + "/craftserversetup.epdoc"
+    ASSETSDIR = APPDATADIR + "/assets"
+DOCDOWNLOAD = ASSETSDIR + "/craftserversetup.epdoc"
 
 if not os.path.isdir(APPDATADIR):
     os.mkdir(APPDATADIR)
@@ -263,6 +266,8 @@ if not os.path.isdir(BACKUPDIR):
     os.mkdir(BACKUPDIR)
 if not os.path.isdir(SERVERS_BACKUP_DIR):
     os.mkdir(SERVERS_BACKUP_DIR)
+if not os.path.isdir(ASSETSDIR):
+    os.mkdir(ASSETSDIR)
 __DEFAULTAPPDATA__ = {
     "servers" : [
 
@@ -752,6 +757,10 @@ def setupnewserver(stdscr):
         data = setup_server_properties(stdscr)
         with open("server.properties","w+") as f:
             f.write(PropertiesParse.dump(data))
+    try:
+        shutil.copyfile(ASSETSDIR+"/defaulticon.png",S_INSTALL_DIR+"/server-icon.png")
+    except:
+        pass
     os.chdir(bdir)
 
 def get_player_uuid(username:str):
@@ -1186,19 +1195,57 @@ def find_world_folders(directory) -> list[str]:
                 final.append( fx )
     return final
 
+def xdg_open_file(file:str) -> int:
+    return os.system(f"xdg-open {file}")
+
+def manage_server_icon(stdscr):
+    while True:
+        ssx = crss_custom_ad_menu(stdscr,["BACK","Change icon","Reset icon","Delete icon","View icon"])
+        if ssx == 0:
+            break
+        elif ssx == 4:
+            if os.path.isfile("server-icon.png"):
+                xdg_open_file("server-icon.png")
+                stdscr.erase()
+            else:
+                cursesplus.messagebox.showerror(stdscr,["This server does not have an icon."])
+        elif ssx == 1:
+            fl = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a server icon",[["*.png","PNG Image Files"],["*","All Files"]])
+            try:
+                d = pngdim.load(fl)
+                if not d.is_valid_minecraft_server_image():
+                    cursesplus.messagebox.showerror(stdscr,["Minecraft Server icons must be 64x64"])
+                    continue
+                shutil.copyfile(fl,"server-icon.png")
+            except:
+                cursesplus.messagebox.showerror(stdscr,["That is not a valid PNG file"])
+        elif ssx == 2:
+            if cursesplus.messagebox.askyesno(stdscr,["This will change the server icon to the CRSS default. Are you sure you want to proceed?"]):
+                try:
+                    os.remove("server-icon.png")
+                except:
+                    pass
+                shutil.copyfile(ASSETSDIR+"/defaulticon.png","server-icon.png")
+        elif ssx == 3:
+            if cursesplus.messagebox.askyesno(stdscr,["This will delete your server icon. Are you sure you want to proceed?"]):
+                try:
+                    os.remove("server-icon.png")
+                except:
+                    pass
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
-    os.chdir(SERVER_DIR)
+    os.chdir(APPDATA["servers"][chosenserver-1]["dir"])
     if APPDATA["settings"]["transitions"]["value"]:
         cursesplus.transitions.vertical_bars(stdscr)
     #Manager server
     while True:
 
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
-        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans"]
+        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans","Manage server icon"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
@@ -1208,7 +1255,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 cursesplus.transitions.random_blocks(stdscr)
             break
         
-        elif w == 1:           
+        elif w == 1:
+            os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
             stdscr.refresh()
@@ -1399,6 +1447,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             manage_ops(stdscr,SERVER_DIR)
         elif w == 15:
             manage_bans(stdscr,SERVER_DIR)
+        elif w == 16:
+            manage_server_icon(stdscr)
 _SCREEN = None
 
 def manage_ops(stdscr,serverdir):
@@ -1930,11 +1980,9 @@ def doc_system(stdscr):
         if z == 0:
             break
         elif z == 1:
-            if os.path.isfile(DOCDOWNLOAD):
-                os.remove(DOCDOWNLOAD)
-            
-            cursesplus.displaymsgnodelay(stdscr,["Downloading Documentation"])
-            urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
+            if not os.path.isfile(DOCDOWNLOAD):
+                cursesplus.displaymsgnodelay(stdscr,["Downloading Documentation"])
+                urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
             efile: epdoc.EPDocfile = epdoc.load_from_file(DOCDOWNLOAD,"Craft Server Setup")
             efile.load()
             efile.show_documentation(stdscr)
@@ -1944,9 +1992,9 @@ def doc_system(stdscr):
 def license(stdscr):
     global APPDATA
     if not APPDATA["license"]:
-        if not os.path.isfile(TEMPDIR+"/license"):
-            urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",TEMPDIR+"/license")
-        with open(TEMPDIR+"/license") as f:
+        if not os.path.isfile(ASSETSDIR+"/license"):
+            urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",ASSETSDIR+"/license")
+        with open(ASSETSDIR+"/license") as f:
             dat = f.read()
         cursesplus.textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
         APPDATA["license"] = True
@@ -2118,7 +2166,7 @@ def main(stdscr):
             stdscr.refresh()
             issue = True
         if issue:
-            sleep(1)
+            sleep(3)
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
         global APPDATA
