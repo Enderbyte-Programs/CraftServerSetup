@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.18.8/CraftServerSetup-0.18.8-installer.exe|0.18.8|Improvements
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v0.18.11/CraftServerSetup-0.18.11-installer.exe|0.18.11|Add icon manager
