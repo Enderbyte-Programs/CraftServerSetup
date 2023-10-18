@@ -1196,7 +1196,10 @@ def find_world_folders(directory) -> list[str]:
     return final
 
 def xdg_open_file(file:str) -> int:
-    return os.system(f"xdg-open {file}")
+    if not WINDOWS:
+        return os.system(f"xdg-open {file}")
+    else:
+        return os.startfile(file)
 
 def manage_server_icon(stdscr):
     while True:
