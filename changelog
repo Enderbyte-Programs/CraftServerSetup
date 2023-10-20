@@ -1,3 +1,7 @@
+1.0:
+All below changes
+Exception handling now uses textview
+Internet connection is now mandatory.
 0.18.11:
 -Add pngdim.py module
     -Calculates png dimensions

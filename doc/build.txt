@@ -1,0 +1,23 @@
+How to build CraftServerSetup for production
+
+1. Verify version at the top of the program is correctly set. This is changing the APP_UF_VERSION to the correct semver version.
+2. Verify version in debian control file is correctly set. This file is in assets/control.
+3. Upload code. Preferably, all folders should be committed but you don't have to do all of them if you know you didn't edit them.
+4. Run package.sh. Run bash scripts/package.sh to compile CraftServerSetup for tar.xz, deb, and arch releases. You will have to complete some questions for the arch building portion.
+5. Create new release and upload Linux packages
+6. Start Windows VM
+7. Download latest source code from GitHub to the VM. Download it to the Python Scripts directory
+8. Run it once to make sure it works
+9. Verify that vf.txt is set to the correct version
+10. Run pyinstaller --onefile --icon=mc.ico --version-file=vf.txt --noconfirm craftserversetup.py
+11. If it exists, delete dist/craftserversetup/startupflags.txt
+12. Open crss.iss in Inno Setup
+13. Verify version is set and output file includes correct version
+14. Run Compile in inno setup
+15. Create file dist/craftserversetup/startupflags.txt. It should contain the word "portable" and nothing more
+16. Create a ZIP file of dist/craftserversetup. It should have the name "craftserversetup-{VERSION NAME}-portable.zip"
+17. Add Windows packages to GitHub
+18. Shutdown or save the VM
+19. Update GitHub update.txt to include the correct download link to the installer as well as the correct version as well as any additional changelogs.
+
+20. Build complete...

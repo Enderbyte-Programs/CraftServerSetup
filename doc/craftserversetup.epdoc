@@ -21,7 +21,7 @@ startupflags.txt tells CraftServerSetup that it is running a portable edition. I
 
 In the Portable edition, appdata is created in the AppData folder within the same directory as craftserversetup.exe
 $Installing Craft Server Setup (Linux 0.16 - 0.18.8):
-The Linux edition of the software between 0.16 and 0.18.8 contains a very simple program in the root folder: install.py. It is interactive. Run python3 install.py to start it. Press I to install, R to remove and Q to quit. If the text on the top of the screen ever turns red, that means that there has been an error during installation and you should check recent.log. Recent.log contains output from install.sh which is located within the scripts directory. You may run install.sh directly if you wish
+The Linux edition of the software between 0.16 and now contains a very simple program in the root folder: install.py. It is interactive. Run python3 install.py to start it. Press I to install, R to remove and Q to quit. If the text on the top of the screen ever turns red, that means that there has been an error during installation and you should check recent.log. Recent.log contains output from install.sh which is located within the scripts directory. You may run install.sh directly if you wish
 $Installing CraftServerSetup (Linux 0.8 - 0.16):
 In 0.8 the build system of CraftServerSetup (or automcserver) was redesigned. Inside of the source tree, run bash scripts/install.sh to install the program. Some dependancies are required. These vary between versions but in general, the higher the version, the fewer dependancies there are as the system has been optimized.
 
@@ -66,3 +66,7 @@ The most important keys are the arrow keys and enter. These are used to navigate
 Message boxes are dismissed with the enter key and navigated around with the left and right arrow keys. Message boxes are in a rectangle and do not take up the full screen.
 
 In most widgets, all of the key-bindings are layed out for you. The only exception to this is the file dialogues. If you need help with keybinds on the file dialog boxes, simply press H to bring up a list.
+$Product Keys:
+In the OOBE you will be asked to input a product key. You can get a product key by paying the $2 fee and telling Enderbyte Programs that you send it. You will recieve your product key shortly. Product keys remove advertisements.
+$Advertisements:
+Advertisements are what you recieve if you do not input a product key. In every option menu, there is an advertisement. If you press A, the ad will be opened in your browser. Prior to 0.18.3, you had a 20% chance of encountering an ad while navigating. This was removed because it could be quite annoying

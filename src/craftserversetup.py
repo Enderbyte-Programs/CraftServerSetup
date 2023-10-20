@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "0.18.11"#The semver version
+APP_UF_VERSION = "1.0"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -219,7 +219,7 @@ def internet_on():
     try:
         urllib.request.urlopen('http://google.com', timeout=10)
         return True
-    except urllib.error.URLError as err: 
+    except:
         return False
 
 ### DETECT PORTABLE INSTALLATION ###
@@ -465,20 +465,8 @@ def error_handling(e:Exception,message="A serious error has occured"):
         if erz == 0:
             sys.exit(1)
         elif erz == 1:
-            _SCREEN.clear()
-            _SCREEN.addstr(0,0,f"TYPE: {type(e)}")
-            _SCREEN.addstr(1,0,f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}")
-            ztb = traceback.format_exc().splitlines()
-            ex = 2
-            for eline in ztb:
-                try:
-                    _SCREEN.addstr(ex,0,eline[0:os.get_terminal_size()[0]-1])
-                except:
-                    break
-                ex += 1
-            _SCREEN.addstr(os.get_terminal_size()[1]-1,0,"Press any key to return")
-            _SCREEN.refresh()
-            _SCREEN.getch()
+            cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
+           
         elif erz == 2:
             if WINDOWS:
                 cursesplus.messagebox.showerror(_SCREEN,["This feature is not yet available on Windows"])
@@ -2155,11 +2143,7 @@ def main(stdscr):
 
         issue = False
         if not internet_on():
-            if not cursesplus.messagebox.askyesno(stdscr,["WARNING","No internet connection could be found!","You may run in to errors","Are you sure you want to continue?"]):
-                return
-            else:
-                issue = True
-                stdscr.addstr(1,0,"ERROR: No internet connection",cursesplus.set_colour(cursesplus.BLACK,cursesplus.RED))
+            cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
         if DEBUG:
             stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
             stdscr.refresh()
