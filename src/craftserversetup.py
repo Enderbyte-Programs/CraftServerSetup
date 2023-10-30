@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.0"#The semver version
+APP_UF_VERSION = "1.2"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -186,6 +186,13 @@ def compatibilize_appdata(data:dict) -> dict:
         }
 
         }
+    if not "showprog" in data["settings"]:
+        data["settings"]["showprog"] = {
+            "name" : "showprog",
+            "display" : "Show progress bar startup?",
+            "type" : "bool",
+            "value":True
+        }
     if not "productKey" in list(data.keys()):
         data["productKey"] = ""
     if not "pkd" in list(data.keys()):
@@ -295,6 +302,12 @@ __DEFAULTAPPDATA__ = {
             "display" : "Use legacy style menus?",
             "type" : "bool",
             "value" : False
+        },
+        "showprog" : {
+            "name" : "showprog",
+            "display" : "Show progress bar on startup?",
+            "type" : "bool",
+            "value" : True
         }
     },
     "idata" : {
@@ -964,13 +977,17 @@ def file_get_md5(path: str) -> str:
         data = f.read()
     return hashlib.md5(data).hexdigest()
 
+def dictedit(stdscr,inputd) -> dict:
+    #cursesplus.textview(stdscr,text=json.dumps(inputd,indent=4))
+    pass
+
 def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
     modsforlder = SERVERDIRECTORY + "/plugins"
     if not os.path.isdir(modsforlder):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST])
+        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
         if spldi == 0:
             return
         elif spldi == 1:
@@ -991,31 +1008,40 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
             stdscr.erase()
         else:
             chosenplug = spldi - 2
+
             while True:
-                stdscr.erase()
-                activeplug = PLUGSLIST[chosenplug]
-                stdscr.addstr(0,0,"PLUGIN INFO")
-                stdscr.addstr(2,0,"Plugin Name")
-                stdscr.addstr(3,0,"Plugin Version")
-                stdscr.addstr(4,0,"Minecraft Version")
-                stdscr.addstr(5,0,"File path")
-                stdscr.addstr(6,0,"File size")
-                stdscr.addstr(7,0,"MD5 sum")
-                stdscr.addstr(2,20,activeplug["name"])
-                stdscr.addstr(3,20,activeplug["version"])
-                stdscr.addstr(4,20,activeplug["mcversion"])
-                stdscr.addstr(5,20,activeplug["path"])
-                stdscr.addstr(6,20,parse_size(os.path.getsize(activeplug["path"])))
-                stdscr.addstr(7,20,file_get_md5(activeplug["path"]))
-                stdscr.addstr(8,0,"PRESS D TO DELETE PLUGIN. PRESS ENTER TO GO BACK",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-                ch = stdscr.getch()
-                if ch == curses.KEY_ENTER or ch == 10 or ch == 13:
+                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Edit config.yml","Delete Plugin"])
+                if wtd == 0:
                     break
-                elif ch == 100 or ch == 68:
+                elif wtd == 1:
+                    stdscr.erase()
+                    activeplug = PLUGSLIST[chosenplug]
+                    stdscr.addstr(0,0,"PLUGIN INFO")
+                    stdscr.addstr(2,0,"Plugin Name")
+                    stdscr.addstr(3,0,"Plugin Version")
+                    stdscr.addstr(4,0,"Minimum MC Version")
+                    stdscr.addstr(5,0,"File path")
+                    stdscr.addstr(6,0,"File size")
+                    stdscr.addstr(7,0,"MD5 sum")
+                    stdscr.addstr(2,20,activeplug["name"])
+                    stdscr.addstr(3,20,activeplug["version"])
+                    stdscr.addstr(4,20,activeplug["mcversion"])
+                    stdscr.addstr(5,20,activeplug["path"])
+                    stdscr.addstr(6,20,parse_size(os.path.getsize(activeplug["path"])))
+                    stdscr.addstr(7,20,file_get_md5(activeplug["path"]))
+                    stdscr.addstr(8,0,"Press any key to proceed",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+                    stdscr.getch()
+                elif wtd == 2:
+                    activeplug = PLUGSLIST[chosenplug]
+                    if os.path.isfile(modsforlder+"/"+activeplug["name"]+"/config.yml"):
+                        with open(modsforlder+"/"+activeplug["name"]+"/config.yml") as pld:
+                            data = pld.read()
+                        pl = yaml.load(data,yaml.BaseLoader)
+                        dictedit(stdscr,pl)
+                elif wtd == 3:
                     if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this plugin from your server?"]):
                         os.remove(activeplug["path"])
                         break
-            stdscr.clear()
 
 def generate_script(svrdict: dict) -> str:
     _space = "\\ "
@@ -1952,8 +1978,10 @@ def settings_mgr(stdscr):
                                 shutil.rmtree(APPDATADIR)
                                 cursesplus.messagebox.showinfo(stdscr,["Program reset."])
                                 sys.exit()
+                    updateappdata()
                 elif n == 3:
                     APPDATA["productKey"] = ""
+                    updateappdata()
         else:
             selm = list(APPDATA["settings"].values())[m-2]
             selk = list(APPDATA["settings"].keys())[m-2]
@@ -2125,6 +2153,13 @@ def devtools(stdscr):
                 final += f"NAME: {g[0]} VAL: {str(g[1])}\n"
             cursesplus.textview(stdscr,text=final)
 
+def internet_thread(stdscr):
+    global ADS
+    global VERSION_MANIFEST_DATA
+    VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
+    init_idata(stdscr)
+    gen_adverts("Upgrade with a product key to remove ads")
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -2132,13 +2167,14 @@ def main(stdscr):
     global APPDATAFILE
     global UPDATEINSTALLED
     global _SCREEN
+    global ADS
     _SCREEN = stdscr
     global DEBUG
     restart_colour()
     curses.curs_set(0)
     try:
         cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup","Starting..."])
-        p = cursesplus.ProgressBar(stdscr,5,bar_type=cursesplus.ProgressBarTypes.SmallProgressBar,bar_location=cursesplus.ProgressBarLocations.BOTTOM,message="Startup")
+        p = cursesplus.ProgressBar(stdscr,4,bar_type=cursesplus.ProgressBarTypes.SmallProgressBar,bar_location=cursesplus.ProgressBarLocations.BOTTOM,message="Startup")
         p.step("Verifying internet connection")
 
         issue = False
@@ -2159,8 +2195,8 @@ def main(stdscr):
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         p.step("Loading AppData")
-        gen_adverts("Upgrade with a product key to remove ads")
-        VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
+        ADS.append(Advertisement("","No ads available"))
+        threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
             with open(APPDATAFILE,"w+") as f:
@@ -2175,8 +2211,7 @@ def main(stdscr):
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
-        p.step("Procurring internet data")
-        init_idata(stdscr)
+        
         license(stdscr)
         oobe(stdscr)
         p.step("Finishing up...")
