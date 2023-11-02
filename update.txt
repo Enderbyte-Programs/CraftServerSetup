@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.0/CraftServerSetup-1.0-installer.exe|1.0|Fix some small issues
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.2/CraftServerSetup-1.2-installer.exe|1.2|Improve startup times
