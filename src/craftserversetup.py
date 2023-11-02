@@ -60,6 +60,7 @@ else:
     DEBUG = False
 #Third party libraries below here
 import cursesplus               #Terminal Display Control
+from cursesplus import CheckBoxItem
 import requests                 #Networking Utilities
 import urllib.request
 import urllib.error
@@ -815,17 +816,30 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
 
     if not initialconfig:
         #Provide more settings
-        dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins on this world?"])
-        dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this world?"])
-        dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this world?"])
-        dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this world?"])
+        #dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins on this world?"])
+        #dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this world?"])
+        #dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this world?"])
+        #dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this world?"])
         dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your world"))
         dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of this world"))
-        dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on this world?"])
-        dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
-        dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
-        dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
-        dpp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
+        #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on this world?"])
+        #dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
+        #dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
+        #dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
+        #dpp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
+        sslxdd = cursesplus.checkboxlist(stdscr,[
+            CheckBoxItem("allow-flight","Allow Flight for all players",False),
+            CheckBoxItem("allow-nether","Allow the nether",True),
+            CheckBoxItem("generate-structures","Generate structures such as villages",True),
+            CheckBoxItem("hardcore","Enable Hardcore mode",False),
+            CheckBoxItem("enable-command-block","Allow command block usage",True),
+            CheckBoxItem("pvp","Allow PVP",True),
+            CheckBoxItem("spawn-animals","Spawn Passive animals",True),
+            CheckBoxItem("spawn-monsters","Spawn monsters",True),
+            CheckBoxItem("spawn-npcs","Spawn Villagers",True)
+        ],"Please choose configuration for your server")
+        dpp = dpp | sslxdd
+
     return dpp
 def setup_server_properties(stdscr) -> dict:
     dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
@@ -902,6 +916,7 @@ def setup_server_properties(stdscr) -> dict:
         elif lssl == 1:
             #world
             dpp = setup_new_world(stdscr,dpp)
+            cursesplus.messagebox.showinfo(stdscr,["World created successfully"])
         elif lssl == 5:
             dpp = resource_pack_setup(stdscr,dpp)
 
@@ -1010,7 +1025,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
             chosenplug = spldi - 2
 
             while True:
-                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Edit config.yml","Delete Plugin"])
+                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Edit config.yml","Delete Plugin","Reset Plugin"])
                 if wtd == 0:
                     break
                 elif wtd == 1:
@@ -1023,13 +1038,19 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
                     stdscr.addstr(5,0,"File path")
                     stdscr.addstr(6,0,"File size")
                     stdscr.addstr(7,0,"MD5 sum")
+                    stdscr.addstr(8,0,"AppData size")
                     stdscr.addstr(2,20,activeplug["name"])
                     stdscr.addstr(3,20,activeplug["version"])
                     stdscr.addstr(4,20,activeplug["mcversion"])
                     stdscr.addstr(5,20,activeplug["path"])
                     stdscr.addstr(6,20,parse_size(os.path.getsize(activeplug["path"])))
                     stdscr.addstr(7,20,file_get_md5(activeplug["path"]))
-                    stdscr.addstr(8,0,"Press any key to proceed",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+                    if os.path.isdir(SERVERDIRECTORY+"/plugins/"+activeplug["name"]):
+                        fsize = parse_size(get_tree_size(SERVERDIRECTORY+"/plugins/"+activeplug["name"]))
+                    else:
+                        fsize = "0 bytes"
+                    stdscr.addstr(8,20,fsize)
+                    stdscr.addstr(10,0,"Press any key to proceed",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
                     stdscr.getch()
                 elif wtd == 2:
                     activeplug = PLUGSLIST[chosenplug]
@@ -1038,10 +1059,18 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
                             data = pld.read()
                         pl = yaml.load(data,yaml.BaseLoader)
                         dictedit(stdscr,pl)
+                    else:
+                        cursesplus.messagebox.showerror(stdscr,["This plugin does not appear to have config.yml"])
                 elif wtd == 3:
                     if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this plugin from your server?"]):
                         os.remove(activeplug["path"])
                         break
+                elif wtd == 4:
+                    if os.path.isdir(SERVERDIRECTORY+"/plugins/"+activeplug["name"]):
+                        if cursesplus.messagebox.askyesno(stdscr,["Are you sure you would like to reset this plugin?"]):
+                            shutil.rmtree(SERVERDIRECTORY+"/plugins/"+activeplug["name"])
+                    else:
+                        cursesplus.messagebox.showwarning(stdscr,["This plugin has no AppData so nothing was deleted"])
 
 def generate_script(svrdict: dict) -> str:
     _space = "\\ "
