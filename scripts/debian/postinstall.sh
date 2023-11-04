@@ -2,7 +2,6 @@
 
 #This program finishes the installer.
 
-#TODO: Install MIME type
 FILEREGFILE="$HOME/.config/mimeapps.list"
 MIMEDIR="$HOME/.local/share/mime/packages"
 

@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.2"#The semver version
+APP_UF_VERSION = "1.2.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -2095,6 +2095,9 @@ Jim Westwell
     """,message="CREDITS")
 
 def do_linux_update(stdscr) -> bool:
+    if os.path.isfile("/usr/lib/craftserversetup/updateblock"):
+        cursesplus.messagebox.showerror(stdscr,["You are using a debian or arch install setup","Please download the latest version from GitHub"])
+        return False
     try:
         cursesplus.displaymsgnodelay(stdscr,["Querrying updates"])
         r = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/releases/latest")

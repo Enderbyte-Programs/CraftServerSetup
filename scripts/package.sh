@@ -53,6 +53,9 @@ cp assets/mc.png deb/usr/share/pixmaps/craftserversetup.png
 cp assets/craftserversetup.desktop deb/usr/share/applications
 sed -i "s@}@/usr/share/pixmaps@g" "deb/usr/share/applications/craftserversetup.desktop"
 
+#Create update blocker
+touch $DEBLIBFOLDER/updateblock
+
 #Move MIME into temporary directory
 cp assets/mime.xml $DEBTEMPFOLDER
 cp assets/defaulticon.png $DEBTEMPFOLDER
