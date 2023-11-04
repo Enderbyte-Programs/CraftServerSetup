@@ -1,7 +1,20 @@
+1.2.1:
+-Fix bug
+1.2:
+-Improve plugins menu
+-Add basis for dictedit
+-It is too hard to do so it is postponed
+-Upgrade cursesplus to 2.11.6
+-World success confirmation
+1.1:
+-All internet activity is now done in a seperate thread
+-This improves startup speed GREATLY
+-However, ads usually don't load on the main menu.
+-Oh well, I don't really care
 1.0:
-All below changes
-Exception handling now uses textview
-Internet connection is now mandatory.
+-All below changes
+-Exception handling now uses textview
+-Internet connection is now mandatory.
 0.18.11:
 -Add pngdim.py module
     -Calculates png dimensions
@@ -16,7 +29,7 @@ Internet connection is now mandatory.
 -Users in portable mode can no longer update
 -Fix typo crasftserversetup.desktop to craftserversetup.desktop
 0.18.8:
--Update cursesplus to 2.11.
+-Update cursesplus to 2.11.2
 -dist directory is now removed.
 -Fix problems with direct running
 -add startupflags.txt
