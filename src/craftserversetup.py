@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.2.1"#The semver version
+APP_UF_VERSION = "1.2.2"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -2105,6 +2105,7 @@ def do_linux_update(stdscr) -> bool:
         if compare_versions(mostrecentreleasedversion,APP_UF_VERSION) == 1:
             #New update
             if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{mostrecentreleasedversion} over {APP_UF_VERSION}","Would you like to install it?"]):
+                
                 cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
                 downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.tar.xz"
                 if os.path.isdir("/tmp/crssupdate"):
@@ -2116,13 +2117,19 @@ def do_linux_update(stdscr) -> bool:
                     cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
                     return False
                 pushd("/tmp/crssupdate")
-                with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                    r = subprocess.call(["bash",f"/tmp/crssupdate/scripts/install.sh"],stdout=std0,stderr=std0)
+                if os.path.isfile("/usr/bin/craftserversetup"):
+                    #admin
+                    spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
+                    with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
+                        r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k bash /tmp/crssupdate/scripts/install.sh",stdout=std0,stderr=std0,shell=True)
+                else:
+                    with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
+                        r = subprocess.call(["bash",f"/tmp/crssupdate/scripts/install.sh"],stdout=std0,stderr=std0)
                 popd()
                 if r == 0:
                     return True
                 else:
-                    cursesplus.messagebox.showwarning(stdscr,["Update failed."])
+                    cursesplus.messagebox.showwarning(stdscr,["Update failed.","Check /tmp/crssupdate/UPDATELOG.txt"])
                 
                 # Equivilant of tar -xf
             else:
