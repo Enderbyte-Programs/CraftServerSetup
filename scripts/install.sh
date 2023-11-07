@@ -8,7 +8,6 @@ MIMEDIR="$HOME/.local/share/mime/packages"
 
 #Check program requirements
 set -e
-echo "Checking for programs..."
 if ! command -v python3 &> /dev/null
 then
     echo "Python3 is required to use this program"
@@ -40,7 +39,6 @@ then
 fi
 
 #Set up folders
-echo "Setting up..."
 if [ "$EUID" -ne 0 ]; then
     echo "WARNING: You are not running as root. Program will be installed locally."
     INSTALLDIR="$HOME/.local/bin"
@@ -79,7 +77,6 @@ cp -r doc/* $ASSETSDIR # Copy assets
 cp assets/defaulticon.png $ASSETSDIR
 cp LICENSE $ASSETSDIR
 
-echo "Building"
 if [ -d "dist" ]; then
     echo "WARNING: dist directory found. Deleting now."
     rm -rf dist # Clean dist directory
@@ -96,24 +93,18 @@ rm dist/craftserversetup.py
 mv dist/craftserversetup.py.tmp dist/craftserversetup.py
 chmod +x dist/craftserversetup.py
 mv dist/craftserversetup.py dist/craftserversetup
-echo "Installing"
 cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
 
 ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/mcserver"
 ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
-
-echo "Installing libraries: "
 pushd lib >/dev/null
 #Copy prebuilt python library
 for file in *.xz
 do
-    echo "      ${file}"
     tar -xf $file -C $LIBDIR #Extract library to custom library path
 done
 cp *.py $LIBDIR #Copy remaining custom librariespa
 popd >/dev/null
-
-echo "Creating Shortcut"
 if [ ! -d $ICONDIR ]; then
     mkdir -p $ICONDIR
 fi

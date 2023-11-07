@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.2.2"#The semver version
+APP_UF_VERSION = "1.3"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -612,6 +612,11 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
     
 def setupnewserver(stdscr):
     stdscr.erase()
+    wtd = crss_custom_ad_menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
+    if wtd == 0:
+        return
+    elif wtd == 2:
+        import_server(stdscr)
     serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
     if serversoftware == 0:
         return
@@ -1703,7 +1708,7 @@ def managejavainstalls(stdscr):
     if "java" in [j["path"] for j in APPDATA["javainstalls"]]:
         pass
     else:
-        if os.system("java --help") != 127:
+        if os.system("java --help") == 0 or os.system("java /?") == 0 or os.system("java -help") == 0:
         
             APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
         stdscr.clear()
@@ -1910,7 +1915,9 @@ def import_server(stdscr):
     elif umethod == 1:
         try:
             xdat = {}#Dict of server data
+            cursesplus.messagebox.showinfo(stdscr,["First, select the folder that your server is in"])
             ddir = cursesplus.filedialog.openfolderdialog(stdscr,"Choose the folder of the server you want to import")
+            cursesplus.messagebox.showinfo(stdscr,["Next, please select the main JAR file. This is usually named server.jar"])
             ffile = cursesplus.filedialog.openfiledialog(stdscr,"Please choose the server JAR file",[["*.jar","Java Archive files"],["*","All Files"]],ddir)
             fpl = os.path.split(ffile)[1]
             delaftercomplete = cursesplus.messagebox.askyesno(stdscr,["Delete original folder after import?"])
@@ -1923,7 +1930,7 @@ def import_server(stdscr):
                 else:
                     xdat["name"] = nname
                     break
-            p = cursesplus.PleaseWaitScreen(stdscr,["Copying"])
+            p = cursesplus.PleaseWaitScreen(stdscr,["Copying","Depending on the size of the server, this could take a few minutes"])
             p.start()
             shutil.copytree(ddir,SERVERSDIR+"/"+nname)
             if delaftercomplete:
@@ -1956,6 +1963,8 @@ def import_server(stdscr):
             xdat["software"] = crss_custom_ad_menu(stdscr,["Vanilla","Spigot","Paper"],"What software is this server running") + 1
             xdat["script"] = generate_script(xdat)
             APPDATA["servers"].append(xdat)
+            pushd(xdat["dir"])
+            os.rename(fpl,"server.jar")#Fix problem if someone is not using server.jar as their executable jar file
             cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
         except:
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
