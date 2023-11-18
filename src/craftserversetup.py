@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.23.1"#The semver version
+APP_UF_VERSION = "1.24-b1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -617,6 +617,7 @@ def setupnewserver(stdscr):
         return
     elif wtd == 2:
         import_server(stdscr)
+        return
     serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
     if serversoftware == 0:
         return
@@ -721,29 +722,8 @@ def setupnewserver(stdscr):
     stdscr.clear()
     stdscr.erase()
     p.step("Preparing scripts",True)
-    userecmem = cursesplus.messagebox.askyesno(stdscr,["Do you want to use the","default amount of memory","YES: Use default","NO: Set custom amount of memory"])
-    if not userecmem:
-        while True:
-            curses.curs_set(1)
-            memorytoall: str = cursesplus.cursesinput(stdscr,"How much memory should the server get? (EX: 1024M, 5G)")
-            curses.curs_set(0)
-            if memorytoall.endswith("M") or memorytoall.endswith("G"):
-                try:
-                    l = int(memorytoall[0:-1])
-                    if (memorytoall.endswith("M") and l < 512) or (memorytoall.endswith("G") and l < 1):
-                        raise Exception()
-                except:
-                    continue
-                else:
-                    break
-            else:
-                continue
-    else:
-        if serversoftware == 1:
-            #Vanilla
-            memorytoall = "1024M"
-        else:
-            memorytoall = "2G"#Bukkit
+    memorytoall = choose_server_memory_amount(stdscr)
+
     njavapath = njavapath.replace("//","/")
     serverid = random.randint(1111,9999)
     sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid}
@@ -757,8 +737,8 @@ def setupnewserver(stdscr):
     updateappdata()
     bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
-    with open("exdat.json") as f:
-        f.write(sd) #Create backup
+    with open("exdat.json","w+") as f:
+        f.write(json.dumps(sd)) #Create backup
     advancedsetup = cursesplus.messagebox.askyesno(stdscr,["Would you like to set up your server configuration now?"])
     if not advancedsetup:
         cursesplus.messagebox.showinfo(stdscr,["Default configuration will be generated when you start your server"])
@@ -1914,6 +1894,43 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
             stdscr.erase()
             stdscr.clear()
 
+def choose_server_memory_amount(stdscr) -> str:
+    chop = cursesplus.coloured_option_menu(
+        stdscr,
+        [
+            "1024 Megabytes (1 GB) - This is minimum for vanilla servers only",
+            "2 GB - This the minimum safe amount for modded servers",
+            "4 GB - This is good for most small servers",
+            "8 GB - This is good for small servers with high render distance",
+            "Custom Amount - Choose a custom amount of memory"
+        ],"Please choose the amount of memory your server should recieve"
+    )
+    if chop == 0:
+        return "1024M"
+    elif chop == 1:
+        return "2G"
+    elif chop == 2:
+        return "4G"
+    elif chop == 3:
+        return "8G"
+    elif chop == 4:
+        while True:
+            mtoal = cursesplus.cursesinput(stdscr,"How much memory should your server get? (for example 1024M or 5G)")
+            if not (mtoal.endswith("M") or mtoal.endswith("G")):
+                cursesplus.messagebox.showerror(stdscr,["Memory strings must end with M for megabytes","or G for gigabytes,","For example 3G or 1600M"])
+                continue
+            try:
+                int(mtoal[0:-1])
+            except:
+                cursesplus.messagebox.showerror(stdscr,["Invalid memory string.","EXAMPLE: 5G, 1465M"])
+                continue
+            if mtoal.endswith("M") and int(mtoal[0:-1]) < 1000:
+                if cursesplus.messagebox.askyesno(stdscr,["You have alocated a dangerously low amount of memory.","Low memory will harm yur server","Are you sure you want to allocate this much?"]):
+                    return mtoal
+                else:
+                    continue
+            return mtoal
+
 def import_server(stdscr):
     umethod = crss_custom_ad_menu(stdscr,["Import from .amc file","Import from folder","Cancel (Go Back)"])
     if umethod == 0:
@@ -1949,21 +1966,7 @@ def import_server(stdscr):
             p.destroy()
             xdat["dir"] = SERVERSDIR+"/"+nname
             xdat["javapath"] = choose_java_install(stdscr)
-            while True:
-                curses.curs_set(1)
-                memorytoall: str = cursesplus.cursesinput(stdscr,"How much memory should the server get? (EX: 1024M, 5G)")
-                curses.curs_set(0)
-                if memorytoall.endswith("M") or memorytoall.endswith("G"):
-                    try:
-                        l = int(memorytoall[0:-1])
-                        if (memorytoall.endswith("M") and l < 512) or (memorytoall.endswith("G") and l < 1):
-                            raise Exception()
-                    except:
-                        continue
-                    else:
-                        break
-                else:
-                    continue
+            memorytoall = choose_server_memory_amount(stdscr)
             xdat["memory"] = memorytoall
             xdat["version"] = cursesplus.cursesinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?"])

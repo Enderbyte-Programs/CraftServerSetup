@@ -1,3 +1,8 @@
+1.24-b1:
+-Add new memory selection dialogue
+-Replaces old memory selection dialogue
+-The first step on simplifying the server setup, which has not changed since 0.1 (or 1.0) according to the versioning scheme
+-Fix giant bug in server setup
 1.23.1:
 -Change versioning scheme
 -Major and minor versions are now independant
