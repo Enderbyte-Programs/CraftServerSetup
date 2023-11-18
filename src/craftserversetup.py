@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.3"#The semver version
+APP_UF_VERSION = "1.23.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -757,6 +757,8 @@ def setupnewserver(stdscr):
     updateappdata()
     bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
+    with open("exdat.json") as f:
+        f.write(sd) #Create backup
     advancedsetup = cursesplus.messagebox.askyesno(stdscr,["Would you like to set up your server configuration now?"])
     if not advancedsetup:
         cursesplus.messagebox.showinfo(stdscr,["Default configuration will be generated when you start your server"])
@@ -951,6 +953,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 def servermgrmenu(stdscr):
     stdscr.clear()
     global APPDATA
+
     chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
     if chosenserver == 0:
         return
@@ -988,8 +991,7 @@ def retr_jplug(path: str) -> list[dict]:
         try:
             final.append(jar_get_bukkit_plugin_name(jf))
         except Exception as e:
-            cursesplus.displayerror(_SCREEN,e,"er")
-            final.append({"version":"???","name":fob,"mcversion":"","path":path})#There was a problem loading this plugin file
+            pass #This isn't a mod file
     return final
 
 def file_get_md5(path: str) -> str:
@@ -1068,9 +1070,11 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
                         cursesplus.messagebox.showerror(stdscr,["This plugin does not appear to have config.yml"])
                 elif wtd == 3:
                     if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this plugin from your server?"]):
+                        activeplug = PLUGSLIST[chosenplug]
                         os.remove(activeplug["path"])
                         break
                 elif wtd == 4:
+                    activeplug = PLUGSLIST[chosenplug]
                     if os.path.isdir(SERVERDIRECTORY+"/plugins/"+activeplug["name"]):
                         if cursesplus.messagebox.askyesno(stdscr,["Are you sure you would like to reset this plugin?"]):
                             shutil.rmtree(SERVERDIRECTORY+"/plugins/"+activeplug["name"])
@@ -1845,7 +1849,10 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         return cursesplus.displayops(stdscr,options,title)
     selected = 0
     offset = 0
-    chosenad = random.choice(ADS)
+    if ads_available():
+        chosenad = random.choice(ADS)
+    else:
+        show_ad = False
     maxl = list_get_maxlen(options)
     while True:
         stdscr.clear()
@@ -1971,6 +1978,8 @@ def import_server(stdscr):
     else: return
 
 def ads_available() -> bool:
+    if len(ADS) == 0:
+        return False
     if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
         return True
     else:
@@ -2243,7 +2252,6 @@ def main(stdscr):
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         p.step("Loading AppData")
-        ADS.append(Advertisement("","No ads available"))
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):

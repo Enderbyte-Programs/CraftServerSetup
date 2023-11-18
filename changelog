@@ -1,3 +1,7 @@
+1.23.1:
+-Change versioning scheme
+-Major and minor versions are now independant
+-Fix bugs in new plugins manager
 1.3:
 -Pushed to prevent having the generic version string 1.2.3
 -Fix some problems with the import process
