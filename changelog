@@ -1,3 +1,7 @@
+1.24-b2:
+-Sort of fix annoying issue on spigot build where log would go past file bar
+-Remove setup progress bar aside from spigot build
+    -As the setup process has gotten more complex, the progress bar has been rarely seen.
 1.24-b1:
 -Add new memory selection dialogue
 -Replaces old memory selection dialogue

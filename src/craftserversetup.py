@@ -651,25 +651,20 @@ def setupnewserver(stdscr):
             else:
                 break
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
-    p = cursesplus.ProgressBar(stdscr,6,cursesplus.ProgressBarTypes.FullScreenProgressBar,message="Setting up server")
-    p.step("Getting download data",True)
+    cursesplus.displaymsgnodelay(stdscr,["Please wait while your server is set up"])
     njavapath = choose_java_install(stdscr)
     if serversoftware == 1:
         S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
         S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
-        p.appendlog(f"SIZE: {S_DOWNLOAD_size}")
-        p.appendlog(f"URL: {S_DOWNLOAD_data['url']}")
-        p.step("Downloading",True)
+        cursesplus.displaymsgnodelay(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"])
         urllib.request.urlretrieve(S_DOWNLOAD_data["url"],S_INSTALL_DIR+"/server.jar")
     elif serversoftware == 2:
-        
-        p.max = 8
-        p.step("Getting build file")
+        cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
         urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar",S_INSTALL_DIR+"/BuildTools.jar")
         os.chdir(S_INSTALL_DIR)
-        p.step("Building Spigot")
         while True:
             build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
+            p = cursesplus.ProgressBar(stdscr,13000,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,message="Building Spigot")
             if not build_lver:
                 curses.curs_set(1)
                 xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
@@ -677,16 +672,30 @@ def setupnewserver(stdscr):
             else:
                 xver = "latest"
             PACKAGEDATA = {"id":xver}
+            mx = os.get_terminal_size()[0]-4
             proc = subprocess.Popen([njavapath,"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
+            tick = 0
             while True:
                 output = proc.stdout.readline()
                 if proc.poll() is not None:
                     break
                 if output:
+                    tick += 1
+                    if tick > 100:
+                        stdscr.clear() 
                     for l in output.decode().strip().splitlines():
-                        p.appendlog(l.strip().replace("\n","").replace("\r",""))
+                        try:
+                            p.step()
+                            
+                            p.appendlog(l.replace("\r","").replace("\n","")[0:mx])
+                        except:
+                            p.max += 100
+                            p.step()
+                            
+                            p.appendlog(l.replace("\r","").replace("\n","")[0:mx])
             rc = proc.poll()
             if rc == 0:
+                p.done()
                 PACKAGEDATA["id"] = glob.glob("spigot*.jar")[0].split("-")[1].replace(".jar","")#Update version value as "latest" is very ambiguous. UPDATE: Fix bug where version is "1.19.4.jar"
                 os.rename(glob.glob("spigot*.jar")[0],"server.jar")
                 break
@@ -706,22 +715,17 @@ def setupnewserver(stdscr):
             builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
         bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
         #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
-        p.step("Downloading",True)
+        cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
         
         urllib.request.urlretrieve(bdownload,S_INSTALL_DIR+"/server.jar")
         PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
-
-
-    p.step("Checking stuff",True)
+    cursesplus.displaymsgnodelay(stdscr,["Setting up server"])
     setupeula = cursesplus.messagebox.askyesno(stdscr,["To proceed, you must agree","To Mojang's EULA","","Do you agree?"])
     if setupeula:
         with open(S_INSTALL_DIR+"/eula.txt","w+") as f:
             f.write("eula=true")# Agree
-    
-    
     stdscr.clear()
     stdscr.erase()
-    p.step("Preparing scripts",True)
     memorytoall = choose_server_memory_amount(stdscr)
 
     njavapath = njavapath.replace("//","/")
@@ -731,7 +735,6 @@ def setupnewserver(stdscr):
     #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     __SCRIPT__ = generate_script(sd)
     sd["script"] = __SCRIPT__
-    p.step("All done!",True)
     
     APPDATA["servers"].append(sd)
     updateappdata()
