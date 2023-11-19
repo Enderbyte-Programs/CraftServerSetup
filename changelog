@@ -1,3 +1,9 @@
+1.25:
+-Move server config to a new function because manage_server is getting too fat
+-Add option to download mod files from Modrinth
+-Doesn't have very many features, but it gets the job done
+1.24:
+-All of the below
 1.24-b2:
 -Sort of fix annoying issue on spigot build where log would go past file bar
 -Remove setup progress bar aside from spigot build

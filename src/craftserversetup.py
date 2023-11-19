@@ -2,10 +2,11 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.24"#The semver version
+APP_UF_VERSION = "1.25"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
+MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
@@ -983,10 +984,88 @@ def file_get_md5(path: str) -> str:
     return hashlib.md5(data).hexdigest()
 
 def dictedit(stdscr,inputd) -> dict:
-    #cursesplus.textview(stdscr,text=json.dumps(inputd,indent=4))
+    cursesplus.textview(stdscr,text=json.dumps(inputd,indent=4))
     pass
 
-def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
+def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit=1000):
+    api_base = "https://api.modrinth.com/v2"
+    headers = {"User-Agent":MODRINTH_USER_AGENT,"content-type":"application/json"}
+    noffset = 0
+    inres = []
+    npage = 1
+    while True:
+        cursesplus.displaymsgnodelay(stdscr,["Searching...",f"Page {npage}"])
+        try:
+            inress = requests.get(api_base+f"/search?query={searchq.strip()}&offset={noffset}",headers=headers)
+            inres += inress.json()["hits"]
+        except Exception as uuuu:
+            cursesplus.messagebox.showwarning(stdscr,["API Limit exceeded","Search results will be limited",str(uuuu)])
+            break #We have likely exceeded out limit
+        inres = [i for i in inres if i["project_type"] == "mod" and serverversion in i["versions"] and "bukkit" in i["categories"]]
+        noffset += inress.json()["limit"]
+        npage += 1
+        if inress.json()["offset"] > inress.json()["total_hits"] - inress.json()["limit"] or len(inres) > limit or npage > 200:#Limit to 100
+            break
+    while True:
+        modch = crss_custom_ad_menu(stdscr,["Cancel"]+[ikl["title"] for ikl in inres],f"Search results for {searchq}")
+        if modch == 0:
+            break
+        else:
+            chmod = inres[modch-1]
+            while True:
+                mocho = crss_custom_ad_menu(stdscr,["Cancel","Plugin Info","Download"])
+                if mocho == 0:
+                    break
+                elif mocho == 1:
+                    stdscr.clear()
+                    stdscr.addstr(0,0,"PLUGIN INFO (press any key to continue)")
+                    stdscr.addstr(2,0,"Name")
+                    stdscr.addstr(3,0,"Author")
+                    stdscr.addstr(4,0,"Date created")
+                    stdscr.addstr(5,0,"Last modified")
+                    stdscr.addstr(6,0,"Downloads")
+                    stdscr.addstr(7,0,"Followers")
+                    stdscr.addstr(8,0,"Latest MC ver")
+                    stdscr.addstr(2,20,chmod["title"])
+                    stdscr.addstr(3,20,chmod["author"])
+                    stdscr.addstr(4,20,chmod["date_created"])
+                    stdscr.addstr(5,20,chmod["date_modified"])
+                    stdscr.addstr(6,20,str(chmod["downloads"]))
+                    stdscr.addstr(7,20,str(chmod["follows"]))
+                    stdscr.addstr(8,20,chmod["latest_version"])
+                    stdscr.addstr(10,0,chmod["description"])#Meant to wrap around
+                    stdscr.getch()
+                elif mocho == 2:
+                    #Download
+                    cursesplus.displaymsgnodelay(stdscr,["Resolving download address"])
+                    r6 = requests.get(api_base+"/project/"+chmod["project_id"]+"/version").json()
+                    finald = []
+                    final = []
+                    for item in r6:
+                        if serverversion in item["game_versions"]:
+                            finald.append(item)
+                            final.append(f"{item['name']} ({item['version_type']})")
+                    filed = cursesplus.coloured_option_menu(stdscr,final,"Please choose a version to download")
+                    primad = [d for d in finald[filed]["files"] if d["primary"]][0]
+                    cursesplus.displaymsgnodelay(stdscr,["Downloading plugin file"])
+                    urllib.request.urlretrieve(primad["url"],modfolder+"/"+primad["filename"])
+                    cursesplus.messagebox.showinfo(stdscr,["Download successful"])
+                    break
+
+def modrinth_api_download_system(stdscr,modfolder,serverversion):
+    api_base = "https://api.modrinth.com/v2"
+    headers = {"User-Agent":MODRINTH_USER_AGENT,"content-type":"application/json"}
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["FINISH","Search for plugins","View most popular plugins"])
+        if wtd == 0:
+            break
+        elif wtd == 1:
+            searchq = cursesplus.cursesinput(stdscr,"What is the name of the mod you are looking for?")
+            modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq)
+        elif wtd == 2:
+            modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
+            
+def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
     modsforlder = SERVERDIRECTORY + "/plugins"
     if not os.path.isdir(modsforlder):
         os.mkdir(modsforlder)
@@ -997,20 +1076,24 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str):
             return
         elif spldi == 1:
             #add mod
-            modfiles = cursesplus.filedialog.openfilesdialog(stdscr,"Please choose the plugins you would like to add",[["*.jar","JAR Executables"],["*","All files"]])
-            for modfile in modfiles:
-                if os.path.isfile(modfile):
-                    stdscr.clear()
-                    cursesplus.displaymsgnodelay(stdscr,["loading plugin",modfile])
-                    mf_name = os.path.split(modfile)[1]
-                    try:
-                        jar_get_bukkit_plugin_name(modfile)
-                    except:
-                        
-                        if not cursesplus.messagebox.askyesno(stdscr,[f"file {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
-                            continue
-                    shutil.copyfile(modfile,modsforlder+"/"+mf_name)
-            stdscr.erase()
+            minstype = cursesplus.coloured_option_menu(stdscr,["Back","Install from file on this computer","Download from Modrinth"])
+            if minstype == 1:
+                modfiles = cursesplus.filedialog.openfilesdialog(stdscr,"Please choose the plugins you would like to add",[["*.jar","JAR Executables"],["*","All files"]])
+                for modfile in modfiles:
+                    if os.path.isfile(modfile):
+                        stdscr.clear()
+                        cursesplus.displaymsgnodelay(stdscr,["loading plugin",modfile])
+                        mf_name = os.path.split(modfile)[1]
+                        try:
+                            jar_get_bukkit_plugin_name(modfile)
+                        except:
+                            
+                            if not cursesplus.messagebox.askyesno(stdscr,[f"file {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
+                                continue
+                        shutil.copyfile(modfile,modsforlder+"/"+mf_name)
+                stdscr.erase()
+            elif minstype == 2:
+                modrinth_api_download_system(stdscr,modsforlder,serverversion)
         else:
             chosenplug = spldi - 2
 
@@ -1271,6 +1354,56 @@ def manage_server_icon(stdscr):
                 except:
                     pass
 
+def config_server(stdscr,chosenserver):
+    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration"])
+    if __l == 0:
+        return
+    elif __l == 1:
+        if not os.path.isfile("server.properties"):
+            cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+        else:
+            with open("server.properties") as f:
+                config = PropertiesParse.load(f.read())
+            while True:
+                chc = crss_custom_ad_menu(stdscr,["BACK"]+[f for f in list(config.keys())])
+                if chc == 0:
+                    break
+                else:
+                    cursesplus.displaymsg(stdscr,[f"Current value of {list(config.keys())[chc-1]} Is",list(config.values())[chc-1]])
+                    if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
+                        curses.curs_set(1)
+                        newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}",prefiltext=str(list(config.values())[chc-1]))
+                        curses.curs_set(0)
+                        config[list(config.keys())[chc-1]] = newval
+            with open("server.properties","w+") as f:
+                f.write(PropertiesParse.dump(config))
+    elif __l == 2:
+        dt = APPDATA["servers"][chosenserver-1]
+        while True:
+            dx = crss_custom_ad_menu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
+            if dx == 0:
+                APPDATA["servers"][chosenserver-1] = dt
+                break
+            else:
+                cursesplus.displaymsg(stdscr,[f"Current value of {list(dt.keys())[dx-1]} is",str(list(dt.values())[dx-1])])
+                lname = list(dt.keys())[dx-1]
+                if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
+                    if lname == "software" or lname == "moddable":
+                        cursesplus.messagebox.showerror(stdscr,["This value may not be changed"])
+                        continue
+                    curses.curs_set(1)
+                    newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(dt.keys())[dx-1]}",prefiltext=str(list(dt.values())[dx-1]))
+                    curses.curs_set(0)
+                    dt[list(dt.keys())[dx-1]] = newval
+        APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+    elif __l == 3:
+        if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
+            os.remove("server.properties")
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
+                sd = setup_server_properties(stdscr)
+                with open("server.properties","w+") as f:
+                    f.write(PropertiesParse.dump(sd))
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -1332,54 +1465,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
-            __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration"])
-            if __l == 0:
-                continue
-            elif __l == 1:
-                if not os.path.isfile("server.properties"):
-                    cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
-                else:
-                    with open("server.properties") as f:
-                        config = PropertiesParse.load(f.read())
-                    while True:
-                        chc = crss_custom_ad_menu(stdscr,["BACK"]+[f for f in list(config.keys())])
-                        if chc == 0:
-                            break
-                        else:
-                            cursesplus.displaymsg(stdscr,[f"Current value of {list(config.keys())[chc-1]} Is",list(config.values())[chc-1]])
-                            if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
-                                curses.curs_set(1)
-                                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}",prefiltext=str(list(config.values())[chc-1]))
-                                curses.curs_set(0)
-                                config[list(config.keys())[chc-1]] = newval
-                    with open("server.properties","w+") as f:
-                        f.write(PropertiesParse.dump(config))
-            elif __l == 2:
-                dt = APPDATA["servers"][chosenserver-1]
-                while True:
-                    dx = crss_custom_ad_menu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
-                    if dx == 0:
-                        APPDATA["servers"][chosenserver-1] = dt
-                        break
-                    else:
-                        cursesplus.displaymsg(stdscr,[f"Current value of {list(dt.keys())[dx-1]} is",str(list(dt.values())[dx-1])])
-                        lname = list(dt.keys())[dx-1]
-                        if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
-                            if lname == "software" or lname == "moddable":
-                                cursesplus.messagebox.showerror(stdscr,["This value may not be changed"])
-                                continue
-                            curses.curs_set(1)
-                            newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(dt.keys())[dx-1]}",prefiltext=str(list(dt.values())[dx-1]))
-                            curses.curs_set(0)
-                            dt[list(dt.keys())[dx-1]] = newval
-                APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
-            elif __l == 3:
-                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
-                    os.remove("server.properties")
-                    if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
-                        sd = setup_server_properties(stdscr)
-                        with open("server.properties","w+") as f:
-                            f.write(PropertiesParse.dump(sd))
+            config_server(stdscr,chosenserver)
         elif w == 4:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"]):
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"]):
@@ -1437,7 +1523,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             else:
                 cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
         elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
-            svr_mod_mgr(stdscr,SERVER_DIR)
+            svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"])
         elif w == 7 and not APPDATA["servers"][chosenserver-1]["moddable"]:
             cursesplus.messagebox.showerror(stdscr,["Vanilla servers can not have plugins."])
         elif w == 8:
