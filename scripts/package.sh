@@ -3,7 +3,7 @@
 
 echo " ===> Creating standard package"
 rm -rf deb
-rm -rf *.xz *.amc dist *.log *.deb *.zst >/dev/null
+rm -rf *.xz *.amc dist *.log *.deb *.zst *.rpm >/dev/null
 tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dev' --exclude='./deb' -cJf craftserversetup.tar.xz ./*
 echo " ===> Creating Debian Package"
 #Create deb directories. Ignore if they don't exist
@@ -53,8 +53,7 @@ cp assets/mc.png deb/usr/share/pixmaps/craftserversetup.png
 cp assets/craftserversetup.desktop deb/usr/share/applications
 sed -i "s@}@/usr/share/pixmaps@g" "deb/usr/share/applications/craftserversetup.desktop"
 
-#Create update blocker
-touch $DEBLIBFOLDER/updateblock
+touch $DEBLIBFOLDER/deb
 
 #Move MIME into temporary directory
 cp assets/mime.xml $DEBTEMPFOLDER
@@ -67,5 +66,3 @@ cp scripts/debian/postinstall.sh deb/DEBIAN/postinst
 chmod +x deb/DEBIAN/postinst
 
 dpkg-deb --build deb craftserversetup.deb
-echo " ===> Creating Arch package"
-debtap craftserversetup.deb

@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.25"#The semver version
+APP_UF_VERSION = "1.25.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -2201,6 +2201,15 @@ Thank you very much, beta testers
 === UI TESTERS ===
 Finn Komuniecki
 Jim Westwell
+                        
+
+Software used in the making of this program:
+
+-Visual Studio Code
+-Python
+-Pyinstaller
+-Inno Setup
+-Github
 
     """,message="CREDITS")
 
@@ -2215,33 +2224,46 @@ def do_linux_update(stdscr) -> bool:
         if compare_versions(mostrecentreleasedversion,APP_UF_VERSION) == 1:
             #New update
             if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{mostrecentreleasedversion} over {APP_UF_VERSION}","Would you like to install it?"]):
-                
-                cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
-                downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.tar.xz"
-                if os.path.isdir("/tmp/crssupdate"):
-                    shutil.rmtree("/tmp/crssupdate")
-                os.mkdir("/tmp/crssupdate")
-                urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.tar.xz")
-                cursesplus.displaymsgnodelay(stdscr,["Installing update"])
-                if unpackage_server("/tmp/crssupdate/craftserversetup.tar.xz","/tmp/crssupdate") == 1:
-                    cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
-                    return False
-                pushd("/tmp/crssupdate")
-                if os.path.isfile("/usr/bin/craftserversetup"):
-                    #admin
+                if not os.path.isfile("/usr/lib/craftserversetup/deb"):
+                    cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
+                    downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.tar.xz"
+                    if os.path.isdir("/tmp/crssupdate"):
+                        shutil.rmtree("/tmp/crssupdate")
+                    os.mkdir("/tmp/crssupdate")
+                    urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.tar.xz")
+                    cursesplus.displaymsgnodelay(stdscr,["Installing update"])
+                    if unpackage_server("/tmp/crssupdate/craftserversetup.tar.xz","/tmp/crssupdate") == 1:
+                        cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
+                        return False
+                    pushd("/tmp/crssupdate")
+                    if os.path.isfile("/usr/bin/craftserversetup"):
+                        #admin
+                        spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
+                        with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
+                            r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k bash /tmp/crssupdate/scripts/install.sh",stdout=std0,stderr=std0,shell=True)
+                    else:
+                        with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
+                            r = subprocess.call(["bash",f"/tmp/crssupdate/scripts/install.sh"],stdout=std0,stderr=std0)
+                    popd()
+                    if r == 0:
+                        return True
+                    else:
+                        cursesplus.messagebox.showwarning(stdscr,["Update failed.","Check /tmp/crssupdate/UPDATELOG.txt"])
+                    
+                    # Equivilant of tar -xf
+                else:
+                    #Attempt deb install
+                    cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
+                    downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.deb"
+                    if os.path.isdir("/tmp/crssupdate"):
+                        shutil.rmtree("/tmp/crssupdate")
+                    os.mkdir("/tmp/crssupdate")
+                    urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.deb")
+                    cursesplus.displaymsgnodelay(stdscr,["Installing update"])
                     spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                     with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                        r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k bash /tmp/crssupdate/scripts/install.sh",stdout=std0,stderr=std0,shell=True)
-                else:
-                    with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                        r = subprocess.call(["bash",f"/tmp/crssupdate/scripts/install.sh"],stdout=std0,stderr=std0)
-                popd()
-                if r == 0:
-                    return True
-                else:
-                    cursesplus.messagebox.showwarning(stdscr,["Update failed.","Check /tmp/crssupdate/UPDATELOG.txt"])
-                
-                # Equivilant of tar -xf
+                        r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k dpkg -i /tmp/crssupdate/craftserversetup.deb",stdout=std0,stderr=std0,shell=True)
+
             else:
                 return False#Quit by user preference
         else:

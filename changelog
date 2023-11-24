@@ -1,3 +1,7 @@
+1.25.1:
+-Add debian update support
+-Drop Arch support :()
+    -It is because I have no arch computer
 1.25:
 -Move server config to a new function because manage_server is getting too fat
 -Add option to download mod files from Modrinth
