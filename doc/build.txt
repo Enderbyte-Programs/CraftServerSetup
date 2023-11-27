@@ -17,7 +17,9 @@ How to build CraftServerSetup for production
 15. Create file dist/craftserversetup/startupflags.txt. It should contain the word "portable" and nothing more
 16. Create a ZIP file of dist/craftserversetup. It should have the name "craftserversetup-{VERSION NAME}-portable.zip"
 17. Add Windows packages to GitHub
-18. Shutdown or save the VM
+18. Add ISS file to Github
 19. Update GitHub update.txt to include the correct download link to the installer as well as the correct version as well as any additional changelogs.
+20. Test download of new update on CRSS installation in VM
+21. Shutdown or save the VM
 
-20. Build complete...
+22. Build complete...

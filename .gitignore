@@ -1,0 +1,6 @@
+*.zip
+*.xz
+*.deb
+*.zst
+deb/
+*.pyc
