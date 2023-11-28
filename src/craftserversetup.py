@@ -907,21 +907,33 @@ def setup_server_properties(stdscr) -> dict:
             
         elif lssl == 0:
             #basic
-            dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins?"])
-            dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this server?"])
-            dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this server?"])
-            dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this server?"])
+            #dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins?"])
+            #dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this server?"])
+            #dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this server?"])
+            #dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this server?"])
             dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
             dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
-            dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
+            #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
             dpp["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed? (max players)",minimum=1,maximum=1000000,prefillnumber=20)
             dpp["motd"] = "\\n".join(cursesplus.cursesinput(stdscr,"What should your server message say?",2,59).splitlines())
-            dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
+            #dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
             dpp["simulation-distance"] = cursesplus.numericinput(stdscr,"What should the maximum simulation distance on the server be?",False,False,2,32,10)
             dpp["view-distance"] = cursesplus.numericinput(stdscr,"What should the maximum view distance on the server be?",False,False,2,32,10)
-            dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
-            dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
-            dpp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
+            #dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
+            #dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
+            #pp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
+            sslxdd = cursesplus.checkboxlist(stdscr,[
+            CheckBoxItem("allow-flight","Allow Flight for all players",False),
+            CheckBoxItem("allow-nether","Allow the nether",True),
+            CheckBoxItem("generate-structures","Generate structures such as villages",True),
+            CheckBoxItem("hardcore","Enable Hardcore mode",False),
+            CheckBoxItem("enable-command-block","Allow command block usage",True),
+            CheckBoxItem("pvp","Allow PVP",True),
+            CheckBoxItem("spawn-animals","Spawn Passive animals",True),
+            CheckBoxItem("spawn-monsters","Spawn monsters",True),
+            CheckBoxItem("spawn-npcs","Spawn Villagers",True)
+            ],"Please choose configuration for your server")
+            dpp = dpp | sslxdd
             
         elif lssl == 1:
             #world
