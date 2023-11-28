@@ -983,10 +983,6 @@ def file_get_md5(path: str) -> str:
         data = f.read()
     return hashlib.md5(data).hexdigest()
 
-def dictedit(stdscr,inputd) -> dict:
-    cursesplus.textview(stdscr,text=json.dumps(inputd,indent=4))
-    pass
-
 def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit=1000):
     api_base = "https://api.modrinth.com/v2"
     headers = {"User-Agent":MODRINTH_USER_AGENT,"content-type":"application/json"}
@@ -1098,7 +1094,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
             chosenplug = spldi - 2
 
             while True:
-                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Edit config.yml","Delete Plugin","Reset Plugin"])
+                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Delete Plugin","Reset Plugin"])
                 if wtd == 0:
                     break
                 elif wtd == 1:
@@ -1126,20 +1122,11 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
                     stdscr.addstr(10,0,"Press any key to proceed",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
                     stdscr.getch()
                 elif wtd == 2:
-                    activeplug = PLUGSLIST[chosenplug]
-                    if os.path.isfile(modsforlder+"/"+activeplug["name"]+"/config.yml"):
-                        with open(modsforlder+"/"+activeplug["name"]+"/config.yml") as pld:
-                            data = pld.read()
-                        pl = yaml.load(data,yaml.BaseLoader)
-                        dictedit(stdscr,pl)
-                    else:
-                        cursesplus.messagebox.showerror(stdscr,["This plugin does not appear to have config.yml"])
-                elif wtd == 3:
                     if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this plugin from your server?"]):
                         activeplug = PLUGSLIST[chosenplug]
                         os.remove(activeplug["path"])
                         break
-                elif wtd == 4:
+                elif wtd == 3:
                     activeplug = PLUGSLIST[chosenplug]
                     if os.path.isdir(SERVERDIRECTORY+"/plugins/"+activeplug["name"]):
                         if cursesplus.messagebox.askyesno(stdscr,["Are you sure you would like to reset this plugin?"]):

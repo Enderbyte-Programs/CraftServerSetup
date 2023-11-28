@@ -21,7 +21,7 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 - Run the command `./installer`
 
-- This will install it
+- This will install it locally. To install it for everyone, run `sudo ./installer`
 
 - To remove it, run `./installer uninstall`
 

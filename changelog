@@ -1,5 +1,6 @@
-1.26-b1:
+1.26:
 -Move build system to dofile
+-Remove edit with config.yml
 1.25.1:
 -Add debian update support
 -Drop Arch support :()
