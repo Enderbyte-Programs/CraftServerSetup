@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.26"#The semver version
+APP_UF_VERSION = "1.26.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -37,6 +37,15 @@ import time                     #Timezone data
 import textwrap                 #Text wrapping
 
 WINDOWS = platform.system() == "Windows"
+
+if sys.version_info < (3,7):
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("!!!!!! Serious  Error !!!!!!")
+    print("!! Python version too old !!")
+    print("! Use version 3.7 or newer !")
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    input("Press enter to halt -->")
+    sys.exit(5)
 
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if not WINDOWS:#Windows edition will package libraries already
@@ -843,18 +852,28 @@ def setup_server_properties(stdscr) -> dict:
             return dpp
         elif lssl == 3:
             #Network Settings
-            dpp["enable-rcon"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable Remote CONtrol on this server?","WARNING: This could be dangerous"])
+
+            #dpp["enable-rcon"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable Remote CONtrol on this server?","WARNING: This could be dangerous"])
+            #dpp["enable-status"] = not cursesplus.messagebox.askyesno(stdscr,["Would you like to hide this server's status?"])
+            #dpp["enable-query"] = not cursesplus.messagebox.askyesno(stdscr,["Would you like to hide this server's player count?"])
+            #dpp["hide-online-players"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to hide the player list?"])
+            #dpp["prevent-proxy-connection"] = not cursesplus.messagebox.askyesno(stdscr,["Do you want to allow proxy connections?"])
+            iiodd = cursesplus.checkboxlist(stdscr,[
+                CheckBoxItem("enable-rcon","Enable remote control (Advanced users only!)",False),
+                CheckBoxItem("enable-status","Show server online status",True),
+                CheckBoxItem("enable-query","Show server player count",True),
+                CheckBoxItem("hide-online-players","Show list of online players",True),
+                CheckBoxItem("prevent-proxy-connection","Permit proxy connections",True)
+            ],'Please choose configuration for your server')
+            dpp = dpp | iiodd
+            dpp["query.port"] = cursesplus.numericinput(stdscr,"Please input the query port: (default 25565)",False,False,1,65535,25565)        
+            dpp["server-port"] = cursesplus.numericinput(stdscr,"Please input the port that this server listens on: (default 25565)",False,False,1,65535,25565)  
+
+
             if dpp["enable-rcon"]:
                 dpp["broadcast-rcon-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable RCON (Remote CONtrol) output to operators?"])
                 dpp["rcon.password"] = cursesplus.cursesinput(stdscr,"Please input RCON password",passwordchar="*")
                 dpp["rcon.port"] = cursesplus.numericinput(stdscr,"Please input the RCON port: (default 25575)",False,False,1,65535,25575)
-
-            dpp["enable-status"] = not cursesplus.messagebox.askyesno(stdscr,["Would you like to hide this server's status?"])
-            dpp["enable-query"] = not cursesplus.messagebox.askyesno(stdscr,["Would you like to hide this server's player count?"])
-            dpp["hide-online-players"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to hide the player list?"])
-            dpp["prevent-proxy-connection"] = not cursesplus.messagebox.askyesno(stdscr,["Do you want to allow proxy connections?"])
-            dpp["query.port"] = cursesplus.numericinput(stdscr,"Please input the query port: (default 25565)",False,False,1,65535,25565)        
-            dpp["server-port"] = cursesplus.numericinput(stdscr,"Please input the port that this server listens on: (default 25565)",False,False,1,65535,25565)  
 
         elif lssl == 2:
             #Advanced settings

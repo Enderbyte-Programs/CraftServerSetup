@@ -1,3 +1,6 @@
+1.26.1:
+-Error if python version too old
+-Migrate some config to checkboxlist
 1.26:
 -Move build system to dofile
 -Remove edit with config.yml
