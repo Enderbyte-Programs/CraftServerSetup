@@ -11,29 +11,31 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 ## Linux
 
-### Dependencies not included
+### Installing from tar.xz
 
-These should not be an issues as almost everyone has these programs. CraftServerSetup comes bundled with all required Python libraries
+- Download craftserversetup.tar.xz from the latest release
 
-python3, xz, tar, coreutils, sed, grep
+- Unzip the tar.xz to a directory
 
-### Downloading
+- Open a terminal in that directory
 
-First, download craftserversetup.tar.xz or download the github repo. Next, extract it into a build directory with the command: `mkdir crss_build;tar -xf craftserversetup.tar.xz -C crss_build;cd crss_build`. Now you are in the source tree.
+- Run the command `./installer`
 
-Now here there are two install methods
+- This will install it
 
-### 1. Interactive installation (best for humans)
+- To remove it, run `./installer uninstall`
 
-In your terminal, execute `python3 install.py` or run it in a terminal. You will see a list of commands. Press "I" for Install. If it succeeds, the top message will say good. If it says bad, check recent.log
+- If for some reason the installer is not chmodded, run `python3 installer`
 
-Next, run `crss`. The program will do the remainder of the setup
+### Building from source
 
-### 2. Non-interactive installation
+- Clone the repository with `git clone <url>`
 
-In your terminal, execute `bash scripts/install.sh`. This will install automcserver verbosely
+- Install sbuild-dofile from https://github.com/Enderbyte-Programs/sbuild-dofile
 
-Next, run `crss`. The program will do the remainder of the setup
+- In the repo directory, run `sbuild`
+
+- This will install it
 
 ## About The Folders
 

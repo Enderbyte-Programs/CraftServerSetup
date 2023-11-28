@@ -138,10 +138,13 @@
 !def reset
     rm -rf ~/.local/share/mcserver
 !def package
+    echo " ===> DANGER! This is not meant to be used by normal users. If you are not a developer, expect a lot of errors"
+    echo " ===> Portabilizing dofile"
+    sbuild %package installer
     echo " ===> Creating standard package"
     rm -rf deb
     rm -rf *.xz *.amc dist *.log *.deb *.zst *.rpm >/dev/null
-    tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dev' --exclude='./deb' -cJf craftserversetup.tar.xz ./*
+    tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dofile' --exclude='./deb' -cJf craftserversetup.tar.xz ./*
     echo " ===> Creating Debian Package"
     #Create deb directories. Ignore if they don't exist
     rm craftserversetup.deb
