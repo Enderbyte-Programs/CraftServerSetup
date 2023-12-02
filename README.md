@@ -77,7 +77,7 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 1.27 - Purpur
 
-1.28 - Purpur config | general config
+1.28 - dictedit (general config)
 
 1.29 - Cross server convert
 

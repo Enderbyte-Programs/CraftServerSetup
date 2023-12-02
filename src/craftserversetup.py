@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.27-b1"#The semver version
+APP_UF_VERSION = "1.27"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -1300,6 +1300,21 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_postinit(PACKAGEDATA,chosenserver)
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
 
+def update_purpur_software(stdscr,serverdir:str,chosenserver:int):
+    update_s_software_preinit(serverdir)
+    verlist = list(reversed(requests.get("https://api.purpurmc.org/v2/purpur").json()["versions"]))
+    verdn = verlist[crss_custom_ad_menu(stdscr,verlist,"Choose a version")]
+    if cursesplus.messagebox.askyesno(stdscr,["Do you want to install the latest build?","This is highly recommended"]):
+        bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/latest/download"
+    else:
+        dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
+        builddn = crss_custom_ad_menu(stdscr,dz)
+        bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
+    cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
+    urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
+    PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
+    update_s_software_postinit(PACKAGEDATA,chosenserver)
+
 def view_server_logs(stdscr,server_dir:str):
     logsdir = server_dir+"/logs"
     
@@ -1573,6 +1588,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 update_paper_software(stdscr,os.getcwd(),chosenserver)
             elif APPDATA["servers"][chosenserver-1]["software"] == 2:
                 update_spigot_software(stdscr,os.getcwd(),chosenserver)
+            elif APPDATA["servers"][chosenserver-1]["software"] == 4:
+                update_purpur_software(stdscr,os.getcwd(),chosenserver)
             else:
                 cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
         elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
