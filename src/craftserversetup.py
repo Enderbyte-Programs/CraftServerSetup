@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.26.1"#The semver version
+APP_UF_VERSION = "1.27-b1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -50,7 +50,7 @@ if sys.version_info < (3,7):
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if not WINDOWS:#Windows edition will package libraries already
     if "bin" in sys.argv[0]:
-        sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs
+        #sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs TODO!!!! REMOVE THIS LATER
         sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
         sys.path.insert(1,"/usr/lib/craftserversetup")
         DEBUG=False
@@ -78,6 +78,7 @@ import yaml                     #Parse YML Files
 from epadvertisements import *  #Advertisements library (BY ME)
 import epdoc                    #Documentations library (BY ME)
 import pngdim                   #Calculate dimensions of a PNG file
+import pexpect
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -149,7 +150,7 @@ def sigint(signal,frame):
     restart_colour()
     if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
         updateappdata()
-        sys.exit()
+        sys.exit(0)
 
 def compatibilize_appdata(data:dict) -> dict:
     try:
@@ -628,8 +629,28 @@ def setupnewserver(stdscr):
     elif wtd == 2:
         import_server(stdscr)
         return
-    serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Vanilla (Normal)","Spigot","Paper"],"Please choose your server software")
-    if serversoftware == 0:
+    while True:
+        serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Help me choose","Vanilla","Spigot","Paper","Purpur"],"Please choose your server software")
+        if serversoftware != 1:
+            break
+        else:
+            cursesplus.textview(stdscr,text="""
+Help on choosing a server software
+                                
+Vanilla                                
+This is the normal Minecraft server software. It is the only software that Mojang officially supports. It can't do any plugins.
+
+Spigot
+This is an optimized version of Bukkit. It supports plugins but can become memory heavy
+
+Paper
+This is an optimized version of Spigot and is very popular. It also supports plugins
+
+Purpur
+This is apparently even more optimized. It also supports plugins. It can configure a lot of things in your server
+""")
+    serversoftware -= 1
+    if serversoftware == -1:
         return
     elif serversoftware == 1:
         cursesplus.displaymsgnodelay(stdscr,["Getting version information"])
@@ -729,6 +750,18 @@ def setupnewserver(stdscr):
         
         urllib.request.urlretrieve(bdownload,S_INSTALL_DIR+"/server.jar")
         PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
+    elif serversoftware == 4:
+        verlist = list(reversed(requests.get("https://api.purpurmc.org/v2/purpur").json()["versions"]))
+        verdn = verlist[crss_custom_ad_menu(stdscr,verlist,"Choose a version")]
+        if cursesplus.messagebox.askyesno(stdscr,["Do you want to install the latest build?","This is highly recommended"]):
+            bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/latest/download"
+        else:
+            dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
+            builddn = crss_custom_ad_menu(stdscr,dz)
+            bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
+        cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
+        urllib.request.urlretrieve(bdownload,S_INSTALL_DIR+"/server.jar")
+        PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
     cursesplus.displaymsgnodelay(stdscr,["Setting up server"])
     setupeula = cursesplus.messagebox.askyesno(stdscr,["To proceed, you must agree","To Mojang's EULA","","Do you agree?"])
     if setupeula:
@@ -1453,6 +1486,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 curses.curs_set(1)
                 curses.reset_shell_mode()
                 lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
+                #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
+                #child.expect("Finished")
                 curses.reset_prog_mode()
                 curses.curs_set(0)
             else:
