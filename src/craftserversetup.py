@@ -1566,11 +1566,17 @@ def config_server(stdscr,chosenserver):
         if not dt["moddable"]:
             cursesplus.messagebox.showwarning(stdscr,["There are no extra config options for this type of server"])
         else:
-            with open(dt["dir"]+"/bukkit.yml") as f:
-                data = yaml.load(f,yaml.BaseLoader)
-            data = dictedit(stdscr,data,"Bukkit Config")
-            with open(dt["dir"]+"/bukkit.yml","w+") as f:
-                f.write(yaml.dump(data,default_flow_style=False))
+            while True:
+                lkz = [os.path.split(z)[1] for z in glob.glob(dt["dir"]+"/*.yml")]
+                dz = crss_custom_ad_menu(stdscr,["Quit"]+lkz)
+                if dz == 0:
+                    break
+                else:
+                    with open(lkz[dz-1]) as f:
+                        data = yaml.load(f,yaml.FullLoader)
+                    data = dictedit(stdscr,data,os.path.split(lkz[dz-1])[1])
+                    with open(lkz[dz-1],"w+") as f:
+                        f.write(yaml.dump(data,default_flow_style=False))
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
