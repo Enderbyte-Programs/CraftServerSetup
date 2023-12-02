@@ -613,7 +613,7 @@ def dict_to_calctype(inputd:dict|list) -> list:
         for ik in list(inputd.items()):
             src = ik[0]
             dst = ik[1]
-            if type(dst) == int:
+            if type(dst) == int or type(dst) == float:
                 obtype = "number"
             elif type(dst) == str:
                 obtype = "string"
@@ -621,12 +621,14 @@ def dict_to_calctype(inputd:dict|list) -> list:
                 obtype = "folder"
             elif type(dst) == list:
                 obtype = "list"
+            elif type(dst) == bool:
+                obtype = "bool"
             else:
-                obtype = "other"
+                obtype = str(type(dst))
             final.append(f"{src} ( {obtype} )")
     else:
         for ik in list(inputd):
-            if type(ik) == int:
+            if type(ik) == int or type(dst) == float:
                 obtype = "number"
             elif type(ik) == str:
                 obtype = "string"
@@ -634,8 +636,10 @@ def dict_to_calctype(inputd:dict|list) -> list:
                 obtype = "folder"
             elif type(ik) == list:
                 obtype = "list"
+            elif type(dst) == bool:
+                obtype = "bool"
             else:
-                obtype = "other"
+                obtype = str(type(dst))
             final.append(f"{ik} ( {obtype} )")
     return final
 
@@ -669,9 +673,27 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
         elif e == 1 and path != "/":
             path = "/".join(path.split("/")[0:-1])
         else:
+            newval = None
             path += "/" + list(currentedit.items())[e-3][0]
+            epath = path.split("/")[-1]
+            if type(dictpath(inputd,path)) == str:
+                cursesplus.showcursor()
+                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {path}",prefiltext=dictpath(inputd,path))
+                cursesplus.hidecursor()
+            elif type(dictpath(inputd,path)) == int or type(dictpath(inputd,path)) == float:
+                cursesplus.showcursor()
+                newval = cursesplus.numericinput(stdscr,f"Please input a new value for {path}",True,True,prefillnumber=dictpath(inputd,path))
+                cursesplus.hidecursor()
+            elif type(dictpath(inputd,path)) == bool:
+                newval = cursesplus.messagebox.askyesno(stdscr,["New boolean value for",path])
             if type(dictpath(inputd,path)) != dict and type(dictpath(inputd,path)) != list:
-                path = "/".join(path.split("/")[0:-1])
+                path = "/".join(path.split("/")[0:-1]) 
+            if newval is not None:
+                paths = [z for z in path.split("/") if z != ""]
+                mydata = inputd
+                for i in paths:
+                    mydata = mydata[i]
+                mydata[epath] = newval      
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
     sdata = APPDATA["servers"][chosenserver]
@@ -1546,7 +1568,9 @@ def config_server(stdscr,chosenserver):
         else:
             with open(dt["dir"]+"/bukkit.yml") as f:
                 data = yaml.load(f,yaml.BaseLoader)
-            dictedit(stdscr,data,"Bukkit Config")
+            data = dictedit(stdscr,data,"Bukkit Config")
+            with open(dt["dir"]+"/bukkit.yml","w+") as f:
+                f.write(yaml.dump(data,default_flow_style=False))
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -2388,10 +2412,10 @@ def do_linux_update(stdscr) -> bool:
                         #admin
                         spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                         with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                            r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k bash /tmp/crssupdate/scripts/install.sh",stdout=std0,stderr=std0,shell=True)
+                            r = subprocess.call(f"echo -e \"{spassword}\" | sudo -S -k python3 /tmp/crssupdate/installer install",stdout=std0,stderr=std0,shell=True)
                     else:
                         with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                            r = subprocess.call(["bash",f"/tmp/crssupdate/scripts/install.sh"],stdout=std0,stderr=std0)
+                            r = subprocess.call(["python3","/tmp/crssupdate/installer","install"],stdout=std0,stderr=std0)
                     popd()
                     if r == 0:
                         return True
