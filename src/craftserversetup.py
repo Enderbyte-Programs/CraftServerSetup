@@ -670,8 +670,11 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
         ])
         if e == 0:
             return inputd
-        elif e == 1 and path != "/":
-            path = "/".join(path.split("/")[0:-1])
+        elif e == 1:
+            if path != "/":
+                path = "/".join(path.split("/")[0:-1])
+            else:
+                continue
         else:
             newval = None
             path += "/" + list(currentedit.items())[e-3][0]
@@ -1250,7 +1253,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
             chosenplug = spldi - 2
 
             while True:
-                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Delete Plugin","Reset Plugin"])
+                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Delete Plugin","Reset Plugin","Edit config.yml"])
                 if wtd == 0:
                     break
                 elif wtd == 1:
@@ -1289,6 +1292,18 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
                             shutil.rmtree(SERVERDIRECTORY+"/plugins/"+activeplug["name"])
                     else:
                         cursesplus.messagebox.showwarning(stdscr,["This plugin has no AppData so nothing was deleted"])
+                elif wtd == 4:
+                    activeplug = PLUGSLIST[chosenplug]
+                    if os.path.isfile(SERVERDIRECTORY+"/plugins/"+activeplug["name"]+"/config.yml"):
+                        ef = SERVERDIRECTORY+"/plugins/"+activeplug["name"]+"/config.yml"
+                        with open(ef) as f:
+                            data = yaml.load(f,yaml.FullLoader)
+                        data = dictedit(stdscr,data,f"{activeplug['name']} config")
+                        with open(ef,"w+") as f:
+                            f.write(yaml.dump(data,default_flow_style=False))
+
+                    else:
+                        cursesplus.messagebox.showerror(stdscr,["This plugin does not have a config file"])
 
 def generate_script(svrdict: dict) -> str:
     _space = "\\ "

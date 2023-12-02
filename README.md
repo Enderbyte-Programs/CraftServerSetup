@@ -65,13 +65,9 @@ If you join the Beta Testing program, you will recieve the following rewards:
 
 3. One free infinite advertisement that will be put on the Enderbyte Programs ad network and displayed to all unupgraded CraftServerSetup users
 
-## The future
-
-MangyCat has suggested that I convert this to a web ui. To do this first, the backend must be detached from the frontend
-
 ## Product Keys and Ads
 
-As of 0.12.4 this program is semiproprietary. The code remains open source but is commercial in nature. A product key costs $2. If you don't want to get a product key, you have a 20% chance of seeing an ad every time you do something from the main menu. **If anybody would like to advertise on my ads system, please send me an email at enderbyte09@gmail.com**
+As of 0.12.4 this program is semiproprietary. The code remains open source but is commercial in nature. A product key costs $2. If you don't want to get a product key, you will see ads. The ads are approved by me so they are all safe. **If anybody would like to advertise on my ads system, please send me an email at enderbyte09@gmail.com**
 
 ## My TODO List
 
@@ -81,4 +77,6 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 1.29 - Cross server convert
 
-1.30 - Extensions? maybe?
+1.30 - Worlds store
+
+1.31 - Extensions
