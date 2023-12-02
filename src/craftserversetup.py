@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.27"#The semver version
+APP_UF_VERSION = "1.27.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -50,7 +50,7 @@ if sys.version_info < (3,7):
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if not WINDOWS:#Windows edition will package libraries already
     if "bin" in sys.argv[0]:
-        #sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs TODO!!!! REMOVE THIS LATER
+        sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs TODO!!!! REMOVE THIS LATER
         sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
         sys.path.insert(1,"/usr/lib/craftserversetup")
         DEBUG=False
@@ -78,7 +78,6 @@ import yaml                     #Parse YML Files
 from epadvertisements import *  #Advertisements library (BY ME)
 import epdoc                    #Documentations library (BY ME)
 import pngdim                   #Calculate dimensions of a PNG file
-import pexpect
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false

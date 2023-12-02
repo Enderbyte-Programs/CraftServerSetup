@@ -1,3 +1,5 @@
+1.27.1:
+-Fix massive bug
 1.27:
 -Error if python version too old
 -Migrate all server configuration to checkboxlist
