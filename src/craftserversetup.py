@@ -2129,7 +2129,7 @@ def import_server(stdscr):
             xdat["memory"] = memorytoall
             xdat["version"] = cursesplus.cursesinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?"])
-            xdat["software"] = crss_custom_ad_menu(stdscr,["Vanilla","Spigot","Paper"],"What software is this server running") + 1
+            xdat["software"] = crss_custom_ad_menu(stdscr,["Vanilla","Spigot","Paper","Purpur"],"What software is this server running") + 1
             xdat["script"] = generate_script(xdat)
             APPDATA["servers"].append(xdat)
             pushd(xdat["dir"])
