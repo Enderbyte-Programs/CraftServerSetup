@@ -209,3 +209,9 @@
 !def run:
     !execute install
     crss
+!def commit:
+    set -e
+    git add .
+    read -p "Commit message: " message
+    git commit -m "$message"
+    git push

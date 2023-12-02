@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.27.1"#The semver version
+APP_UF_VERSION = "1.28"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -249,10 +249,15 @@ if os.path.isdir(execdir):
     if os.path.isfile(execdir+"/startupflags.txt"):
         with open(execdir+"/startupflags.txt") as f:
             sfd = f.read().lower()
-        if "portable" in sfd or "-p" in sys.argv:
+        
+        if "portable" in sfd :
             PORTABLE = True
-        if "developer" in sfd or "-d" in sys.argv:
+        if "developer" in sfd:
             DEVELOPER = True
+if "-p" in sys.argv or "--portable" in sys.argv:
+    PORTABLE = True
+if "-d" in sys.argv or "--developer" in sys.argv:
+    DEVELOPER = True
 if not WINDOWS:
     APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
     if PORTABLE:
@@ -601,6 +606,72 @@ class PropertiesParse:
                 lout = str(lout)
             l += f[0] + "=" + str(lout) + "\n"
         return l
+
+def dict_to_calctype(inputd:dict|list) -> list:
+    final = []
+    if type(inputd) == dict:
+        for ik in list(inputd.items()):
+            src = ik[0]
+            dst = ik[1]
+            if type(dst) == int:
+                obtype = "number"
+            elif type(dst) == str:
+                obtype = "string"
+            elif type(dst) == dict:
+                obtype = "folder"
+            elif type(dst) == list:
+                obtype = "list"
+            else:
+                obtype = "other"
+            final.append(f"{src} ( {obtype} )")
+    else:
+        for ik in list(inputd):
+            if type(ik) == int:
+                obtype = "number"
+            elif type(ik) == str:
+                obtype = "string"
+            elif type(ik) == dict:
+                obtype = "folder"
+            elif type(ik) == list:
+                obtype = "list"
+            else:
+                obtype = "other"
+            final.append(f"{ik} ( {obtype} )")
+    return final
+
+def dictpath(inputd:dict,path:str):
+    if path == "/":
+        return inputd
+    final = inputd
+    for axx in path.split("/"):
+        if axx == "":
+            continue
+        final = final[axx]
+    return final
+
+def dictedit(stdscr,inputd:dict,name:str) -> dict:
+    path = "/"
+    while True:
+        path = path.replace("//","/")
+        options = ["Quit","Move up directory","ADD ITEM"]
+        currentedit = dictpath(inputd,path)
+        options += dict_to_calctype(currentedit)
+        e = cursesplus.coloured_option_menu(stdscr,options,f"{name} | Path: {path}",[
+            [
+                "quit",cursesplus.RED
+            ],["ADD",cursesplus.GREEN],
+            ["list",cursesplus.YELLOW],
+            ["folder",cursesplus.YELLOW],
+            ["string",cursesplus.CYAN]
+        ])
+        if e == 0:
+            return inputd
+        elif e == 1 and path != "/":
+            path = "/".join(path.split("/")[0:-1])
+        else:
+            path += "/" + list(currentedit.items())[e-3][0]
+            if type(dictpath(inputd,path)) != dict and type(dictpath(inputd,path)) != list:
+                path = "/".join(path.split("/")[0:-1])
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
     sdata = APPDATA["servers"][chosenserver]
@@ -1420,7 +1491,7 @@ def manage_server_icon(stdscr):
                     pass
 
 def config_server(stdscr,chosenserver):
-    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration"])
+    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration","Extra configuration"])
     if __l == 0:
         return
     elif __l == 1:
@@ -1468,6 +1539,14 @@ def config_server(stdscr,chosenserver):
                 sd = setup_server_properties(stdscr)
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(sd))
+    elif __l == 4:
+        dt = APPDATA["servers"][chosenserver-1]
+        if not dt["moddable"]:
+            cursesplus.messagebox.showwarning(stdscr,["There are no extra config options for this type of server"])
+        else:
+            with open(dt["dir"]+"/bukkit.yml") as f:
+                data = yaml.load(f,yaml.BaseLoader)
+            dictedit(stdscr,data,"Bukkit Config")
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
