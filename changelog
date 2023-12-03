@@ -1,3 +1,6 @@
+1.28:
+-Massive additions to server config
+-Windows now uses Pyinstaller 6.2
 1.28-b2:
 -Linux update now uses dofile
 1.28-b1:
