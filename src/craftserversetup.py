@@ -756,7 +756,105 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
         #    cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
         os.remove(serverdir+"/exdata.json")
         cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
+
+def download_vanilla_software(stdscr,serverdir) -> dict:
+    cursesplus.displaymsgnodelay(stdscr,["Getting version information"])
     
+    stdscr.clear()
+    stdscr.erase()
+    downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+    if downloadversion == 0:
+        return
+    else:
+        stdscr.clear()
+        cursesplus.displaymsgnodelay(stdscr,["Getting version manifest..."])
+        PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
+        cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
+    S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
+    S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
+    cursesplus.displaymsgnodelay(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"])
+    urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
+    return PACKAGEDATA
+
+def download_spigot_software(stdscr,serverdir,javapath) -> dict:
+    cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
+    urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar",serverdir+"/BuildTools.jar")
+    os.chdir(serverdir)
+    while True:
+        build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
+        p = cursesplus.ProgressBar(stdscr,13000,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,message="Building Spigot")
+        if not build_lver:
+            curses.curs_set(1)
+            xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            curses.curs_set(0)
+        else:
+            xver = "latest"
+        PACKAGEDATA = {"id":xver}
+        mx = os.get_terminal_size()[0]-4
+        proc = subprocess.Popen([javapath,"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
+        tick = 0
+        while True:
+            output = proc.stdout.readline()
+            if proc.poll() is not None:
+                break
+            if output:
+                tick += 1
+                if tick > 100:
+                    stdscr.clear() 
+                for l in output.decode().strip().splitlines():
+                    try:
+                        p.step()
+                        
+                        p.appendlog(l.replace("\r","").replace("\n","")[0:mx])
+                    except:
+                        p.max += 100
+                        p.step()
+                        
+                        p.appendlog(l.replace("\r","").replace("\n","")[0:mx])
+        rc = proc.poll()
+        if rc == 0:
+            p.done()
+            PACKAGEDATA["id"] = glob.glob("spigot*.jar")[0].split("-")[1].replace(".jar","")#Update version value as "latest" is very ambiguous. UPDATE: Fix bug where version is "1.19.4.jar"
+            os.rename(glob.glob("spigot*.jar")[0],"server.jar")
+            break
+        else:
+            cursesplus.messagebox.showerror(stdscr,["Build Failed","Please view the log for more info"])
+    return PACKAGEDATA
+
+def download_paper_software(stdscr,serverdir) -> dict:
+    VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
+    stdscr.erase()
+    pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+    BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
+    buildslist = list(reversed(BMAN["builds"]))
+    
+    if cursesplus.messagebox.askyesno(stdscr,["Would you like to install the latest build of Paper","It is highly recommended to do so"]):
+        builddat = buildslist[0]
+    else:
+        stdscr.erase()
+        builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+    bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+    #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+    cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
+    
+    urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
+    PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
+    return PACKAGEDATA
+
+def download_purpur_software(stdscr,serverdir) -> dict:
+    verlist = list(reversed(requests.get("https://api.purpurmc.org/v2/purpur").json()["versions"]))
+    verdn = verlist[crss_custom_ad_menu(stdscr,verlist,"Choose a version")]
+    if cursesplus.messagebox.askyesno(stdscr,["Do you want to install the latest build?","This is highly recommended"]):
+        bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/latest/download"
+    else:
+        dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
+        builddn = crss_custom_ad_menu(stdscr,dz)
+        bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
+    cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
+    urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
+    PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
+    return PACKAGEDATA
+
 def setupnewserver(stdscr):
     stdscr.erase()
     wtd = crss_custom_ad_menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
@@ -771,6 +869,7 @@ def setupnewserver(stdscr):
             break
         else:
             cursesplus.textview(stdscr,text="""
+                                
 Help on choosing a server software
                                 
 Vanilla                                
@@ -788,19 +887,6 @@ This is apparently even more optimized. It also supports plugins. It can configu
     serversoftware -= 1
     if serversoftware == -1:
         return
-    elif serversoftware == 1:
-        cursesplus.displaymsgnodelay(stdscr,["Getting version information"])
-        
-        stdscr.clear()
-        stdscr.erase()
-        downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
-        if downloadversion == 0:
-            return
-        else:
-            stdscr.clear()
-            cursesplus.displaymsgnodelay(stdscr,["Getting version manifest..."])
-            PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
-            cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
     while True:
         curses.curs_set(1)
         servername = cursesplus.cursesinput(stdscr,"Please choose a name for your server").strip()
@@ -821,83 +907,13 @@ This is apparently even more optimized. It also supports plugins. It can configu
     cursesplus.displaymsgnodelay(stdscr,["Please wait while your server is set up"])
     njavapath = choose_java_install(stdscr)
     if serversoftware == 1:
-        S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
-        S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
-        cursesplus.displaymsgnodelay(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"])
-        urllib.request.urlretrieve(S_DOWNLOAD_data["url"],S_INSTALL_DIR+"/server.jar")
+        PACKAGEDATA = download_vanilla_software(stdscr,S_INSTALL_DIR)
     elif serversoftware == 2:
-        cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
-        urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar",S_INSTALL_DIR+"/BuildTools.jar")
-        os.chdir(S_INSTALL_DIR)
-        while True:
-            build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
-            p = cursesplus.ProgressBar(stdscr,13000,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,message="Building Spigot")
-            if not build_lver:
-                curses.curs_set(1)
-                xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
-                curses.curs_set(0)
-            else:
-                xver = "latest"
-            PACKAGEDATA = {"id":xver}
-            mx = os.get_terminal_size()[0]-4
-            proc = subprocess.Popen([njavapath,"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
-            tick = 0
-            while True:
-                output = proc.stdout.readline()
-                if proc.poll() is not None:
-                    break
-                if output:
-                    tick += 1
-                    if tick > 100:
-                        stdscr.clear() 
-                    for l in output.decode().strip().splitlines():
-                        try:
-                            p.step()
-                            
-                            p.appendlog(l.replace("\r","").replace("\n","")[0:mx])
-                        except:
-                            p.max += 100
-                            p.step()
-                            
-                            p.appendlog(l.replace("\r","").replace("\n","")[0:mx])
-            rc = proc.poll()
-            if rc == 0:
-                p.done()
-                PACKAGEDATA["id"] = glob.glob("spigot*.jar")[0].split("-")[1].replace(".jar","")#Update version value as "latest" is very ambiguous. UPDATE: Fix bug where version is "1.19.4.jar"
-                os.rename(glob.glob("spigot*.jar")[0],"server.jar")
-                break
-            else:
-                cursesplus.messagebox.showerror(stdscr,["Build Failed","Please view the log for more info"])
+        PACKAGEDATA = download_spigot_software(stdscr,S_INSTALL_DIR,njavapath)
     elif serversoftware == 3:
-        VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
-        stdscr.erase()
-        pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
-        BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
-        buildslist = list(reversed(BMAN["builds"]))
-        
-        if cursesplus.messagebox.askyesno(stdscr,["Would you like to install the latest build of Paper","It is highly recommended to do so"]):
-            builddat = buildslist[0]
-        else:
-            stdscr.erase()
-            builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
-        bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
-        #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
-        cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
-        
-        urllib.request.urlretrieve(bdownload,S_INSTALL_DIR+"/server.jar")
-        PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
+        PACKAGEDATA = download_paper_software(stdscr,S_INSTALL_DIR)
     elif serversoftware == 4:
-        verlist = list(reversed(requests.get("https://api.purpurmc.org/v2/purpur").json()["versions"]))
-        verdn = verlist[crss_custom_ad_menu(stdscr,verlist,"Choose a version")]
-        if cursesplus.messagebox.askyesno(stdscr,["Do you want to install the latest build?","This is highly recommended"]):
-            bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/latest/download"
-        else:
-            dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
-            builddn = crss_custom_ad_menu(stdscr,dz)
-            bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
-        cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
-        urllib.request.urlretrieve(bdownload,S_INSTALL_DIR+"/server.jar")
-        PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
+        PACKAGEDATA = download_purpur_software(stdscr,S_INSTALL_DIR)
     cursesplus.displaymsgnodelay(stdscr,["Setting up server"])
     setupeula = cursesplus.messagebox.askyesno(stdscr,["To proceed, you must agree","To Mojang's EULA","","Do you agree?"])
     if setupeula:
@@ -933,6 +949,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
     except:
         pass
     os.chdir(bdir)
+    manage_server(stdscr,S_INSTALL_DIR,APPDATA["servers"].index(sd))
 
 def get_player_uuid(username:str):
     req = f"https://api.mojang.com/users/profiles/minecraft/{username}"

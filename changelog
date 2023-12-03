@@ -1,3 +1,5 @@
+1.29-b1:
+-Different software downloads are now in a seperate function
 1.28:
 -Massive additions to server config
 -Windows now uses Pyinstaller 6.2
