@@ -675,6 +675,47 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                 path = "/".join(path.split("/")[0:-1])
             else:
                 continue
+        elif e == 2:
+            if type(dictpath(inputd,path)) == dict:
+                keynamne = cursesplus.cursesinput(stdscr,"Please input the key name.")
+                ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
+                if ktype == 0:
+                    continue
+                elif ktype == 1:
+                    val = cursesplus.cursesinput(stdscr,"What is the value of this key?")
+                elif ktype == 2:
+                    val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
+                elif ktype == 3:
+                    val = cursesplus.messagebox.askyesno(stdscr,["New value for boolean?"])
+                elif ktype == 4:
+                    val = []
+                elif ktype == 5:
+                    val = {}
+                paths = [z for z in path.split("/") if z != ""]
+                mydata = inputd
+                for i in paths:
+                    mydata = mydata[i]
+                mydata[keynamne] = val 
+            elif type(dictpath(inputd,path)) == list:
+                #keynamne = cursesplus.cursesinput(stdscr,"Please input the key name.")
+                ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
+                if ktype == 0:
+                    continue
+                elif ktype == 1:
+                    val = cursesplus.cursesinput(stdscr,"What is the value of this key?")
+                elif ktype == 2:
+                    val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
+                elif ktype == 3:
+                    val = cursesplus.messagebox.askyesno(stdscr,["New value for boolean?"])
+                elif ktype == 4:
+                    val = []
+                elif ktype == 5:
+                    val = {}
+                paths = [z for z in path.split("/") if z != ""]
+                mydata = inputd
+                for i in paths:
+                    mydata = mydata[i]
+                mydata.append(val)
         else:
             newval = None
             path += "/" + list(currentedit.items())[e-3][0]
