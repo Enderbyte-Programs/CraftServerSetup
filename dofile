@@ -208,7 +208,7 @@
     dpkg-deb --build deb craftserversetup.deb
 !def run:
     !execute install
-    crss
+    crss -d
 !def commit:
     set -e
     git add .

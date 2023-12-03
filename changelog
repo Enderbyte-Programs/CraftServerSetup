@@ -1,3 +1,8 @@
+1.29-b2:
+-Will now got to individual server management after creation is complete
+-Add appdata editor to dev tools
+-Fix bugs in dictedit lists
+-Replace curses showerror with messagebox showerror
 1.29-b1:
 -Different software downloads are now in a seperate function
 1.28:

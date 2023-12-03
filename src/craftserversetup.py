@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.28"#The semver version
+APP_UF_VERSION = "1.29"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -627,8 +627,9 @@ def dict_to_calctype(inputd:dict|list) -> list:
                 obtype = str(type(dst))
             final.append(f"{src} ( {obtype} )")
     else:
+        oi = 0
         for ik in list(inputd):
-            if type(ik) == int or type(dst) == float:
+            if type(ik) == int or type(ik) == float:
                 obtype = "number"
             elif type(ik) == str:
                 obtype = "string"
@@ -636,11 +637,12 @@ def dict_to_calctype(inputd:dict|list) -> list:
                 obtype = "folder"
             elif type(ik) == list:
                 obtype = "list"
-            elif type(dst) == bool:
+            elif type(ik) == bool:
                 obtype = "bool"
             else:
-                obtype = str(type(dst))
-            final.append(f"{ik} ( {obtype} )")
+                obtype = str(type(ik))
+            final.append(f"Object {oi} ( {obtype} )")
+            oi += 1
     return final
 
 def dictpath(inputd:dict,path:str):
@@ -650,12 +652,16 @@ def dictpath(inputd:dict,path:str):
     for axx in path.split("/"):
         if axx == "":
             continue
-        final = final[axx]
+        if type(final) == list:
+            final = final[int(axx)]
+        else:
+            final = final[axx]
     return final
 
 def dictedit(stdscr,inputd:dict,name:str) -> dict:
     path = "/"
     while True:
+        mx,my = os.get_terminal_size()
         path = path.replace("//","/")
         options = ["Quit","Move up directory","ADD ITEM"]
         currentedit = dictpath(inputd,path)
@@ -694,7 +700,10 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                 paths = [z for z in path.split("/") if z != ""]
                 mydata = inputd
                 for i in paths:
-                    mydata = mydata[i]
+                    if type(mydata) == list:
+                        mydata = mydata[int(i)]
+                    else:
+                        mydata = mydata[i]
                 mydata[keynamne] = val 
             elif type(dictpath(inputd,path)) == list:
                 #keynamne = cursesplus.cursesinput(stdscr,"Please input the key name.")
@@ -714,11 +723,17 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                 paths = [z for z in path.split("/") if z != ""]
                 mydata = inputd
                 for i in paths:
-                    mydata = mydata[i]
+                    if type(mydata) == list:
+                        mydata = mydata[int(i)]
+                    else:
+                        mydata = mydata[i]
                 mydata.append(val)
         else:
             newval = None
-            path += "/" + list(currentedit.items())[e-3][0]
+            if type(currentedit) == dict:
+                path += "/" + list(currentedit.items())[e-3][0]
+            elif type(currentedit) == list:
+                path += "/" + str(e-3)
             epath = path.split("/")[-1]
             if type(dictpath(inputd,path)) == str:
                 cursesplus.showcursor()
@@ -736,7 +751,10 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                 paths = [z for z in path.split("/") if z != ""]
                 mydata = inputd
                 for i in paths:
-                    mydata = mydata[i]
+                    if type(mydata) == list:
+                        mydata = mydata[int(i)]
+                    else:
+                        mydata = mydata[i]
                 mydata[epath] = newval      
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
@@ -1165,7 +1183,7 @@ def servermgrmenu(stdscr):
             updateappdata()
 
         else:
-            cursesplus.displaymsg(stdscr,["ERROR","Server not found"])
+            cursesplus.messagebox.showerror(stdscr,["This server does not exist"])
             
             del APPDATA["servers"][chosenserver-1]#Unregister bad server
             updateappdata()
@@ -2544,8 +2562,9 @@ def global_backup_mgr(stdscr):
             load_backup(stdscr)   
 
 def devtools(stdscr):
+    global APPDATA
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","Python debug prompt","Test exception handling","Global variable dump"])
+        m = crss_custom_ad_menu(stdscr,["BACK","Python debug prompt","Test exception handling","Global variable dump","Appdata editor"])
         if m == 0:
             return
         elif m == 1:
@@ -2574,6 +2593,9 @@ def devtools(stdscr):
             for g in list(glv.items()):
                 final += f"NAME: {g[0]} VAL: {str(g[1])}\n"
             cursesplus.textview(stdscr,text=final)
+        elif m == 4:
+            APPDATA = dictedit(stdscr,APPDATA,"CRSS config")
+            updateappdata()
 
 def internet_thread(stdscr):
     global ADS
