@@ -60,6 +60,8 @@ The first thing you will be asked is if you have used a text-based program befor
 You will be asked many things such as what java installations you want, if you have permission to send telemetry, etc. You will finish on the main menu.
 
 In versions 0.13 and prior, you had the opportunity to set up a server before you have seen the main menu. This has been removed.
+
+For more info on each of the pages, see further down the page
 $Using Text Based Programs:
 CraftServerSetup is a text-based computer program. Officially, it is a TUI or Terminal User Interface. You will NEVER need to use your mouse at any point during use. Everything is done entirely with the keyboard. 
 
@@ -69,6 +71,20 @@ Message boxes are dismissed with the enter key and navigated around with the lef
 
 In most widgets, all of the key-bindings are layed out for you. The only exception to this is the file dialogues. If you need help with keybinds on the file dialog boxes, simply press H to bring up a list.
 $Product Keys:
-In the OOBE you will be asked to input a product key. You can get a product key by paying the $2 fee and telling Enderbyte Programs that you send it. You will recieve your product key shortly. Product keys remove advertisements.
+In the OOBE you will be asked to input a product key. You can get a product key by paying the $2 fee and telling Enderbyte Programs that you send it. You will recieve your product key shortly. Product keys remove advertisements and bypass the 1 server limit. Product keys as of 1.30 are 16 characters long. THey have latters and numbers, but are case insensitive. For crack artists looking to crack this program, good luck! Though the hashed keys are publicly available on pastebin, you still need to reverse engineer. 26 letters + 10 numbers = 36 characters. 36 ^ 16 characters divided by 100 keys in system means that you have to generate 1.8*10^48 hashes before you should stumble on a correct one. Trust me, it is not worth it.
+Old product keys were 8 numbers and incredibly easy to crack. Not anymore...
 $Advertisements:
 Advertisements are what you recieve if you do not input a product key. In every option menu, there is an advertisement. If you press A, the ad will be opened in your browser. Prior to 0.18.3, you had a 20% chance of encountering an ad while navigating. This was removed because it could be quite annoying
+$Starting a new server:
+To start a new server, simply select Set up a new server, then Create a new server from the main menu. From there, choose a software. As of 1.30, CraftServerSetup supports 4 softwares: Vanilla, Spigot, Paper, and Purpur. For each software, proceed down the list of documentation pages. However, before you do that, you will be asked for a name. A name MUST NOT have any special characters like / or \ because that will damage the file system. Spaces are OK.
+$Preparing Vanilla Software:
+If you have selected Vanilla from the menu where you are asked for the server software and you have entred a valid name for the server, you will be asked to set up a java installation. Choose one you have configured previously or see "Creating java installations" for how to register one in the first place. Remember: If you plan for your server to run 1.18 or newer, you need to choose a Java 17 installation (or newer, like Java 21, etc). If you do not, your server will fail. Next, you will be prompted for a version. Snapshots ARE included and the list is newest to oldest. Full releases are highlighted in green. You can still cancel at this stage. If you continue, you will not be able to cancel the server creation. After you choose the version, the server file will be downloaded. You will be shown the size of the file
+
+$Finishing up server creation:
+After the software is downloaded, you will be prompted to agree to Mojang's EULA. If you say no here, the server will not start and will require manual intervention. After this, you will need to choose how much memory your server. There are some preset options and that will be the best for most users. However, you may want to choose a custom amount. If you need to, choose "Custom amount" from the menu. You will be prompted to insert how much memory you want. Memory values must be following by the examples:
+FOr example
+5G for 5 gigabytes
+2000M for 2000 megabytes
+Press enter on the prompt to finish
+
+Lastly, you will be prompted to set up config. If you select no, the configuration will be filled with default values. If you select yes, you will have straightforward prompts about configuring server.properties
