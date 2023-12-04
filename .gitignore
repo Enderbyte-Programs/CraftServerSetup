@@ -3,5 +3,7 @@
 *.deb
 *.zst
 deb/
+dev/
 *.pyc
 installer
+lib/__pycache__/

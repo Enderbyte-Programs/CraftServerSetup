@@ -78,6 +78,7 @@ import yaml                     #Parse YML Files
 from epadvertisements import *  #Advertisements library (BY ME)
 import epdoc                    #Documentations library (BY ME)
 import pngdim                   #Calculate dimensions of a PNG file
+import epprodkey                #Product key manager
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -336,44 +337,25 @@ __DEFAULTAPPDATA__ = {
     "license" : False
 }
 
-def verify_product_key(key:str) -> bool:
-    try:
-        if len(key) < 8:
-            return False
-        else:
-            if int(key) == 0 or int(key) == 12345678:#Not so fast
-                return False
-            elif (int(key[0]) + int(key[2]) == int(key[3])) and (int(key[6]) - int(key[4]) == int(key[1])) and (int(key[7]) * int(key[5]) < 50):
-                return True
-            
-            else:
-                return False
-    except:
-        return False
-def generate_product_key() -> str:
-    while True:
-        l1 = random.randint(0,5)
-        
-        l3 = random.randint(0,4)
-        l4 = l1 + l3
-        l5 = random.randint(0,5)
-        l6 = random.randint(0,9)
-        l7 = random.randint(0,9)
-        l2 = l7 - l5
-        if l2 < 0:
-            continue
-        l8 = random.randint(0,9)
-
-        assembled = f"{l1}{l2}{l3}{l4}{l5}{l6}{l7}{l8}"
-        if verify_product_key(assembled):
-            return assembled
-
 def product_key_page(stdscr):
     while True:
-        o = crss_custom_ad_menu(stdscr,["Register Product key","How to register a product key","Use without product key"],"You have not yet inserted a valid product key.")
-        if o == 2:
+        o = crss_custom_ad_menu(stdscr,["Register Product key","How to get a product key","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
+
+        if o == 3:
             cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
             return
+        elif o == 2:
+            cursesplus.textview(stdscr,text=[
+"""
+There are a few ways you can get a product key.
+
+1. Pay the $2 (see the other menu item)
+
+2. Report a substantial bug in CraftServerSetup (free)
+
+3. Contribute source code (free)
+"""
+            ])
         elif o == 1:
             stdscr.clear()
             stdscr.addstr(0,0,"1. Send $2 CAD or equivilant to @enderbyte09 on PayPal")
@@ -383,13 +365,13 @@ def product_key_page(stdscr):
             stdscr.refresh()
             stdscr.getch()
         elif o == 0:
-            npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,8)
+            npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,16).lower()
             #npk = str(cursesplus.numericinput(stdscr,""))
-            if not verify_product_key(npk):
+            if not epprodkey.check(npk):
                 cursesplus.messagebox.showwarning(stdscr,["Invalid key"])
             else:
                 APPDATA["productKey"] = npk
-                cursesplus.messagebox.showinfo(stdscr,["Registered!",":D"],"Success")
+                cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
                 updateappdata()
                 return
 
@@ -2383,7 +2365,7 @@ def import_server(stdscr):
 def ads_available() -> bool:
     if len(ADS) == 0:
         return False
-    if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
+    if APPDATA["productKey"] == "" or not epprodkey.check(APPDATA["productKey"]):
         return True
     else:
         return False
@@ -2681,6 +2663,7 @@ def main(stdscr):
         global APPDATA
         signal.signal(signal.SIGINT,sigint)
         p.step("Loading AppData")
+        epprodkey.load_data("https://pastebin.com/raw/8CejUxsY")
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
@@ -2722,7 +2705,7 @@ def main(stdscr):
             stdscr.erase()
             lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
             
-            if APPDATA["productKey"] == "" or not verify_product_key(APPDATA["productKey"]):
+            if APPDATA["productKey"] == "" or not epprodkey.check(APPDATA["productKey"]):
                 lz += ["Insert Product Key"]
             if DEVELOPER:
                 lz += ["Developer Tools"]
