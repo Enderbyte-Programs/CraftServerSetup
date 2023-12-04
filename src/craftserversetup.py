@@ -368,7 +368,7 @@ There are a few ways you can get a product key.
             npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,16).lower()
             #npk = str(cursesplus.numericinput(stdscr,""))
             if not epprodkey.check(npk):
-                cursesplus.messagebox.showwarning(stdscr,["Invalid key"])
+                cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
             else:
                 APPDATA["productKey"] = npk
                 cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
