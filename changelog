@@ -1,3 +1,9 @@
+1.30-b2:
+-Rename product key to premium
+-Add unused eplang
+-Limit to 1 server
+1.30-b1:
+-Rebuild product key system
 1.29:
 -Add way to change software!
 1.29-b2:

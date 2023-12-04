@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.29"#The semver version
+APP_UF_VERSION = "1.30"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -339,13 +339,13 @@ __DEFAULTAPPDATA__ = {
 
 def product_key_page(stdscr):
     while True:
-        o = crss_custom_ad_menu(stdscr,["Register Product key","How to get a product key","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
+        o = crss_custom_ad_menu(stdscr,["Upgrade to Premium","How to get a product key","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
 
         if o == 3:
             cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
             return
         elif o == 2:
-            cursesplus.textview(stdscr,text=[
+            cursesplus.textview(stdscr,text=
 """
 There are a few ways you can get a product key.
 
@@ -354,8 +354,10 @@ There are a few ways you can get a product key.
 2. Report a substantial bug in CraftServerSetup (free)
 
 3. Contribute source code (free)
+
+4. Contribute translation data to a different language (free)
 """
-            ])
+            ,message="Ways to get a key")
         elif o == 1:
             stdscr.clear()
             stdscr.addstr(0,0,"1. Send $2 CAD or equivilant to @enderbyte09 on PayPal")
@@ -857,6 +859,9 @@ def download_purpur_software(stdscr,serverdir) -> dict:
 
 def setupnewserver(stdscr):
     stdscr.erase()
+    if len(APPDATA["servers"]) != 0 and not epprodkey.check(APPDATA["productKey"]):
+        cursesplus.messagebox.showerror(stdscr,["Non-premium users can only have one server","Upgrade to make more or delete the current one"])
+        return
     wtd = crss_custom_ad_menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
     if wtd == 0:
         return
@@ -1154,7 +1159,17 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 def servermgrmenu(stdscr):
     stdscr.clear()
     global APPDATA
-
+    if len(APPDATA["servers"]) > 1 and not epprodkey.check(APPDATA["productKey"]):
+        cursesplus.messagebox.showerror(stdscr,["Non-premium users can only have one server","Upgrade to make more"])
+        leftserver = crss_custom_ad_menu(stdscr,["Cancel"]+[a["name"] for a in APPDATA["servers"]],"Choose the ONE server you want to preserve")
+        if leftserver == 0:
+            return
+        else:
+            savex = APPDATA["servers"][leftserver-1]
+            del APPDATA["servers"]
+            APPDATA["servers"] = [savex]
+            updateappdata()
+        cursesplus.messagebox.showinfo(stdscr,["The other servers have been unregistered","The data is still safe."])
     chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
     if chosenserver == 0:
         return
@@ -2250,7 +2265,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
             stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+8} options below")
         if ads_available() and show_ad:
             adx = oi + 5
-            stdscr.addstr(adx-1,0,"ADVERTISEMENT (Insert product key to remove)")
+            stdscr.addstr(adx-1,0,"ADVERTISEMENT (Upgrade to premium to remove)")
             adl = textwrap.wrap(chosenad.message,mx-1)
             li = 0
             for l in adl:
@@ -2706,7 +2721,7 @@ def main(stdscr):
             lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
             
             if APPDATA["productKey"] == "" or not epprodkey.check(APPDATA["productKey"]):
-                lz += ["Insert Product Key"]
+                lz += ["Upgrade to Premium"]
             if DEVELOPER:
                 lz += ["Developer Tools"]
             m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
