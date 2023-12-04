@@ -71,12 +71,8 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-1.27 - Purpur
+1.29 cross convert
 
-1.28 - dictedit (general config)
+1.30 Monetization, Languages, Docs
 
-1.29 - Cross server convert
-
-1.30 - Worlds store
-
-1.31 - Extensions
+1.31 Extensions?

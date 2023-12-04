@@ -1669,6 +1669,44 @@ def config_server(stdscr,chosenserver):
                     with open(lkz[dz-1],"w+") as f:
                         f.write(yaml.dump(data,default_flow_style=False))
 
+def change_software(stdscr,directory,data) -> dict:
+    zxc = crss_custom_ad_menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
+    if zxc == 0:
+        return data
+    elif zxc == 1:
+        if data["software"] != 1:
+            if not cursesplus.messagebox.askyesno(stdscr,["Danger!","You are downgrading a server","Plugins will no longer work and you may lose data","Are you sure you want to continue?"]):
+                return data
+        ppr = download_vanilla_software(stdscr,directory)
+        if ppr is None:
+            return data
+        ppx = {"id":ppr["id"]}
+        ppx["software"] = 1
+        ppx["moddable"] = False
+        ndata = data | ppx
+    elif zxc == 2:
+        ppr = download_spigot_software(stdscr,directory,data["javapath"])
+        if ppr is None:
+            return data
+        ppr["software"] = 2
+        ppr["moddable"] = True
+        ndata = data | ppr
+    elif zxc == 3:
+        ppr = download_paper_software(stdscr,directory)
+        if ppr is None:
+            return data
+        ppr["software"] = 3
+        ppr["moddable"] = True
+        ndata = data | ppr
+    elif zxc == 4:
+        ppr = download_purpur_software(stdscr,directory)
+        if ppr is None:
+            return data
+        ppr["software"] = 4
+        ppr["moddable"] = True
+        ndata = data | ppr
+    return ndata
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -1682,6 +1720,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans","Manage server icon"]
+        x__ops += ["Change server software"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
@@ -1842,6 +1881,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             manage_bans(stdscr,SERVER_DIR)
         elif w == 16:
             manage_server_icon(stdscr)
+        elif w == 17:
+            APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
+            updateappdata()
 _SCREEN = None
 
 def manage_ops(stdscr,serverdir):
