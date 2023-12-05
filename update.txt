@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.29/CraftServerSetup-1.29-installer.exe|1.29|Add cross server convert
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.30/CraftServerSetup-1.30-installer.exe|1.30|Add capitalism
