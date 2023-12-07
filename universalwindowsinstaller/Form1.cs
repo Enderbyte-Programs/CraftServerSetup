@@ -36,13 +36,27 @@ namespace CRSSAutoInstall
             label3.Invalidate();
             label3.Refresh();
             this.Refresh();
-            WebClient client = new WebClient();
-            String downloadedString = client.DownloadString("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").Split('|')[0];
-            Thread thread = new Thread(() => {
-                client = new WebClient();
-                client.DownloadProgressChanged += new DownloadProgressChangedEventHandler(client_DownloadProgressChanged);
-                client.DownloadFileCompleted += new AsyncCompletedEventHandler(client_DownloadFileCompleted);
-                client.DownloadFileAsync(new Uri(downloadedString),Environment.ExpandEnvironmentVariables("%USERPROFILE%\\Downloads\\CraftServerSetup-setup.exe"));
+            string downloadedString;
+            try
+            {
+                WebClient client = new WebClient();
+                downloadedString = client.DownloadString("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").Split('|')[0];
+            } catch
+            {
+                MessageBox.Show("There was an error. Make sure you have a stable internet connection and try again", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+                Thread thread = new Thread(() => {
+                try
+                {
+                    WebClient client = new WebClient();
+                    client.DownloadProgressChanged += new DownloadProgressChangedEventHandler(client_DownloadProgressChanged);
+                    client.DownloadFileCompleted += new AsyncCompletedEventHandler(client_DownloadFileCompleted);
+                    client.DownloadFileAsync(new Uri(downloadedString), Environment.ExpandEnvironmentVariables("%USERPROFILE%\\Downloads\\CraftServerSetup-setup.exe"));
+                } catch
+                {
+                    MessageBox.Show("There was an error. Make sure you have a stable internet connection and try again", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             });
             thread.Start();
         }
@@ -65,9 +79,18 @@ namespace CRSSAutoInstall
                 {
                     label3.Text = "Running main installer";
                     Refresh();
-                    Process p = new Process();
-                    p.StartInfo.FileName = Environment.ExpandEnvironmentVariables("%USERPROFILE%\\Downloads\\CraftServerSetup-setup.exe");
-                    p.Start();
+                    try
+                    {
+                        Process p = new Process();
+                        p.StartInfo.FileName = Environment.ExpandEnvironmentVariables("%USERPROFILE%\\Downloads\\CraftServerSetup-setup.exe");
+                        p.Start();
+                    } catch
+                    {
+
+                        MessageBox.Show("There was an error. Make sure you have a stable internet connection and try again", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                        return;
+                    }
                     Environment.Exit(0);
                 }
             });
