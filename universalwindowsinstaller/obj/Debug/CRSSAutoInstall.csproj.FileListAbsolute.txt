@@ -1,0 +1,11 @@
+C:\Users\jorda\source\repos\CRSSAutoInstall\bin\Debug\CRSSAutoInstall.exe.config
+C:\Users\jorda\source\repos\CRSSAutoInstall\bin\Debug\CRSSAutoInstall.exe
+C:\Users\jorda\source\repos\CRSSAutoInstall\bin\Debug\CRSSAutoInstall.pdb
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.csproj.AssemblyReference.cache
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.csproj.SuggestedBindingRedirects.cache
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.Form1.resources
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.Properties.Resources.resources
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.csproj.GenerateResource.cache
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.csproj.CoreCompileInputs.cache
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.exe
+C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.pdb
