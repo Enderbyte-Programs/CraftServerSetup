@@ -360,7 +360,7 @@ __DEFAULTAPPDATA__ = {
 
 def product_key_page(stdscr):
     while True:
-        o = crss_custom_ad_menu(stdscr,["Upgrade to Premium","How to get a product key","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
+        o = crss_custom_ad_menu(stdscr,["Upgrade to Premium","Open sale website","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
 
         if o == 3:
             cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
@@ -370,7 +370,7 @@ def product_key_page(stdscr):
 """
 There are a few ways you can get a product key.
 
-1. Pay the $2 (see the other menu item)
+1. Pay the $2 (select Open sale website next time)
 
 2. Report a substantial bug in CraftServerSetup (free)
 
@@ -380,13 +380,8 @@ There are a few ways you can get a product key.
 """
             ,message="Ways to get a key")
         elif o == 1:
-            stdscr.clear()
-            stdscr.addstr(0,0,"1. Send $2 CAD or equivilant to @enderbyte09 on PayPal")
-            stdscr.addstr(1,0,"2. Send an email to enderbyte09@gmail.com that includes your PayPal username")
-            stdscr.addstr(2,0,"3. I will send you a return email with your product key as soon as I can")
-            stdscr.addstr(4,0,"Press any key to proceed")
-            stdscr.refresh()
-            stdscr.getch()
+            webbrowser.open("https://enderbyteprograms.gumroad.com/l/craftserversetup")
+            cursesplus.messagebox.showinfo(stdscr,["Check your web browser"])
         elif o == 0:
             whereis = crss_custom_ad_menu(stdscr,["Cancel","From GumRoad","Directly from Enderbyte Programs"],"Where did you get your product key?")
             if whereis == 0:
