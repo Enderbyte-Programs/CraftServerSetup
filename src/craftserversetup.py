@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.30"#The semver version
+APP_UF_VERSION = "1.31"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -151,6 +151,26 @@ def sigint(signal,frame):
     if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
         updateappdata()
         sys.exit(0)
+
+def prodkeycheck(key:str):
+    try:
+        global _SCREEN
+        cursesplus.displaymsgnodelay(_SCREEN,["Checking key"])
+    except:
+        pass
+    f = epprodkey.check(key)
+    headers = {
+        "product_id" : "gVPMT86BgvfmzlvJ8i9RnQ==",
+        "license_key" : key
+            }
+    r = requests.post("https://api.gumroad.com/v2/licenses/verify",data=headers)
+    if r.status_code == 404:
+        rz = False
+    elif r.json()["success"]:
+        rz = True
+    else:
+        rz = False
+    return f or rz
 
 def compatibilize_appdata(data:dict) -> dict:
     try:
@@ -369,7 +389,7 @@ There are a few ways you can get a product key.
         elif o == 0:
             npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,16).lower()
             #npk = str(cursesplus.numericinput(stdscr,""))
-            if not epprodkey.check(npk):
+            if not prodkeycheck(npk):
                 cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
             else:
                 APPDATA["productKey"] = npk
@@ -859,7 +879,7 @@ def download_purpur_software(stdscr,serverdir) -> dict:
 
 def setupnewserver(stdscr):
     stdscr.erase()
-    if len(APPDATA["servers"]) != 0 and not epprodkey.check(APPDATA["productKey"]):
+    if len(APPDATA["servers"]) != 0 and not prodkeycheck(APPDATA["productKey"]):
         cursesplus.messagebox.showerror(stdscr,["Non-premium users can only have one server","Upgrade to make more or delete the current one"])
         return
     wtd = crss_custom_ad_menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
@@ -1159,7 +1179,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 def servermgrmenu(stdscr):
     stdscr.clear()
     global APPDATA
-    if len(APPDATA["servers"]) > 1 and not epprodkey.check(APPDATA["productKey"]):
+    if len(APPDATA["servers"]) > 1 and not prodkeycheck(APPDATA["productKey"]):
         cursesplus.messagebox.showerror(stdscr,["Non-premium users can only have one server","Upgrade to make more"])
         leftserver = crss_custom_ad_menu(stdscr,["Cancel"]+[a["name"] for a in APPDATA["servers"]],"Choose the ONE server you want to preserve")
         if leftserver == 0:
@@ -1389,8 +1409,11 @@ def generate_script(svrdict: dict) -> str:
 
 def update_s_software_preinit(serverdir:str):
     pushd(serverdir)
+
+def rm_server_jar():
     if os.path.isfile("server.jar"):
         os.remove("server.jar")
+
 def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
     APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
     generate_script(APPDATA["servers"][chosenserver-1])
@@ -1415,6 +1438,7 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     stdscr.clear()
     stdscr.addstr(0,0,"Downloading new server file...")
     stdscr.refresh()
+    rm_server_jar()
     urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
     update_s_software_postinit(PACKAGEDATA,chosenserver)
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
@@ -1426,6 +1450,7 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
         APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
     p = cursesplus.ProgressBar(stdscr,2,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,show_percent=True,message="Updating spigot")
     p.update()
+    rm_server_jar()
     urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar","BuildTools.jar")
     p.step()
     while True:
@@ -1475,6 +1500,7 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     stdscr.clear()
     stdscr.addstr(0,0,"Downloading file...")
     stdscr.refresh()
+    rm_server_jar()
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
     PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
@@ -1491,6 +1517,7 @@ def update_purpur_software(stdscr,serverdir:str,chosenserver:int):
         builddn = crss_custom_ad_menu(stdscr,dz)
         bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
     cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
+    rm_server_jar()
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
     PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
@@ -2042,6 +2069,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
         if z == 0:
             break
         elif z == 1:
+            cursesplus.displaymsgnodelay(stdscr,["Calculating size requirements"])
             if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
                 #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
                 cursesplus.displaymsgnodelay(stdscr,["Creating Backup..."])
@@ -2053,7 +2081,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                 continue
             if cursesplus.messagebox.askyesno(stdscr,["This will completely overwrite your server directory","Are you sure you wish to proceed"]):
                 selbk = cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a backup dir",directory=LBKDIR)
-                cursesplus.displaymsgnodelay(stdscr,["Restore Backup"])
+                cursesplus.displaymsgnodelay(stdscr,["Restoring Backup"])
                 os.chdir("/")
                 shutil.rmtree(serverdir)
                 shutil.copytree(selbk,serverdir)
@@ -2380,7 +2408,7 @@ def import_server(stdscr):
 def ads_available() -> bool:
     if len(ADS) == 0:
         return False
-    if APPDATA["productKey"] == "" or not epprodkey.check(APPDATA["productKey"]):
+    if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
         return True
     else:
         return False
@@ -2394,7 +2422,7 @@ def settings_mgr(stdscr):
             return
         elif m == 1:
             while True:
-                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","De-register product key"])
+                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","De-register product key","Clear temporary directory"])
                 if n == 0:
                     break
                 elif n == 1:
@@ -2429,6 +2457,8 @@ def settings_mgr(stdscr):
                 elif n == 3:
                     APPDATA["productKey"] = ""
                     updateappdata()
+                elif n == 4:
+                    shutil.rmtree(TEMPDIR)
         else:
             selm = list(APPDATA["settings"].values())[m-2]
             selk = list(APPDATA["settings"].keys())[m-2]
@@ -2720,7 +2750,7 @@ def main(stdscr):
             stdscr.erase()
             lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
             
-            if APPDATA["productKey"] == "" or not epprodkey.check(APPDATA["productKey"]):
+            if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
                 lz += ["Upgrade to Premium"]
             if DEVELOPER:
                 lz += ["Developer Tools"]

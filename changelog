@@ -1,3 +1,6 @@
+1.31:
+-server jar will no longer be deleted in s_softwaere_preinit 
+    -This prevents cases where a server could be left broken
 1.30:
 -Rename product key to premium
 -Limit to 1 server
