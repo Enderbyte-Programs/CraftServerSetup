@@ -70,8 +70,11 @@ The most important keys are the arrow keys and enter. These are used to navigate
 Message boxes are dismissed with the enter key and navigated around with the left and right arrow keys. Message boxes are in a rectangle and do not take up the full screen.
 
 In most widgets, all of the key-bindings are layed out for you. The only exception to this is the file dialogues. If you need help with keybinds on the file dialog boxes, simply press H to bring up a list.
+$Using GumRoad
+If you use GumRoad to purchase CraftServerSetup you will recieve a longer product key. Check the section "Product Keys" for more info
 $Product Keys:
 In the OOBE you will be asked to input a product key. You can get a product key by paying the $2 fee and telling Enderbyte Programs that you send it. You will recieve your product key shortly. Product keys remove advertisements and bypass the 1 server limit. Product keys as of 1.30 are 16 characters long. THey have latters and numbers, but are case insensitive. For crack artists looking to crack this program, good luck! Though the hashed keys are publicly available on pastebin, you still need to reverse engineer. 26 letters + 10 numbers = 36 characters. 36 ^ 16 characters divided by 100 keys in system means that you have to generate 1.8*10^48 hashes before you should stumble on a correct one. Trust me, it is not worth it.
+FOR GUMROAD USERS: When asked where you got your key, select "From GumRoad". From there paste in your key. 
 Old product keys were 8 numbers and incredibly easy to crack. Not anymore...
 $Advertisements:
 Advertisements are what you recieve if you do not input a product key. In every option menu, there is an advertisement. If you press A, the ad will be opened in your browser. Prior to 0.18.3, you had a 20% chance of encountering an ad while navigating. This was removed because it could be quite annoying

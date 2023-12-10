@@ -7,6 +7,7 @@ UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
 MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
+SHOW_ADVERT = False
 
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
 
@@ -152,12 +153,8 @@ def sigint(signal,frame):
         updateappdata()
         sys.exit(0)
 
-def prodkeycheck(key:str):
-    try:
-        global _SCREEN
-        cursesplus.displaymsgnodelay(_SCREEN,["Checking key"])
-    except:
-        pass
+def verifykey(key:str):
+    global SHOW_ADVERT
     f = epprodkey.check(key)
     headers = {
         "product_id" : "gVPMT86BgvfmzlvJ8i9RnQ==",
@@ -170,7 +167,11 @@ def prodkeycheck(key:str):
         rz = True
     else:
         rz = False
+    SHOW_ADVERT = not (f or rz)
     return f or rz
+
+def prodkeycheck(a):
+    return not SHOW_ADVERT
 
 def compatibilize_appdata(data:dict) -> dict:
     try:
@@ -387,9 +388,15 @@ There are a few ways you can get a product key.
             stdscr.refresh()
             stdscr.getch()
         elif o == 0:
-            npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,16).lower()
+            whereis = crss_custom_ad_menu(stdscr,["Cancel","From GumRoad","Directly from Enderbyte Programs"],"Where did you get your product key?")
+            if whereis == 0:
+                continue
+            elif whereis == 2:
+                npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,16).lower()
+            else:
+                npk = cursesplus.cursesinput(stdscr,"Please enter your license key (from GumRoad)")
             #npk = str(cursesplus.numericinput(stdscr,""))
-            if not prodkeycheck(npk):
+            if not verifykey(npk):
                 cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
             else:
                 APPDATA["productKey"] = npk
@@ -2408,15 +2415,13 @@ def import_server(stdscr):
 def ads_available() -> bool:
     if len(ADS) == 0:
         return False
-    if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
-        return True
     else:
-        return False
+        return SHOW_ADVERT
 def settings_mgr(stdscr):
     global COLOURS_ACTIVE
     global APPDATA
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
             updateappdata()
             return
@@ -2456,12 +2461,15 @@ def settings_mgr(stdscr):
                     updateappdata()
                 elif n == 3:
                     APPDATA["productKey"] = ""
+                    verifykey("")
                     updateappdata()
                 elif n == 4:
                     shutil.rmtree(TEMPDIR)
+        elif m == 2:
+            managejavainstalls(stdscr)
         else:
-            selm = list(APPDATA["settings"].values())[m-2]
-            selk = list(APPDATA["settings"].keys())[m-2]
+            selm = list(APPDATA["settings"].values())[m-3]
+            selk = list(APPDATA["settings"].keys())[m-3]
             if selm["type"] == "bool":
                 selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
@@ -2506,7 +2514,7 @@ def oobe(stdscr):
             if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
                 managejavainstalls(stdscr)
             else:
-                cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","Main menu"])
+                cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
         APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
         cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
         APPDATA["hasCompletedOOBE"] = True
@@ -2667,10 +2675,13 @@ def devtools(stdscr):
 
 def internet_thread(stdscr):
     global ADS
+    global SHOW_ADVERT
     global VERSION_MANIFEST_DATA
     VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
     init_idata(stdscr)
     gen_adverts("Upgrade with a product key to remove ads")
+    epprodkey.load_data("https://pastebin.com/raw/8CejUxsY")
+    SHOW_ADVERT = not verifykey(APPDATA["productKey"])
 
 def main(stdscr):
     global VERSION_MANIFEST
@@ -2679,16 +2690,16 @@ def main(stdscr):
     global APPDATAFILE
     global UPDATEINSTALLED
     global _SCREEN
+    global SHOW_ADVERT
     global ADS
     _SCREEN = stdscr
     global DEBUG
     restart_colour()
     curses.curs_set(0)
     try:
-        cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup","Starting..."])
-        p = cursesplus.ProgressBar(stdscr,5,bar_type=cursesplus.ProgressBarTypes.SmallProgressBar,bar_location=cursesplus.ProgressBarLocations.BOTTOM,message="Startup")
-        p.step("Verifying internet connection")
-
+        cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup"])
+        stdscr.addstr(0,0,"Waiting for internet connection...")
+        stdscr.erase()
         issue = False
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
@@ -2705,10 +2716,9 @@ def main(stdscr):
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
         global APPDATA
+        stdscr.addstr(0,0,"Initializing application data...                 ")
+        stdscr.refresh()
         signal.signal(signal.SIGINT,sigint)
-        p.step("Loading languages")
-        epprodkey.load_data("https://pastebin.com/raw/8CejUxsY")
-        p.step("Loading Appdata")
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
@@ -2724,10 +2734,9 @@ def main(stdscr):
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
-        
+
         license(stdscr)
         oobe(stdscr)
-        p.step("Finishing up...")
         if len(sys.argv) > 1:
             if os.path.isfile(sys.argv[1]):
                 import_amc_server(stdscr,sys.argv[1])        
@@ -2741,21 +2750,17 @@ def main(stdscr):
         introsuffix = ""
         if DEBUG:
             introsuffix=" | SRC DEBUG"
-
-    #        if mx < 120 or my < 20:
-    #            cursesplus.messagebox.showwarning(stdscr,["Your terminal size may be too small","Some instability may occur","For best results, set size to","at least 120x20"])
-        p.done()
         threading.Thread(target=send_telemetry).start()
         while True:
             stdscr.erase()
-            lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
-            
+            #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
+            lz = ["New server","Manage servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit"]
             if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
                 lz += ["Upgrade to Premium"]
             if DEVELOPER:
                 lz += ["Developer Tools"]
             m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
-            if m == 2:
+            if m == 8:
                 cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
                 updateappdata()
                 break
@@ -2764,10 +2769,8 @@ def main(stdscr):
                 setupnewserver(stdscr)
             elif m == 1:
                 servermgrmenu(stdscr)
-            elif m == 3:
-                managejavainstalls(stdscr)
-            elif m == 4:
-                import_server(stdscr)
+            #elif m == 3:
+            #    managejavainstalls(stdscr)
             elif m == 5:
                 if PORTABLE:
                     cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
@@ -2780,20 +2783,20 @@ def main(stdscr):
                     UPDATEINSTALLED = True
                     return
 
-            elif m == 6:
-                global_backup_mgr(stdscr)
             elif m == 7:
+                global_backup_mgr(stdscr)
+            elif m == 4:
                 webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
                 cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
-            elif m == 8:
+            elif m == 2:
                 settings_mgr(stdscr)
-            elif m == 9:
+            elif m == 3:
                 doc_system(stdscr)
-            elif m == 10:
+            elif m == 6:
                 stats_and_credits(stdscr)
             elif DEVELOPER and lz[m] == "Developer Tools":
                 devtools(stdscr)
-            elif m == 11:
+            elif m == 9:
                 product_key_page(stdscr)
         if APPDATA["settings"]["transitions"]["value"]:
             cursesplus.transitions.horizontal_bars(stdscr)

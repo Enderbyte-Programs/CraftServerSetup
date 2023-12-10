@@ -71,8 +71,4 @@ As of 0.12.4 this program is semiproprietary. The code remains open source but i
 
 ## My TODO List
 
-1.29 cross convert
-
-1.30 Monetization, Languages, Docs
-
-1.31 Extensions?
+extensions
