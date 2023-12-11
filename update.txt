@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.30/CraftServerSetup-1.30-installer.exe|1.30|Add capitalism
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.31/CraftServerSetup-1.31-installer.exe|1.31|FIx problems
