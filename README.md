@@ -33,7 +33,7 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 - Install sbuild-dofile from https://github.com/Enderbyte-Programs/sbuild-dofile
 
-- In the repo directory, run `sbuild`
+- In the repo directory, run `simbabuild`
 
 - This will install it
 
