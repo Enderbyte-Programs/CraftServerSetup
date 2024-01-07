@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.31"#The semver version
+APP_UF_VERSION = "1.31.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -36,6 +36,7 @@ import tarfile                  #Create archives
 import gzip                     #Compression utilities
 import time                     #Timezone data
 import textwrap                 #Text wrapping
+import shlex                    #CLI splits
 
 WINDOWS = platform.system() == "Windows"
 
@@ -493,8 +494,13 @@ def parse_size(data: int) -> str:
 def error_handling(e:Exception,message="A serious error has occured"):
     global COLOURS_ACTIVE
     global _SCREEN
+    _SCREEN.clear()
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-    
+    #cursesplus.messagebox.showerror(_SCREEN,[
+    #    "o3   /      We are sorry, but a serious error occured     ",
+    #    "   - |      In the next menu, you will choose some options",
+    #    "o3   \\     You should probably report this as a bug       "
+    #])
     while True:
         erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f"{message}. What do you want to do?")
         if erz == 0:
@@ -563,8 +569,11 @@ def get_java_version(file="java") -> str:
         return "Unknown"
 
 def manage_whitelist(stdscr,whitefile:str):
-    with open(whitefile) as f:
-        dat = json.load(f)
+    try:
+        with open(whitefile) as f:
+            dat = json.load(f)
+    except:
+        dat = []#Fix bug number 18: Running this before setup finish causes crash
     while True:
         dop = crss_custom_ad_menu(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove")
         if dop == 1:
@@ -1105,7 +1114,6 @@ def setup_server_properties(stdscr) -> dict:
             dpp["white-list"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to enable whitelist on this server?"])
             if dpp["white-list"]:
                 if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up a whitelist now?"]):
-                    #TODO Add whitelist manager
                     manage_whitelist(stdscr,os.getcwd()+"/whitelist.json")
                 if cursesplus.messagebox.askyesno(stdscr,["Do you want to enfore the white list?"]):
                     dpp["enforce-whitelist"] = True
@@ -1120,10 +1128,6 @@ def setup_server_properties(stdscr) -> dict:
             
         elif lssl == 0:
             #basic
-            #dpp["allow-flight"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable flight for non-admins?"])
-            #dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this server?"])
-            #dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this server?"])
-            #dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this server?"])
             dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
             dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
             #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
@@ -1132,9 +1136,6 @@ def setup_server_properties(stdscr) -> dict:
             #dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
             dpp["simulation-distance"] = cursesplus.numericinput(stdscr,"What should the maximum simulation distance on the server be?",False,False,2,32,10)
             dpp["view-distance"] = cursesplus.numericinput(stdscr,"What should the maximum view distance on the server be?",False,False,2,32,10)
-            #dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
-            #dpp["spawn-monsters"] = cursesplus.messagebox.askyesno(stdscr,["Spawn monsters?"])
-            #pp["spawn-npcs"] = cursesplus.messagebox.askyesno(stdscr,["Spawn villagers?"])
             sslxdd = cursesplus.checkboxlist(stdscr,[
             CheckBoxItem("allow-flight","Allow Flight for all players",False),
             CheckBoxItem("allow-nether","Allow the nether",True),
@@ -2075,6 +2076,8 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
             if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
                 #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
                 cursesplus.displaymsgnodelay(stdscr,["Creating Backup..."])
+                with open(serverdir+"/crss.json","w+") as f:
+                    f.write(json.dumps(serverdata))
                 shutil.copytree(serverdir,LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
                 cursesplus.messagebox.showinfo(stdscr,["Backup completed"])
         elif z == 2:
@@ -2087,6 +2090,14 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                 os.chdir("/")
                 shutil.rmtree(serverdir)
                 shutil.copytree(selbk,serverdir)
+                try:
+                    with open(serverdir+"/crss.json") as f:
+                        nd = json.load(f)
+                        locateid = nd["id"]
+                        tom_index = next((index for (index, d) in enumerate(APPDATA["servers"]) if d["id"] == locateid), None)
+                        APPDATA["servers"][tom_index] = nd
+                except:
+                    pass
                 cursesplus.messagebox.showinfo(stdscr,["Restore completed"])              
 
 def get_tree_size(start_path = '.'):
@@ -2291,8 +2302,8 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.addstr(oi+3,0,"━"*(mx-1))
         if offset > 0:
             stdscr.addstr(3,maxl+15,f"{offset} options above")
-        if len(options) > offset+my-8:
-            stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+8} options below")
+        if len(options) > offset+my-7:
+            stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+7} options below")
         if ads_available() and show_ad:
             adx = oi + 5
             stdscr.addstr(adx-1,0,"ADVERTISEMENT (Upgrade to premium to remove)")
