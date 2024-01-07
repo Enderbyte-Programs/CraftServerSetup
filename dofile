@@ -137,7 +137,7 @@
     echo "craftserversetup is deleted"
 !def reset
     rm -rf ~/.local/share/mcserver
-!def package
+!def package:private
     echo " ===> DANGER! This is not meant to be used by normal users. If you are not a developer, expect a lot of errors"
     echo " ===> Portabilizing dofile"
     sbuild %package installer
