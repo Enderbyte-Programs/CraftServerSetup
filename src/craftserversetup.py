@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.31.1"#The semver version
+APP_UF_VERSION = "1.31.2"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -985,7 +985,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
     except:
         pass
     os.chdir(bdir)
-    manage_server(stdscr,S_INSTALL_DIR,APPDATA["servers"].index(sd))
+    manage_server(stdscr,S_INSTALL_DIR,APPDATA["servers"].index(sd)+1)
 
 def get_player_uuid(username:str):
     req = f"https://api.mojang.com/users/profiles/minecraft/{username}"
