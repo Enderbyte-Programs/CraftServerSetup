@@ -502,7 +502,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
     #    "o3   \\     You should probably report this as a bug       "
     #])
     while True:
-        erz = cursesplus.displayops(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f"{message}. What do you want to do?")
+        erz = cursesplus.optionmenu(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f"{message}. What do you want to do?")
         if erz == 0:
             sys.exit(1)
         elif erz == 1:
@@ -518,7 +518,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
             main(_SCREEN)
         elif erz == 3:
             while True:
-                aerz = cursesplus.displayops(_SCREEN,["Back","Restore a backup","Repair CraftServerSetup","Reset CraftServerSetup"],"Please choose an advanced option")
+                aerz = cursesplus.optionmenu(_SCREEN,["Back","Restore a backup","Repair CraftServerSetup","Reset CraftServerSetup"],"Please choose an advanced option")
                 if aerz == 0:
                     break
                 elif aerz == 1:
@@ -581,12 +581,12 @@ def manage_whitelist(stdscr,whitefile:str):
                 f.write(json.dumps(dat))
             return
         elif dop == 0:
-            cursesplus.showcursor()
+            cursesplus.utils.showcursor()
             name = cursesplus.cursesinput(stdscr,"Name(s) of players allowed: (Seperate with commas)")
-            cursesplus.hidecursor()
+            cursesplus.utils.hidecursor()
             names = name.split(",")
             for player in names:
-                cursesplus.displaymsgnodelay(stdscr,[player])
+                cursesplus.displaymsg(stdscr,[player],False)
                 try:
                     pluid = get_player_uuid(player)
                 except:
@@ -751,13 +751,13 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                 path += "/" + str(e-3)
             epath = path.split("/")[-1]
             if type(dictpath(inputd,path)) == str:
-                cursesplus.showcursor()
+                cursesplus.utils.showcursor()
                 newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {path}",prefiltext=dictpath(inputd,path))
-                cursesplus.hidecursor()
+                cursesplus.utils.hidecursor()
             elif type(dictpath(inputd,path)) == int or type(dictpath(inputd,path)) == float:
-                cursesplus.showcursor()
+                cursesplus.utils.showcursor()
                 newval = cursesplus.numericinput(stdscr,f"Please input a new value for {path}",True,True,prefillnumber=dictpath(inputd,path))
-                cursesplus.hidecursor()
+                cursesplus.utils.hidecursor()
             elif type(dictpath(inputd,path)) == bool:
                 newval = cursesplus.messagebox.askyesno(stdscr,["New boolean value for",path])
             if type(dictpath(inputd,path)) != dict and type(dictpath(inputd,path)) != list:
@@ -791,7 +791,7 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
         cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
 
 def download_vanilla_software(stdscr,serverdir) -> dict:
-    cursesplus.displaymsgnodelay(stdscr,["Getting version information"])
+    cursesplus.displaymsg(stdscr,["Getting version information"],False)
     
     stdscr.clear()
     stdscr.erase()
@@ -800,17 +800,17 @@ def download_vanilla_software(stdscr,serverdir) -> dict:
         return
     else:
         stdscr.clear()
-        cursesplus.displaymsgnodelay(stdscr,["Getting version manifest..."])
+        cursesplus.displaymsg(stdscr,["Getting version manifest..."],False)
         PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
-        cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
+        cursesplus.displaymsg(stdscr,["Preparing new server"],False)
     S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
     S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
-    cursesplus.displaymsgnodelay(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"])
+    cursesplus.displaymsg(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"],False)
     urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
     return PACKAGEDATA
 
 def download_spigot_software(stdscr,serverdir,javapath) -> dict:
-    cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
+    cursesplus.displaymsg(stdscr,["Downloading server file"],False)
     urllib.request.urlretrieve("https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar",serverdir+"/BuildTools.jar")
     os.chdir(serverdir)
     while True:
@@ -868,7 +868,7 @@ def download_paper_software(stdscr,serverdir) -> dict:
         builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
     bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
     #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
-    cursesplus.displaymsgnodelay(stdscr,["Downloading server file"])
+    cursesplus.displaymsg(stdscr,["Downloading server file"],False)
     
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
     PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
@@ -883,7 +883,7 @@ def download_purpur_software(stdscr,serverdir) -> dict:
         dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
         builddn = crss_custom_ad_menu(stdscr,dz)
         bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
-    cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
+    cursesplus.displaymsg(stdscr,["Downloading file..."],False)
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
     PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
     return PACKAGEDATA
@@ -940,7 +940,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
             else:
                 break
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
-    cursesplus.displaymsgnodelay(stdscr,["Please wait while your server is set up"])
+    cursesplus.displaymsg(stdscr,["Please wait while your server is set up"],False)
     njavapath = choose_java_install(stdscr)
     if serversoftware == 1:
         PACKAGEDATA = download_vanilla_software(stdscr,S_INSTALL_DIR)
@@ -950,7 +950,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
         PACKAGEDATA = download_paper_software(stdscr,S_INSTALL_DIR)
     elif serversoftware == 4:
         PACKAGEDATA = download_purpur_software(stdscr,S_INSTALL_DIR)
-    cursesplus.displaymsgnodelay(stdscr,["Setting up server"])
+    cursesplus.displaymsg(stdscr,["Setting up server"],False)
     setupeula = cursesplus.messagebox.askyesno(stdscr,["To proceed, you must agree","To Mojang's EULA","","Do you agree?"])
     if setupeula:
         with open(S_INSTALL_DIR+"/eula.txt","w+") as f:
@@ -1065,12 +1065,12 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
     return dpp
 def setup_server_properties(stdscr) -> dict:
     dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
-    cursesplus.showcursor()
+    cursesplus.utils.showcursor()
     while True:
         lssl = crss_custom_ad_menu(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
         #Go through all of the properties 1 by 1...
         if lssl == 4:
-            cursesplus.hidecursor()
+            cursesplus.utils.hidecursor()
             return dpp
         elif lssl == 3:
             #Network Settings
@@ -1163,7 +1163,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
             return dpp
         elif z == 1:
             uurl = cursesplus.cursesinput(stdscr,"Input the URI to your resource pack (Direct download link)")
-            cursesplus.displaymsgnodelay(stdscr,["Testing link"])
+            cursesplus.displaymsg(stdscr,["Testing link"],False)
             lzdir = TEMPDIR+"/rp"+str(random.randint(11111,99999))
             os.mkdir(lzdir)
             urllib.request.urlretrieve(uurl,lzdir+"pack.zip")
@@ -1245,7 +1245,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
     inres = []
     npage = 1
     while True:
-        cursesplus.displaymsgnodelay(stdscr,["Searching...",f"Page {npage}"])
+        cursesplus.displaymsg(stdscr,["Searching...",f"Page {npage}"],False)
         try:
             inress = requests.get(api_base+f"/search?query={searchq.strip()}&offset={noffset}",headers=headers)
             inres += inress.json()["hits"]
@@ -1288,7 +1288,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
                     stdscr.getch()
                 elif mocho == 2:
                     #Download
-                    cursesplus.displaymsgnodelay(stdscr,["Resolving download address"])
+                    cursesplus.displaymsg(stdscr,["Resolving download address"],False)
                     r6 = requests.get(api_base+"/project/"+chmod["project_id"]+"/version").json()
                     finald = []
                     final = []
@@ -1298,7 +1298,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
                             final.append(f"{item['name']} ({item['version_type']})")
                     filed = cursesplus.coloured_option_menu(stdscr,final,"Please choose a version to download")
                     primad = [d for d in finald[filed]["files"] if d["primary"]][0]
-                    cursesplus.displaymsgnodelay(stdscr,["Downloading plugin file"])
+                    cursesplus.displaymsg(stdscr,["Downloading plugin file"],False)
                     urllib.request.urlretrieve(primad["url"],modfolder+"/"+primad["filename"])
                     cursesplus.messagebox.showinfo(stdscr,["Download successful"])
                     break
@@ -1333,7 +1333,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
                 for modfile in modfiles:
                     if os.path.isfile(modfile):
                         stdscr.clear()
-                        cursesplus.displaymsgnodelay(stdscr,["loading plugin",modfile])
+                        cursesplus.displaymsg(stdscr,["loading plugin",modfile],False)
                         mf_name = os.path.split(modfile)[1]
                         try:
                             jar_get_bukkit_plugin_name(modfile)
@@ -1431,9 +1431,9 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
         return
     else:
         stdscr.clear()
-        cursesplus.displaymsgnodelay(stdscr,["Getting version manifest..."])
+        cursesplus.displaymsg(stdscr,["Getting version manifest..."],False)
         PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
-        cursesplus.displaymsgnodelay(stdscr,["Preparing new server"])
+        cursesplus.displaymsg(stdscr,["Preparing new server"],False)
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?"]):
         njavapath = choose_java_install(stdscr)
         APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
@@ -1519,7 +1519,7 @@ def update_purpur_software(stdscr,serverdir:str,chosenserver:int):
         dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
         builddn = crss_custom_ad_menu(stdscr,dz)
         bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
-    cursesplus.displaymsgnodelay(stdscr,["Downloading file..."])
+    cursesplus.displaymsg(stdscr,["Downloading file..."],False)
     rm_server_jar()
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
     PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
@@ -1829,7 +1829,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     if dppx is not None:
                         dpp = dppx#Fix bug
                 else:
-                    cursesplus.displaymsgnodelay(stdscr,["Calculating world size"])
+                    cursesplus.displaymsg(stdscr,["Calculating world size"],False)
                     svrx = po[n-2]
                     svrd = SERVER_DIR+"/"+svrx
                     os.chdir(SERVER_DIR)
@@ -1843,7 +1843,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     stdscr.refresh()
                     ch = stdscr.getch()
                     if ch == 100:
-                        cursesplus.displaymsgnodelay(stdscr,["Removing world"])
+                        cursesplus.displaymsg(stdscr,["Removing world"],False)
                         shutil.rmtree(svrd)
             
         elif w == 6:
@@ -2072,10 +2072,10 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
         if z == 0:
             break
         elif z == 1:
-            cursesplus.displaymsgnodelay(stdscr,["Calculating size requirements"])
+            cursesplus.displaymsg(stdscr,["Calculating size requirements"],False)
             if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
                 #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
-                cursesplus.displaymsgnodelay(stdscr,["Creating Backup..."])
+                cursesplus.displaymsg(stdscr,["Creating Backup..."],False)
                 with open(serverdir+"/crss.json","w+") as f:
                     f.write(json.dumps(serverdata))
                 shutil.copytree(serverdir,LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
@@ -2086,7 +2086,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                 continue
             if cursesplus.messagebox.askyesno(stdscr,["This will completely overwrite your server directory","Are you sure you wish to proceed"]):
                 selbk = cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a backup dir",directory=LBKDIR)
-                cursesplus.displaymsgnodelay(stdscr,["Restoring Backup"])
+                cursesplus.displaymsg(stdscr,["Restoring Backup"],False)
                 os.chdir("/")
                 shutil.rmtree(serverdir)
                 shutil.copytree(selbk,serverdir)
@@ -2196,7 +2196,7 @@ def compare_versions(version1, version2):
     return 0
 
 def windows_update_software(stdscr):
-    cursesplus.displaymsgnodelay(stdscr,["Checking for updates"])
+    cursesplus.displaymsg(stdscr,["Checking for updates"],False)
     td = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").text
     tdz = td.split("|")
     svr = tdz[1]
@@ -2205,7 +2205,7 @@ def windows_update_software(stdscr):
     if compare_versions(svr,APP_UF_VERSION) == 1:
         #NUA
         if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{svr} over {APP_UF_VERSION}",msg,"Would you like to install it?"]):
-            cursesplus.displaymsgnodelay(stdscr,["Downloading new update..."])
+            cursesplus.displaymsg(stdscr,["Downloading new update..."],False)
             urllib.request.urlretrieve(url,os.path.expandvars("%TEMP%/crssupdate.exe"))
             os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
             sys.exit()
@@ -2230,9 +2230,9 @@ def import_amc_server(stdscr,chlx):
         nname = xdat["name"]
         while True:
             if nname in [l["name"] for l in APPDATA["servers"]]:
-                cursesplus.showcursor()
+                cursesplus.utils.showcursor()
                 nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
-                cursesplus.hidecursor()
+                cursesplus.utils.hidecursor()
             else:
                 xdat["name"] = nname
                 break
@@ -2264,7 +2264,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         uselegacy = True
     
     if uselegacy:
-        return cursesplus.displayops(stdscr,options,title)
+        return cursesplus.optionmenu(stdscr,options,title)
     selected = 0
     offset = 0
     if ads_available():
@@ -2276,8 +2276,8 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.clear()
         mx,my = os.get_terminal_size()
         
-        cursesplus.filline(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        cursesplus.filline(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        cursesplus.utils.fill_line(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         stdscr.addstr(0,0,title,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         oi = 0
@@ -2386,9 +2386,9 @@ def import_server(stdscr):
             nname = cursesplus.cursesinput(stdscr,"Please enter the name of this server")
             while True:
                 if nname in [l["name"] for l in APPDATA["servers"]]:
-                    cursesplus.showcursor()
+                    cursesplus.utils.showcursor()
                     nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
-                    cursesplus.hidecursor()
+                    cursesplus.utils.hidecursor()
                 else:
                     xdat["name"] = nname
                     break
@@ -2491,7 +2491,7 @@ def doc_system(stdscr):
             break
         elif z == 1:
             if not os.path.isfile(DOCDOWNLOAD):
-                cursesplus.displaymsgnodelay(stdscr,["Downloading Documentation"])
+                cursesplus.displaymsg(stdscr,["Downloading Documentation"],False)
                 urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
             efile: epdoc.EPDocfile = epdoc.load_from_file(DOCDOWNLOAD,"Craft Server Setup")
             efile.load()
@@ -2570,20 +2570,20 @@ def do_linux_update(stdscr) -> bool:
         cursesplus.messagebox.showerror(stdscr,["You are using a debian or arch install setup","Please download the latest version from GitHub"])
         return False
     try:
-        cursesplus.displaymsgnodelay(stdscr,["Querrying updates"])
+        cursesplus.displaymsg(stdscr,["Querrying updates"],False)
         r = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/releases/latest")
         mostrecentreleasedversion = r.url.split("/")[-1][1:]
         if compare_versions(mostrecentreleasedversion,APP_UF_VERSION) == 1:
             #New update
             if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{mostrecentreleasedversion} over {APP_UF_VERSION}","Would you like to install it?"]):
                 if not os.path.isfile("/usr/lib/craftserversetup/deb"):
-                    cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
+                    cursesplus.displaymsg(stdscr,["Downloading new update"],False)
                     downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.tar.xz"
                     if os.path.isdir("/tmp/crssupdate"):
                         shutil.rmtree("/tmp/crssupdate")
                     os.mkdir("/tmp/crssupdate")
                     urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.tar.xz")
-                    cursesplus.displaymsgnodelay(stdscr,["Installing update"])
+                    cursesplus.displaymsg(stdscr,["Installing update"],False)
                     if unpackage_server("/tmp/crssupdate/craftserversetup.tar.xz","/tmp/crssupdate") == 1:
                         cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
                         return False
@@ -2605,13 +2605,13 @@ def do_linux_update(stdscr) -> bool:
                     # Equivilant of tar -xf
                 else:
                     #Attempt deb install
-                    cursesplus.displaymsgnodelay(stdscr,["Downloading new update"])
+                    cursesplus.displaymsg(stdscr,["Downloading new update"],False)
                     downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.deb"
                     if os.path.isdir("/tmp/crssupdate"):
                         shutil.rmtree("/tmp/crssupdate")
                     os.mkdir("/tmp/crssupdate")
                     urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.deb")
-                    cursesplus.displaymsgnodelay(stdscr,["Installing update"])
+                    cursesplus.displaymsg(stdscr,["Installing update"],False)
                     spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                     with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
                         r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k dpkg -i /tmp/crssupdate/craftserversetup.deb",stdout=std0,stderr=std0,shell=True)
@@ -2630,11 +2630,11 @@ def global_backup_mgr(stdscr):
         bkm = crss_custom_ad_menu(stdscr,["Back","Create backup","Load backup"])
         if bkm == 1:
             if cursesplus.messagebox.askyesno(stdscr,["This will create a backup of your entire crss installation including configuration","To create a backup of each server","Go to its management page"]):
-                cursesplus.displaymsgnodelay(stdscr,["Calculating..."])
+                cursesplus.displaymsg(stdscr,["Calculating..."],False)
                 mb = round(get_tree_size(APPDATADIR)/1000000,3)
                 if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {mb} MB of space.","Are you sure you want to proceed?"]):
                     foln = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
-                    cursesplus.displaymsgnodelay(stdscr,["Creating..."])
+                    cursesplus.displaymsg(stdscr,["Creating..."],False)
                     p = create_global_backup(foln)
                     if p != 0:
                         cursesplus.messagebox.showerror(stdscr,["There was an error creating your backup"])
@@ -2655,7 +2655,7 @@ def devtools(stdscr):
             stdscr.refresh()
             curses.reset_shell_mode()
             print("Run exit to return")
-            cursesplus.showcursor()
+            cursesplus.utils.showcursor()
             while True:
                 
                 epp = input("Python >")
@@ -2666,7 +2666,7 @@ def devtools(stdscr):
                 except Exception as ex:    
                     print(f"ER {type(ex)}\nMSG {str(ex)}")
             curses.reset_prog_mode()
-            cursesplus.hidecursor()
+            cursesplus.utils.hidecursor()
         elif m == 2:
             raise RuntimeError("Manually triggered exception")
         elif m == 3:
@@ -2703,7 +2703,7 @@ def main(stdscr):
     restart_colour()
     curses.curs_set(0)
     try:
-        cursesplus.displaymsgnodelay(stdscr,["Craft Server Setup"])
+        cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         stdscr.addstr(0,0,"Waiting for internet connection...")
         stdscr.erase()
         issue = False
@@ -2767,7 +2767,7 @@ def main(stdscr):
                 lz += ["Developer Tools"]
             m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 8:
-                cursesplus.displaymsgnodelay(stdscr,["Shutting down..."])
+                cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                 updateappdata()
                 break
             elif m == 0:
