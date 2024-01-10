@@ -30,6 +30,15 @@ In 0.8 the build system of CraftServerSetup (or automcserver) was redesigned. In
 Within the scripts directory are more scripts you can use to perform other installation functions like removal and resetting.
 $Installing AutoMCServer (the old name) (Linux 0.1 - 0.7):
 The oldest versions of CraftServerSetup (which was named AutoMCServer) are probably not the best to install. Run bash install.sh -h to get a list of options. Notice that there is only one unified script file. Please note that there may be some inconsistencies upgrading from the old build system to the new build system so if you have a very old installation there may be some brokens symlinks.
+$Updating your installation:
+Updating your CraftServerSetup installation is easy and works cross-platform. From the main menu, select the option "Update CraftServerSetup". It is as simple as that. On Windows, the installer will be downloaded and you will have to fill out some prompts. On Linux, the process is fully automatic. Please note that some formats may not be supported by the update system. For example, if you are using a deb installer to use craftserversetup, the updating may not work and you will need to get a copy of the new craftserversetup.deb yourself. Please also note that admin-based installations are quite flaky with updating as well. To see what you should do if you encounter an error, go to the next section
+$Troubleshooting Update Errors:
+When updating, you may get some errors. Here is how to fix them
+
+"check /tmp/crssupdate/UPDATELOG.txt"
+
+To get a full error message, run "cd /tmp/crssupdate;cat UPDATELOG.txt"
+Now look at what that command returns. There is a known bug where very old versions of craftserversetup (prior to the dofileswitch) look for install.sh rather than the new installer. If that happens, cd to /tmp/crssupdate and run "./installer install" or "sudo ./installer install" depending on what installation type you have.
 $The Modern Structure of source files:
 This page of the documentation will help you to understand all of the weird files and folders within the source download that is provided with your craftserversetup.tar.xz.
 
