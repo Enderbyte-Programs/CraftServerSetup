@@ -2822,7 +2822,7 @@ def main(stdscr):
         while True:
             stdscr.erase()
             #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
-            lz = ["New server","Manage servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit"]
+            lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit"]
             if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
                 lz += ["Upgrade to Premium"]
             if DEVELOPER:
