@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.31.2"#The semver version
+APP_UF_VERSION = "1.32"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -384,14 +384,7 @@ There are a few ways you can get a product key.
             webbrowser.open("https://enderbyteprograms.gumroad.com/l/craftserversetup")
             cursesplus.messagebox.showinfo(stdscr,["Check your web browser"])
         elif o == 0:
-            whereis = crss_custom_ad_menu(stdscr,["Cancel","From GumRoad","Directly from Enderbyte Programs"],"Where did you get your product key?")
-            if whereis == 0:
-                continue
-            elif whereis == 2:
-                npk = cursesplus.cursesinput(stdscr,"Please enter your productkey",1,16).lower()
-            else:
-                npk = cursesplus.cursesinput(stdscr,"Please enter your license key (from GumRoad)")
-            #npk = str(cursesplus.numericinput(stdscr,""))
+            npk = cursesplus.cursesinput(stdscr,"Please insert your key (case sensitive)")
             if not verifykey(npk):
                 cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
             else:
@@ -537,7 +530,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
                         if z != 0:
                             cursesplus.messagebox.showwarning(_SCREEN,["Error repairing","Please try a manual repair"])
                 elif aerz == 3:
-                    if cursesplus.messagebox.askyesno(_SCREEN,["This will delete all servers","Are you sure you wish to proceed?"]):
+                    if cursesplus.messagebox.askyesno(_SCREEN,["This will delete all servers","Are you sure you wish to proceed?"],default=cursesplus.messagebox.MessageBoxStates.NO):
                         os.chdir(os.path.expanduser("~"))
                         try:
                             shutil.rmtree(APPDATADIR)
@@ -1800,8 +1793,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 3:
             config_server(stdscr,chosenserver)
         elif w == 4:
-            if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"]):
-                if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"]):
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"],default=cursesplus.messagebox.MessageBoxStates.NO):
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"],default=cursesplus.messagebox.MessageBoxStates.NO):
                     os.chdir(SERVERSDIR)
                     shutil.rmtree(SERVER_DIR)
                     del APPDATA["servers"][chosenserver-1]
@@ -1829,22 +1822,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     if dppx is not None:
                         dpp = dppx#Fix bug
                 else:
-                    cursesplus.displaymsg(stdscr,["Calculating world size"],False)
-                    svrx = po[n-2]
-                    svrd = SERVER_DIR+"/"+svrx
-                    os.chdir(SERVER_DIR)
-                    svrs = get_tree_size(svrd)
-                    stdscr.clear()
-                    stdscr.addstr(0,0,"World Name:")
-                    stdscr.addstr(1,0,"World Size:")
-                    stdscr.addstr(3,0,"PRESS D TO DELETE. PRESS ANY OTHER KEY TO GO BACK")
-                    stdscr.addstr(0,20,svrx)
-                    stdscr.addstr(1,20,parse_size(svrs))
-                    stdscr.refresh()
-                    ch = stdscr.getch()
-                    if ch == 100:
-                        cursesplus.displaymsg(stdscr,["Removing world"],False)
-                        shutil.rmtree(svrd)
+                    manage_a_world(stdscr,SERVER_DIR,po[n-2])
             
         elif w == 6:
             if not APPDATA["servers"][chosenserver-1]["moddable"]:
@@ -1912,6 +1890,90 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
 _SCREEN = None
+
+def collapse_datapack_description(desc):
+    if type(desc) == str:
+        return desc.splitlines()[0]
+    elif type(desc) == list:
+        return desc[0]["translate"].splitlines()[0]
+    elif type(desc) == dict:
+        return desc["translate"].splitlines()[0]
+
+def datapack_is_valid(datapackfile):
+    tmpx = generate_temp_dir()
+    try:
+        with zipfile.ZipFile(datapackfile) as zf:
+            zf.extract("pack.mcmeta",tmpx)
+        with open(tmpx+"/pack.mcmeta") as f:
+            json.load(f)
+    except:
+        return False
+    else:
+        return True
+
+def generate_temp_dir() -> str:
+    return f"{TEMPDIR}/{hex(round(random.random()*2**64))[2:]}"#Random int between 0 and 2^64
+
+def find_world_datapacks(datadir) -> list[list[str,str]]:
+    #datadir = worlddir+"/datapacks"
+    tmpx = generate_temp_dir()
+    final = []
+    if not os.path.isdir(datadir):
+        os.mkdir(datadir)
+        return []
+    else:
+        try:
+            
+            for file in glob.glob(datadir+"/*.zip"):
+                with zipfile.ZipFile(file) as zf:
+                    zf.extract("pack.mcmeta",tmpx)
+                with open(tmpx+"/pack.mcmeta") as f:
+                    data = json.load(f)
+                    final.append([data["pack"]["description"],file])
+        except:
+            pass
+        return final
+
+def manage_datapacks(stdscr,datapackdir:str):
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["Back","Add Datapack"]+[collapse_datapack_description(f[0]) for f in find_world_datapacks(datapackdir)])
+        if wtd == 0:
+            return
+        elif wtd == 1:
+            datatoadd = cursesplus.filedialog.openfiledialog(stdscr,"Choose a datapack to import",[["*.zip","ZIP Archives"]],os.path.expanduser("~"))
+            if datatoadd is not None:
+                if datapack_is_valid(datatoadd):
+                    shutil.copyfile(datatoadd,datapackdir+"/"+os.path.split(datatoadd)[1])#Copy datapack
+                else:
+                    cursesplus.messagebox.showwarning(stdscr,["The selected file is not a valid Minecraft data pack"])
+        else:
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to delete this?"],default=cursesplus.messagebox.MessageBoxStates.NO):
+                os.remove(f[1])
+
+def manage_a_world(stdscr,SERVER_DIR,svrx:str):
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["Back","Manage datapacks","View world info"])
+        if wtd == 0:
+            return
+        elif wtd == 1:
+            manage_datapacks(stdscr,svrx+"/datapacks")
+        if wtd == 2:
+            cursesplus.displaymsg(stdscr,["Calculating world size"],False)
+            #svrx = po[n-2]
+            svrd = SERVER_DIR+"/"+svrx
+            os.chdir(SERVER_DIR)
+            svrs = get_tree_size(svrd)
+            stdscr.clear()
+            stdscr.addstr(0,0,"World Name:")
+            stdscr.addstr(1,0,"World Size:")
+            stdscr.addstr(3,0,"PRESS D TO DELETE. PRESS ANY OTHER KEY TO GO BACK")
+            stdscr.addstr(0,20,svrx)
+            stdscr.addstr(1,20,parse_size(svrs))
+            stdscr.refresh()
+            ch = stdscr.getch()
+            if ch == 100:
+                cursesplus.displaymsg(stdscr,["Removing world"],False)
+                shutil.rmtree(svrd)
 
 def manage_ops(stdscr,serverdir):
     opdir = serverdir + "/ops.json"
@@ -2166,7 +2228,7 @@ def managejavainstalls(stdscr):
             stdscr.addstr(3,10,jdl["ver"])
             k = stdscr.getch()
             if k == curses.KEY_DC or k == 100:
-                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to remove the java installation",jdl["path"]]):
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to remove the java installation",jdl["path"]],default=cursesplus.messagebox.MessageBoxStates.NO):
                     del APPDATA["javainstalls"][jmg-2]
             elif k == 118:
                 jdl["ver"] = get_java_version(jdl["path"])
@@ -2284,7 +2346,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         for op in options[offset:offset+my-7]:
             if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel"):
                 col = cursesplus.RED
-            elif str_contains_word(op,"start") or str_contains_word(op,"new"):
+            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add"):
                 col = cursesplus.GREEN
             elif op.upper() == op:
                 col = cursesplus.CYAN
@@ -2363,7 +2425,7 @@ def choose_server_memory_amount(stdscr) -> str:
                 cursesplus.messagebox.showerror(stdscr,["Invalid memory string.","EXAMPLE: 5G, 1465M"])
                 continue
             if mtoal.endswith("M") and int(mtoal[0:-1]) < 1000:
-                if cursesplus.messagebox.askyesno(stdscr,["You have alocated a dangerously low amount of memory.","Low memory will harm yur server","Are you sure you want to allocate this much?"]):
+                if cursesplus.messagebox.askyesno(stdscr,["You have alocated a dangerously low amount of memory.","Low memory will harm your server","Are you sure you want to allocate this much?"],default=cursesplus.messagebox.MessageBoxStates.NO):
                     return mtoal
                 else:
                     continue
@@ -2459,7 +2521,7 @@ def settings_mgr(stdscr):
                 elif n == 2:
                     if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
                         if not cursesplus.messagebox.askyesno(stdscr,["THIS IS YOUR LAST CHANCE!","To make sure that you actually intend to reset,","SELECT NO TO WIPE"]):
-                            if cursesplus.messagebox.askyesno(stdscr,["Last chance. For real this time","Are you sure you want to reset?"]):
+                            if cursesplus.messagebox.askyesno(stdscr,["Last chance. For real this time","Are you sure you want to reset?"],default=cursesplus.messagebox.MessageBoxStates.NO):
                                 os.chdir("/")
                                 shutil.rmtree(APPDATADIR)
                                 cursesplus.messagebox.showinfo(stdscr,["Program reset."])

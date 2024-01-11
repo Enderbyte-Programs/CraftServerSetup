@@ -1,3 +1,7 @@
+1.32:
+- Delayed features from 1.31.2
+- Add datapack manager
+- Dangerous things now default to no on messagebox
 1.31.2:
 - Fix bug in server startup
 - Now using cursesplus 3.16

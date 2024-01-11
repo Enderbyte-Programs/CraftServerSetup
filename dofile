@@ -75,11 +75,7 @@
     ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
     pushd lib >/dev/null
     #Copy prebuilt python library
-    for file in *.xz
-    do
-        tar -xf $file -C $LIBDIR #Extract library to custom library path
-    done
-    cp *.py $LIBDIR #Copy remaining custom librariespa
+    cp -r * $LIBDIR #Copy remaining custom librariespa
     popd >/dev/null
     if [ ! -d $ICONDIR ]; then
         mkdir -p $ICONDIR
@@ -181,11 +177,8 @@
 
     pushd lib >/dev/null
     #Copy prebuilt python library
-    for file in *.xz
-    do
-        tar -xf $file -C "../$DEBLIBFOLDER" #Extract library to custom library path
-    done
-    cp *.py "../$DEBLIBFOLDER" #Copy remaining custom librariespa
+    
+    cp -r * "../$DEBLIBFOLDER" #Copy remaining custom librariespa
     popd >/dev/null
 
     #Move desktop and icon files
