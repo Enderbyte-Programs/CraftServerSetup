@@ -1,5 +1,5 @@
 *.zip
-*.xz
+craftserversetup.tar.xz
 *.deb
 *.zst
 deb/
