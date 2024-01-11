@@ -24,7 +24,7 @@ class EPDocfile:
     def read_from_name(self,stdscr,block_name):
         """show the text of a documentation section by providing the section name."""
         if not block_name in list(self.textblocks.keys()):
-            cursesplus.messagebox.messagebox.showwarning(stdscr,["A documentation entry was not availble under this name"])
+            cursesplus.messagebox.showwarning(stdscr,["A documentation entry was not availble under this name"])
         else:
             cursesplus.textview(stdscr,text=self.textblocks[block_name],message=f"{self.name} Documentation : {block_name}")
     def read_from_index(self,stdscr,index):
@@ -33,7 +33,7 @@ class EPDocfile:
     def show_documentation(self,stdscr):
         """Show user-friendly cursesplus documentation menu"""
         while True:
-            z = cursesplus.displayops(stdscr,["BACK"]+list(self.textblocks.keys()),"Please choose a documentation chapter")
+            z = cursesplus.optionmenu(stdscr,["BACK"]+list(self.textblocks.keys()),"Please choose a documentation chapter")
             if z == 0:
                 return
             else:
