@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.32"#The semver version
+APP_UF_VERSION = "1.33"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -36,7 +36,7 @@ import tarfile                  #Create archives
 import gzip                     #Compression utilities
 import time                     #Timezone data
 import textwrap                 #Text wrapping
-import shlex                    #CLI splits
+import copy                     #Object copies
 
 WINDOWS = platform.system() == "Windows"
 
@@ -141,6 +141,25 @@ spawn-protection=16
 resource-pack-sha1=
 max-world-size=29999984
 """
+
+PLUGIN_HELP = """
+So You Can't Find Your Plugin
+
+Sometimes Modrinth can be finicky and you can't find your plugin. Here are some things that could have happened:
+
+- The plugin owner misconfigured the plugin, leading to its exclusion from results
+- The plugin is listed to work on (say 1.19 +) but since it is 1.20, it works anyway but you can't find it
+- You are using a forge or fabric server. This program does not officially support them but you are allowed to import them anyway
+
+Do not worry; There are things you can do to find your plugin/mod. These are leniency settings. In leniency settings, you can change the following settings:
+
+Enforce Version         If enabled, makes sure that the plugin explicitly lists the server version as a supported version
+
+Enforce Software        If enabled, makes sure that the plugin explicitly supports Bukkit
+
+Enforce Type            If enabled, makes sure that what you are downloading is actually a mod and not something else
+"""
+
 COLOURS_ACTIVE = False
 def restart_colour():
     global COLOURS_ACTIVE
@@ -1223,7 +1242,9 @@ def retr_jplug(path: str) -> list[dict]:
         try:
             final.append(jar_get_bukkit_plugin_name(jf))
         except Exception as e:
-            pass #This isn't a mod file
+            #pass #This isn't a mod file [OLD]
+            #New version: now return ???
+            final.append({"version":"Unknown version","name":os.path.split(jf)[1],"mcversion":"Unknown","path":jf})
     return final
 
 def file_get_md5(path: str) -> str:
@@ -1231,10 +1252,32 @@ def file_get_md5(path: str) -> str:
         data = f.read()
     return hashlib.md5(data).hexdigest()
 
+def process_modrinth_api_return_with_config(responses:list,settings:dict) -> list:
+    final = []
+    #inres = [i for i in inres if i["project_type"] == "mod" and serverversion in i["versions"] and "bukkit" in i["categories"]]
+    for response in responses:
+        if settings["enforce-version"]:
+            if not settings["serverversion"] in response["versions"]:
+                continue#FAIL
+        if settings["enforce-software"]:
+            if not "bukkit" in response["categories"]:
+                continue #FAIL
+        if settings["enforce-type"]:
+            if response["project_type"] != "mod":
+                continue #FAIL #FAIL #FAIL
+        final.append(response)
+    return final
+
 def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit=1000):
     api_base = "https://api.modrinth.com/v2"
     headers = {"User-Agent":MODRINTH_USER_AGENT,"content-type":"application/json"}
     noffset = 0
+    lenset = {
+        "enforce-version" : True,
+        "enforce-software" : True,
+        "enforce-type" : True,
+        "serverversion" : serverversion#Easy passing to function
+    }
     inres = []
     npage = 1
     while True:
@@ -1245,17 +1288,29 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
         except Exception as uuuu:
             cursesplus.messagebox.showwarning(stdscr,["API Limit exceeded","Search results will be limited",str(uuuu)])
             break #We have likely exceeded out limit
-        inres = [i for i in inres if i["project_type"] == "mod" and serverversion in i["versions"] and "bukkit" in i["categories"]]
+        
         noffset += inress.json()["limit"]
         npage += 1
         if inress.json()["offset"] > inress.json()["total_hits"] - inress.json()["limit"] or len(inres) > limit or npage > 200:#Limit to 100
             break
+    oldinres = copy.deepcopy(inres)
+    inres = process_modrinth_api_return_with_config(inres,lenset)
     while True:
-        modch = crss_custom_ad_menu(stdscr,["Cancel"]+[ikl["title"] for ikl in inres],f"Search results for {searchq}")
+        modch = crss_custom_ad_menu(stdscr,["Cancel","Leniency Settings","Help I can't find what I'm looking for"]+[ikl["title"] for ikl in inres],f"Search results for {searchq}")
         if modch == 0:
             break
+        elif modch == 1:
+            tl = cursesplus.checkboxlist(stdscr,[
+                cursesplus.CheckBoxItem("enforce-version","Enforce Version",lenset["enforce-version"]),
+                cursesplus.CheckBoxItem("enforce-software","Enforce Software Type",lenset["enforce-software"]),
+                cursesplus.CheckBoxItem("enforce-type","Enforce Type",lenset["enforce-type"])
+            ],"Please configure leniencey settings")
+            lenset = lenset | tl#Merge dicts
+            inres = process_modrinth_api_return_with_config(oldinres,lenset)
+        elif modch == 2:
+            cursesplus.textview(stdscr,text=PLUGIN_HELP,message="Help")
         else:
-            chmod = inres[modch-1]
+            chmod = inres[modch-3]
             while True:
                 mocho = crss_custom_ad_menu(stdscr,["Cancel","Plugin Info","Download"])
                 if mocho == 0:
@@ -1286,11 +1341,13 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
                     finald = []
                     final = []
                     for item in r6:
-                        if serverversion in item["game_versions"]:
+                        if serverversion in item["game_versions"] or not lenset["enforce-version"]:
                             finald.append(item)
                             final.append(f"{item['name']} ({item['version_type']})")
-                    filed = cursesplus.coloured_option_menu(stdscr,final,"Please choose a version to download")
-                    primad = [d for d in finald[filed]["files"] if d["primary"]][0]
+                    filed = cursesplus.coloured_option_menu(stdscr,["Cancel"]+final,"Please choose a version to download")
+                    if filed == 0:
+                        continue
+                    primad = [d for d in finald[filed-1]["files"] if d["primary"]][0]
                     cursesplus.displaymsg(stdscr,["Downloading plugin file"],False)
                     urllib.request.urlretrieve(primad["url"],modfolder+"/"+primad["filename"])
                     cursesplus.messagebox.showinfo(stdscr,["Download successful"])
@@ -1309,7 +1366,7 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
         elif wtd == 2:
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
             
-def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
+def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
     modsforlder = SERVERDIRECTORY + "/plugins"
     if not os.path.isdir(modsforlder):
         os.mkdir(modsforlder)
@@ -1328,12 +1385,13 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion):
                         stdscr.clear()
                         cursesplus.displaymsg(stdscr,["loading plugin",modfile],False)
                         mf_name = os.path.split(modfile)[1]
-                        try:
-                            jar_get_bukkit_plugin_name(modfile)
-                        except:
-                            
-                            if not cursesplus.messagebox.askyesno(stdscr,[f"file {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
-                                continue
+                        if servertype > 0:
+                            try:
+                                jar_get_bukkit_plugin_name(modfile)
+                            except:
+                                
+                                if not cursesplus.messagebox.askyesno(stdscr,[f"file {modfile} may not be a Minecraft plugin.","Are you sure you want to add it to your server?"]):
+                                    continue
                         shutil.copyfile(modfile,modsforlder+"/"+mf_name)
                 stdscr.erase()
             elif minstype == 2:
@@ -1836,7 +1894,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             else:
                 cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
         elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
-            svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"])
+            svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"],APPDATA["servers"][chosenserver-1]["software"])
         elif w == 7 and not APPDATA["servers"][chosenserver-1]["moddable"]:
             cursesplus.messagebox.showerror(stdscr,["Vanilla servers can not have plugins."])
         elif w == 8:
@@ -2469,8 +2527,8 @@ def import_server(stdscr):
             memorytoall = choose_server_memory_amount(stdscr)
             xdat["memory"] = memorytoall
             xdat["version"] = cursesplus.cursesinput(stdscr,"What version is your server?")
-            xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?"])
-            xdat["software"] = crss_custom_ad_menu(stdscr,["Vanilla","Spigot","Paper","Purpur"],"What software is this server running") + 1
+            xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?","That is, Can it be changed with plugins/mods"])
+            xdat["software"] = crss_custom_ad_menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
             xdat["script"] = generate_script(xdat)
             APPDATA["servers"].append(xdat)
             pushd(xdat["dir"])

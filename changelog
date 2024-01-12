@@ -1,3 +1,6 @@
+1.33:
+- Add support for unknown server types
+- Plugins added to these servers will not be verified
 1.32:
 - Delayed features from 1.31.2
 - Add datapack manager
