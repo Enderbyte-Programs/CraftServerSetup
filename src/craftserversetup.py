@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.33"#The semver version
+APP_UF_VERSION = "1.33.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -1994,10 +1994,14 @@ def find_world_datapacks(datadir) -> list[list[str,str]]:
 
 def manage_datapacks(stdscr,datapackdir:str):
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Add Datapack"]+[collapse_datapack_description(f[0]) for f in find_world_datapacks(datapackdir)])
+        fz = find_world_datapacks(datapackdir)
+        wtd = crss_custom_ad_menu(stdscr,["Back","Add Datapack"]+[collapse_datapack_description(f[0]) for f in fz])
+        
         if wtd == 0:
             return
-        elif wtd == 1:
+        chx = fz[wtd-2]
+        if wtd == 1:
+            
             datatoadd = cursesplus.filedialog.openfiledialog(stdscr,"Choose a datapack to import",[["*.zip","ZIP Archives"]],os.path.expanduser("~"))
             if datatoadd is not None:
                 if datapack_is_valid(datatoadd):
@@ -2006,7 +2010,7 @@ def manage_datapacks(stdscr,datapackdir:str):
                     cursesplus.messagebox.showwarning(stdscr,["The selected file is not a valid Minecraft data pack"])
         else:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to delete this?"],default=cursesplus.messagebox.MessageBoxStates.NO):
-                os.remove(f[1])
+                os.remove(chx[1])
 
 def manage_a_world(stdscr,SERVER_DIR,svrx:str):
     while True:
