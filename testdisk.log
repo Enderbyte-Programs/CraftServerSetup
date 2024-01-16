@@ -1,0 +1,278 @@
+
+
+Sun Jan 14 11:03:30 2024
+Command line: TestDisk
+
+TestDisk 7.1, Data Recovery Utility, July 2019
+Christophe GRENIER <grenier@cgsecurity.org>
+https://www.cgsecurity.org
+OS: Linux, kernel 6.5.0-14-generic (#14-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 14 14:59:49 UTC 2023) x86_64
+Compiler: GCC 12.2
+ext2fs lib: 1.47.0, ntfs lib: libntfs-3g, reiserfs lib: none, ewf lib: none, curses lib: ncurses 6.3
+/dev/sda: LBA, LBA48 support
+/dev/sda: size       976773168 sectors
+/dev/sda: user_max   976773168 sectors
+/dev/sdb: LBA, HPA, LBA48, DCO support
+/dev/sdb: size       1953525168 sectors
+/dev/sdb: user_max   1953525168 sectors
+/dev/sdb: native_max 1953525168 sectors
+Warning: can't get size for Disk /dev/mapper/control - 0 B - 0 sectors, sector size=512
+Warning: can't get size for Disk /dev/loop16 - 0 B - 0 sectors, sector size=512
+Hard disk list
+Disk /dev/sda - 500 GB / 465 GiB - CHS 60801 255 63, sector size=512 - CT500MX500SSD1, S/N:1849E1DB6CB6, FW:M3CR023
+Disk /dev/sdb - 1000 GB / 931 GiB - CHS 121601 255 63, sector size=512 - TOSHIBA DT01ACA100, S/N:Z7M18UMFS, FW:MS2OA750
+Disk /dev/loop0 - 4096 B - 8 sectors (RO), sector size=512
+Disk /dev/loop1 - 58 MB / 55 MiB - 113992 sectors (RO), sector size=512
+Disk /dev/loop10 - 521 MB / 496 MiB - 1017816 sectors (RO), sector size=512
+Disk /dev/loop11 - 96 MB / 91 MiB - 187776 sectors (RO), sector size=512
+Disk /dev/loop12 - 42 MB / 40 MiB - 83672 sectors (RO), sector size=512
+Disk /dev/loop13 - 42 MB / 40 MiB - 82800 sectors (RO), sector size=512
+Disk /dev/loop14 - 88 MB / 84 MiB - 172040 sectors (RO), sector size=512
+Disk /dev/loop15 - 89 MB / 85 MiB - 175048 sectors (RO), sector size=512
+Disk /dev/loop2 - 58 MB / 55 MiB - 113992 sectors (RO), sector size=512
+Disk /dev/loop3 - 77 MB / 74 MiB - 151784 sectors (RO), sector size=512
+Disk /dev/loop4 - 77 MB / 73 MiB - 151352 sectors (RO), sector size=512
+Disk /dev/loop5 - 102 MB / 97 MiB - 200104 sectors (RO), sector size=512
+Disk /dev/loop6 - 102 MB / 97 MiB - 200104 sectors (RO), sector size=512
+Disk /dev/loop7 - 257 MB / 245 MiB - 502968 sectors (RO), sector size=512
+Disk /dev/loop8 - 256 MB / 244 MiB - 501272 sectors (RO), sector size=512
+Disk /dev/loop9 - 172 MB / 164 MiB - 337560 sectors (RO), sector size=512
+
+Partition table type (auto): EFI GPT
+Disk /dev/sdb - 1000 GB / 931 GiB - TOSHIBA DT01ACA100
+Partition table type: EFI GPT
+
+Analyse Disk /dev/sdb - 1000 GB / 931 GiB - CHS 121601 255 63
+hdr_size=92
+hdr_lba_self=1
+hdr_lba_alt=1953525167 (expected 1953525167)
+hdr_lba_start=34
+hdr_lba_end=1953525134
+hdr_lba_table=2
+hdr_entries=128
+hdr_entsz=128
+Current partition structure:
+ 1 P MS Data                 65536000 1500915711 1435379712 [DATA64]
+ 2 P Linux filesys. data         2048     411647     409600
+ 3 P Linux filesys. data   1748723712 1953523711  204800000
+ 4 P Linux filesys. data   1500915712 1705725951  204810240
+ 5 P Linux filesys. data       411648   65535999   65124352
+
+search_part()
+Disk /dev/sdb - 1000 GB / 931 GiB - CHS 121601 255 63
+
+recover_EXT2: s_block_group_nr=0/25, s_mnt_count=4/4294967295, s_blocks_per_group=8192, s_inodes_per_group=2048
+recover_EXT2: s_blocksize=1024
+recover_EXT2: s_blocks_count 204800
+recover_EXT2: part_size 409600
+Filesystem created: Thu Jun 22 20:32:07 2023
+Last mount time:    Sat Jan  6 17:35:19 2024
+     Linux filesys. data         2048     411647     409600
+     ext2 blocksize=1024 Large_file Sparse_SB, 209 MB / 200 MiB
+
+recover_EXT2: s_block_group_nr=0/248, s_mnt_count=49/4294967295, s_blocks_per_group=32768, s_inodes_per_group=8176
+recover_EXT2: s_blocksize=4096
+recover_EXT2: s_blocks_count 8140544
+recover_EXT2: part_size 65124352
+Filesystem created: Thu Jun 22 20:32:12 2023
+Last mount time:    Sun Nov 26 10:10:19 2023
+     Linux filesys. data       411648   65535999   65124352
+     ext4 blocksize=4096 Large_file Sparse_SB, 33 GB / 31 GiB
+NTFS at 4079/108/62
+filesystem size           1435379705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+NTFS part_offset=33554432000, part_size=734914408960, sector_size=512
+NTFS partition cannot be added (part_offset<part_size).
+NTFS at 4079/108/62
+filesystem size           1435379705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data                 65536000 1500915704 1435379705 [DATA64]
+     NTFS, blocksize=4096, 734 GB / 684 GiB
+NTFS at 93427/173/58
+filesystem size           1435379705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data                 65536007 1500915711 1435379705
+     NTFS found using backup sector, blocksize=4096, 734 GB / 684 GiB
+NTFS at 93427/173/58
+filesystem size           1435379705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data               1500915711 2936295415 1435379705
+     NTFS, blocksize=4096, 734 GB / 684 GiB
+This partition ends after the disk limits. (start=1500915711, size=1435379705, end=2936295415, disk end=1953525168)
+
+block_group_nr 6561
+
+recover_EXT2: part_offset problem
+
+block_group_nr 6561
+
+recover_EXT2: part_offset problem
+
+block_group_nr 6561
+
+recover_EXT2: part_offset problem
+
+block_group_nr 6561
+
+recover_EXT2: part_offset problem
+
+recover_EXT2: s_block_group_nr=0/7448, s_mnt_count=1/4294967295, s_blocks_per_group=32768, s_inodes_per_group=8192
+recover_EXT2: s_blocksize=4096
+recover_EXT2: s_blocks_count 244058368
+recover_EXT2: part_size 1952466944
+Filesystem created: Fri Oct 21 18:18:14 2022
+Last mount time:    Wed Nov 16 15:18:23 2022
+     Linux filesys. data   1516183550 3468650493 1952466944
+     ext4 blocksize=4096 Large_file Sparse_SB Recover, 999 GB / 931 GiB
+This partition ends after the disk limits. (start=1516183550, size=1952466944, end=3468650493, disk end=1953525168)
+
+LVM magic value at 95735/60/53
+NTFS at 96104/205/30
+filesystem size           1478387705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data                 65536000 1543923704 1478387705 [DATA64]
+     NTFS found using backup sector, blocksize=4096, 756 GB / 704 GiB
+NTFS at 96104/205/30
+filesystem size           1478387705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data               1543923704 3022311408 1478387705
+     NTFS, blocksize=4096, 756 GB / 704 GiB
+This partition ends after the disk limits. (start=1543923704, size=1478387705, end=3022311408, disk end=1953525168)
+NTFS at 96104/205/37
+filesystem size           1478387705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data                 65536007 1543923711 1478387705
+     NTFS found using backup sector, blocksize=4096, 756 GB / 704 GiB
+NTFS at 96104/205/37
+filesystem size           1478387705
+sectors_per_cluster       8
+mft_lcn                   4
+mftmirr_lcn               117999231
+clusters_per_mft_record   -10
+clusters_per_index_record 1
+     MS Data               1543923711 3022311415 1478387705
+     NTFS, blocksize=4096, 756 GB / 704 GiB
+This partition ends after the disk limits. (start=1543923711, size=1478387705, end=3022311415, disk end=1953525168)
+
+recover_EXT2: s_block_group_nr=0/781, s_mnt_count=0/4294967295, s_blocks_per_group=32768, s_inodes_per_group=8192
+recover_EXT2: s_blocksize=4096
+recover_EXT2: s_blocks_count 25600000
+recover_EXT2: part_size 204800000
+Filesystem created: Tue Mar  7 16:37:08 2023
+Last mount time:    Sat Jan 13 12:42:24 2024
+     Linux filesys. data   1543923712 1748723711  204800000 [GAMES]
+     ext4 blocksize=4096 Large_file Sparse_SB, 104 GB / 97 GiB
+
+recover_EXT2: s_block_group_nr=0/781, s_mnt_count=296/4294967295, s_blocks_per_group=32768, s_inodes_per_group=8192
+recover_EXT2: s_blocksize=4096
+recover_EXT2: s_blocks_count 25600000
+recover_EXT2: part_size 204800000
+Filesystem created: Tue Mar  7 15:44:14 2023
+Last mount time:    Sat Jan 13 12:42:24 2024
+     Linux filesys. data   1748723712 1953523711  204800000 [VIDEO]
+     ext4 blocksize=4096 Large_file Sparse_SB Recover, 104 GB / 97 GiB
+Disk /dev/sdb - 1000 GB / 931 GiB - CHS 121601 255 63
+Check the harddisk size: HD jumper settings, BIOS detection...
+The harddisk (1000 GB / 931 GiB) seems too small! (< 1775 GB / 1653 GiB)
+The following partitions can't be recovered:
+     MS Data               1500915711 2936295415 1435379705
+     NTFS, blocksize=4096, 734 GB / 684 GiB
+     Linux filesys. data   1516183550 3468650493 1952466944
+     ext4 blocksize=4096 Large_file Sparse_SB Recover, 999 GB / 931 GiB
+     MS Data               1543923704 3022311408 1478387705
+     NTFS, blocksize=4096, 756 GB / 704 GiB
+     MS Data               1543923711 3022311415 1478387705
+     NTFS, blocksize=4096, 756 GB / 704 GiB
+
+Results
+   P Linux filesys. data         2048     411647     409600
+     ext2 blocksize=1024 Large_file Sparse_SB, 209 MB / 200 MiB
+   P Linux filesys. data       411648   65535999   65124352
+     ext4 blocksize=4096 Large_file Sparse_SB, 33 GB / 31 GiB
+     MS Data                 65536000 1500915704 1435379705 [DATA64]
+     NTFS, blocksize=4096, 734 GB / 684 GiB
+     MS Data                 65536000 1543923704 1478387705 [DATA64]
+     NTFS found using backup sector, blocksize=4096, 756 GB / 704 GiB
+     MS Data                 65536007 1500915711 1435379705
+     NTFS found using backup sector, blocksize=4096, 734 GB / 684 GiB
+     MS Data                 65536007 1543923711 1478387705
+     NTFS found using backup sector, blocksize=4096, 756 GB / 704 GiB
+   P Linux filesys. data   1543923712 1748723711  204800000 [GAMES]
+     ext4 blocksize=4096 Large_file Sparse_SB, 104 GB / 97 GiB
+   P Linux filesys. data   1748723712 1953523711  204800000 [VIDEO]
+     ext4 blocksize=4096 Large_file Sparse_SB Recover, 104 GB / 97 GiB
+
+Hint for advanced users: dmsetup may be used if you prefer to avoid rewriting the partition table for the moment:
+echo "0 409600 linear /dev/sdb 2048" | dmsetup create test0
+echo "0 65124352 linear /dev/sdb 411648" | dmsetup create test1
+echo "0 1435379705 linear /dev/sdb 65536000" | dmsetup create test2
+echo "0 1478387705 linear /dev/sdb 65536000" | dmsetup create test3
+echo "0 1435379705 linear /dev/sdb 65536007" | dmsetup create test4
+echo "0 1478387705 linear /dev/sdb 65536007" | dmsetup create test5
+echo "0 204800000 linear /dev/sdb 1543923712" | dmsetup create test6
+echo "0 204800000 linear /dev/sdb 1748723712" | dmsetup create test7
+
+interface_write()
+ 1 P Linux filesys. data         2048     411647     409600
+ 2 P Linux filesys. data       411648   65535999   65124352
+ 3 P Linux filesys. data   1543923712 1748723711  204800000 [GAMES]
+ 4 P Linux filesys. data   1748723712 1953523711  204800000 [VIDEO]
+       0 0000 0000 00 00 00 00 00 00 00 00
+
+interface_write()
+ 1 P Linux filesys. data         2048     411647     409600
+ 2 P Linux filesys. data       411648   65535999   65124352
+ 3 P Linux filesys. data   1543923712 1748723711  204800000 [GAMES]
+ 4 P Linux filesys. data   1748723712 1953523711  204800000 [VIDEO]
+
+interface_write()
+ 1 P Linux filesys. data         2048     411647     409600
+ 2 P Linux filesys. data       411648   65535999   65124352
+ 3 P Linux filesys. data   1543923712 1748723711  204800000 [GAMES]
+ 4 P Linux filesys. data   1748723712 1953523711  204800000 [VIDEO]
+gpt_change_part_type
+Change partition type:
+     MS Data                 65536000 1500915704 1435379705 [DATA64]
+     NTFS, blocksize=4096, 734 GB / 684 GiB
+Change partition type:
+     NTFS                    65536000 1500915704 1435379705 [DATA64]
+     NTFS, blocksize=4096, 734 GB / 684 GiB
+
+interface_write()
+ 1 P Linux filesys. data         2048     411647     409600
+ 2 P Linux filesys. data       411648   65535999   65124352
+ 3 P MS Data                 65536000 1500915704 1435379705 [DATA64]
+ 4 P Linux filesys. data   1543923712 1748723711  204800000 [GAMES]
+ 5 P Linux filesys. data   1748723712 1953523711  204800000 [VIDEO]
+write!
+No extended partition
+You will have to reboot for the change to take effect.
+SIGHUP detected! TestDisk has been killed.

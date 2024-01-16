@@ -1,3 +1,15 @@
+1.34:
+- dictedit will now default on to "Add Item" instead of Quit. The aim of this is to prevent accidental quits
+- dictedit bools now prefill values
+- All config now uses dictedit because it is better than the weird stuff I did in CRSS 0.2
+- Numbers are now purple in dictedit
+- Server datae now have empty settings folder
+- Server PropertiesParse now correctly sets types on load
+- Add isflat tag to dictedit
+- Add ability to rename server
+- Add ability to add more memory to your server
+1.33.1:
+- Fix serious problem when deleting datapacks
 1.33:
 - Add support for unknown server types
 - Plugins added to these servers will not be verified

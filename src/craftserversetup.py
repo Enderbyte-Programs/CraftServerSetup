@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.33.1"#The semver version
+APP_UF_VERSION = "1.34"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -263,6 +263,8 @@ def compatibilize_appdata(data:dict) -> dict:
     for svr in data["servers"]:
         if not "id" in svr:
             data["servers"][svri]["id"] = random.randint(1111,9999)
+        if not "settings" in svr:
+            data["servers"][svri]["settings"] = {}#New empty settings
         svri += 1
 
     svk = 0
@@ -617,6 +619,19 @@ class PropertiesParse:
         for d in dat:
             key = d.split("=")[0]
             val = "=".join(d.split("=")[1:])
+            try:
+                val = float(val)# Convert to int if you can
+            except:
+                pass
+            else:
+                try:
+                    val = int(str(val))
+                except:
+                    if val == int(val):
+                        val = int(val)
+                    pass
+            if val == "true" or val == "false":
+                val = val == "true"# Convert to bool if you can
             final[key] = val
         return final
     @staticmethod
@@ -624,13 +639,14 @@ class PropertiesParse:
         l = ""
         for f in d.items():
             lout = f[1]
+            if isinstance(lout,float):
+                if int(lout) == lout:
+                    lout = int(lout)#Prevent unnescendsary decimals
             if isinstance(lout,bool):
                 if lout:
                     lout = "true"
                 else:
                     lout = "false"
-            elif isinstance(lout,int) or isinstance(lout,float):
-                lout = str(lout)
             l += f[0] + "=" + str(lout) + "\n"
         return l
 
@@ -685,7 +701,8 @@ def dictpath(inputd:dict,path:str):
             final = final[axx]
     return final
 
-def dictedit(stdscr,inputd:dict,name:str) -> dict:
+def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
+    """isflat controls if you are allowed to add new folders/list"""
     path = "/"
     while True:
         mx,my = os.get_terminal_size()
@@ -699,8 +716,9 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
             ],["ADD",cursesplus.GREEN],
             ["list",cursesplus.YELLOW],
             ["folder",cursesplus.YELLOW],
-            ["string",cursesplus.CYAN]
-        ])
+            ["string",cursesplus.CYAN],
+            ["number",cursesplus.MAGENTA]
+        ],preselected=2,footer="When editing a key: If you didn't mean to edit, press enter without doing anything")
         if e == 0:
             return inputd
         elif e == 1:
@@ -712,12 +730,17 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
             if type(dictpath(inputd,path)) == dict:
                 keynamne = cursesplus.cursesinput(stdscr,"Please input the key name.")
                 ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
+                if ktype > 3 and isflat:
+                    cursesplus.messagebox.showerror(stdscr,["The selected type is not supported by this","file format"])
+                    continue
                 if ktype == 0:
                     continue
                 elif ktype == 1:
                     val = cursesplus.cursesinput(stdscr,"What is the value of this key?")
                 elif ktype == 2:
                     val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
+                    if int(val) == val:
+                        val = int(val)
                 elif ktype == 3:
                     val = cursesplus.messagebox.askyesno(stdscr,["New value for boolean?"])
                 elif ktype == 4:
@@ -741,6 +764,8 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                     val = cursesplus.cursesinput(stdscr,"What is the value of this key?")
                 elif ktype == 2:
                     val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
+                    if int(val) == val:
+                        val = int(val)
                 elif ktype == 3:
                     val = cursesplus.messagebox.askyesno(stdscr,["New value for boolean?"])
                 elif ktype == 4:
@@ -771,7 +796,11 @@ def dictedit(stdscr,inputd:dict,name:str) -> dict:
                 newval = cursesplus.numericinput(stdscr,f"Please input a new value for {path}",True,True,prefillnumber=dictpath(inputd,path))
                 cursesplus.utils.hidecursor()
             elif type(dictpath(inputd,path)) == bool:
-                newval = cursesplus.messagebox.askyesno(stdscr,["New boolean value for",path])
+                if dictpath(inputd,path):
+                    nv = cursesplus.messagebox.MessageBoxStates.YES
+                else:
+                    nv = cursesplus.messagebox.MessageBoxStates.NO
+                newval = cursesplus.messagebox.askyesno(stdscr,["New boolean value for",path],default=nv)
             if type(dictpath(inputd,path)) != dict and type(dictpath(inputd,path)) != list:
                 path = "/".join(path.split("/")[0:-1]) 
             if newval is not None:
@@ -973,7 +1002,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
 
     njavapath = njavapath.replace("//","/")
     serverid = random.randint(1111,9999)
-    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid}
+    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid,"settings":{}}
     #_space = "\\ "
     #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     __SCRIPT__ = generate_script(sd)
@@ -1682,7 +1711,7 @@ def manage_server_icon(stdscr):
                     pass
 
 def config_server(stdscr,chosenserver):
-    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration","Extra configuration"])
+    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory"])#Todo rename server, memory
     if __l == 0:
         return
     elif __l == 1:
@@ -1691,37 +1720,14 @@ def config_server(stdscr,chosenserver):
         else:
             with open("server.properties") as f:
                 config = PropertiesParse.load(f.read())
-            while True:
-                chc = crss_custom_ad_menu(stdscr,["BACK"]+[f for f in list(config.keys())])
-                if chc == 0:
-                    break
-                else:
-                    cursesplus.displaymsg(stdscr,[f"Current value of {list(config.keys())[chc-1]} Is",list(config.values())[chc-1]])
-                    if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
-                        curses.curs_set(1)
-                        newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(config.keys())[chc-1]}",prefiltext=str(list(config.values())[chc-1]))
-                        curses.curs_set(0)
-                        config[list(config.keys())[chc-1]] = newval
+
+            config = dictedit(stdscr,config,"Editing Server Properties",True)
             with open("server.properties","w+") as f:
                 f.write(PropertiesParse.dump(config))
     elif __l == 2:
         dt = APPDATA["servers"][chosenserver-1]
-        while True:
-            dx = crss_custom_ad_menu(stdscr,["FINISH"]+[lmx for lmx in list(dt.keys())])
-            if dx == 0:
-                APPDATA["servers"][chosenserver-1] = dt
-                break
-            else:
-                cursesplus.displaymsg(stdscr,[f"Current value of {list(dt.keys())[dx-1]} is",str(list(dt.values())[dx-1])])
-                lname = list(dt.keys())[dx-1]
-                if cursesplus.messagebox.askyesno(stdscr,["Do you want to change this value?"]):
-                    if lname == "software" or lname == "moddable":
-                        cursesplus.messagebox.showerror(stdscr,["This value may not be changed"])
-                        continue
-                    curses.curs_set(1)
-                    newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {list(dt.keys())[dx-1]}",prefiltext=str(list(dt.values())[dx-1]))
-                    curses.curs_set(0)
-                    dt[list(dt.keys())[dx-1]] = newval
+        dt = dictedit(stdscr,dt,"More Server Properties")
+        APPDATA["servers"][chosenserver-1] = dt
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 3:
         if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
@@ -1746,6 +1752,14 @@ def config_server(stdscr,chosenserver):
                     data = dictedit(stdscr,data,os.path.split(lkz[dz-1])[1])
                     with open(lkz[dz-1],"w+") as f:
                         f.write(yaml.dump(data,default_flow_style=False))
+    elif __l == 5:
+        newname = cursesplus.cursesinput(stdscr,"Choose a new name for this server")
+        APPDATA["servers"][chosenserver-1]["name"] = newname
+        #APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+    elif __l == 6:
+        newmem = choose_server_memory_amount(stdscr)
+        APPDATA["servers"][chosenserver-1]["memory"] = newmem
+        APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
 
 def change_software(stdscr,directory,data) -> dict:
     zxc = crss_custom_ad_menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
@@ -1785,9 +1799,16 @@ def change_software(stdscr,directory,data) -> dict:
         ndata = data | ppr
     return ndata
 
+def startup_options(stdscr,serverdata:dict):
+    pass
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
+    root_menu_options = ["RETURN TO MAIN MENU","Start Server","Server Settings","Manage Additional Content","Update Server Software","View Logs","Export server","Server info","Backups","Delete Server"]
+    content_manager_options = ["Back","Manage Plugins","Edit server resource pack"]
+    settings_options = ["Change MOTD","Advanced configuration","World Settings","Whitelist Settings","Administrators Settings","Bans settings","Server Icon Settings","Rename Server"]
+    
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
     os.chdir(APPDATA["servers"][chosenserver-1]["dir"])
@@ -1798,7 +1819,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans","Manage server icon"]
-        x__ops += ["Change server software"]
+        x__ops += ["Change server software","Startup options"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
