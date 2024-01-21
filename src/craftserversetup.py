@@ -246,6 +246,13 @@ def compatibilize_appdata(data:dict) -> dict:
             "type" : "bool",
             "value":True
         }
+    if not "editor" in data["settings"]:
+        data["settings"]["editor"] = {
+            "name" : "editor",
+            "display" : "Text Editor",
+            "type" : "str",
+            "value" : "/usr/bin/editor %s"
+        }
     if not "productKey" in list(data.keys()):
         data["productKey"] = ""
     if not "pkd" in list(data.keys()):
@@ -261,10 +268,15 @@ def compatibilize_appdata(data:dict) -> dict:
     }
     svri = 0
     for svr in data["servers"]:
+        if type(svr) is not dict:
+            del svr
+            continue#I don't know how this happened
         if not "id" in svr:
             data["servers"][svri]["id"] = random.randint(1111,9999)
         if not "settings" in svr:
             data["servers"][svri]["settings"] = {}#New empty settings
+        if data["servers"][svri]["settings"] == {}:
+            data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[],"safeexitcommands":[]}
         svri += 1
 
     svk = 0
@@ -1799,8 +1811,27 @@ def change_software(stdscr,directory,data) -> dict:
         ndata = data | ppr
     return ndata
 
+def text_editor(text:str) -> str:
+    tmpdir = generate_temp_dir()
+    with open(tmpdir+"/edit","w+") as f:
+        f.write(text)
+    editcmd = (APPDATA["settings"]["editor"]["value"] % "\""+tmpdir+"/edit"+"\"")
+    curses.reset_shell_mode()
+    os.system(editcmd)#Wait for finish
+    curses.reset_prog_mode()
+    with open(tmpdir+"/edit") as f:
+        newdata = f.read()
+    return newdata
+
 def startup_options(stdscr,serverdata:dict):
-    pass
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands"])
+        if wtd == 0:
+            return serverdata
+        elif wtd == 1:
+            serverdata["settings"]["launchcommands"] = text_editor("\n".join(serverdata["settings"]["launchcommands"])).splitlines()
+        elif wtd == 2:
+            serverdata["settings"]["exitcommands"]
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -1819,7 +1850,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans","Manage server icon"]
-        x__ops += ["Change server software","Startup options"]
+        x__ops += ["Change server software"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
@@ -1968,6 +1999,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 17:
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
+        elif w == 18:
+            APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
 _SCREEN = None
 
 def collapse_datapack_description(desc):
@@ -1991,7 +2024,9 @@ def datapack_is_valid(datapackfile):
         return True
 
 def generate_temp_dir() -> str:
-    return f"{TEMPDIR}/{hex(round(random.random()*2**64))[2:]}"#Random int between 0 and 2^64
+    flx = f"{TEMPDIR}/{hex(round(random.random()*2**64))[2:]}"
+    os.mkdir(flx)
+    return flx#Random int between 0 and 2^64
 
 def find_world_datapacks(datadir) -> list[list[str,str]]:
     #datadir = worlddir+"/datapacks"
@@ -2582,24 +2617,8 @@ def settings_mgr(stdscr):
                 if n == 0:
                     break
                 elif n == 1:
-                    APPDATA["settings"] = {
-                    "telemetry":{
-                        "display" : "Enable Telemetry?",
-                        "type" : "bool",
-                        "value":True
-                    },
-                    "transitions":{
-                        "display" : "Show Transitions?",
-                        "type" : "bool",
-                        "value" : True
-                    },
-                    "oldmenu":{
-                        "name" : "oldmenu",
-                        "display" : "Use legacy style menus?",
-                        "type" : "bool",
-                        "value" : False
-                    }
-                    }
+                    del APPDATA["settings"]
+                    compatibilize_appdata()
                     updateappdata()
                 elif n == 2:
                     if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
@@ -2658,7 +2677,7 @@ def oobe(stdscr):
     global APPDATA
     if not APPDATA["hasCompletedOOBE"]:       
         stdscr.clear()
-        cursesplus.displaymsg(stdscr,["CraftServerSetup OOBE","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
+        cursesplus.displaymsg(stdscr,["Out of Box Experience","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
         if not cursesplus.messagebox.askyesno(stdscr,["Do you know how to use a text-based program like this?"]):
             usertutorial(stdscr)
         if not bool(APPDATA["javainstalls"]):
@@ -2668,6 +2687,8 @@ def oobe(stdscr):
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
         APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
         cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
+        if cursesplus.messagebox.askyesno(stdscr,["Would you like to change your default text editor?","YES: Choose a custom command","NO: use the default editor (usually nano)"]):
+            APPDATA["settings"]["editor"]["value"] = cursesplus.cursesinput(stdscr,"Please type a custom command: use %s to represent the file name")
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
 
