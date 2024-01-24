@@ -1850,7 +1850,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
         x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans","Manage server icon"]
-        x__ops += ["Change server software"]
+        x__ops += ["Change server software","Startup Options","FILE MANAGER"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
@@ -2000,8 +2000,55 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
         elif w == 18:
+            cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
+            continue
             APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
+        elif w == 19:
+            file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None
+
+def file_manager(stdscr,directory:str,header:str):
+    #Manage file
+    
+    basedir = directory
+    axt = "/"
+    adir = basedir+axt
+    yoffset = 0
+    xoffset = 0
+    selected = 0
+    os.chdir(directory)
+    cursesplus.displaymsg(stdscr,["Please wait while","files are indexed"],False)
+    #Load allfile into activefile
+    
+    while True:
+        activefile:list[cursesplus.filedialog.Fileobj] = []
+        filssx = os.listdir(adir)
+        for smx in filssx:
+            activefile.append(cursesplus.filedialog.Fileobj(adir+"/"+smx))
+        if type(selected) == int:
+            selected = activefile[selected]
+        stdscr.clear()
+        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(0,0,header,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        
+        mx,my = os.get_terminal_size()
+        my -= 1
+        mx -= 1
+
+        sidebarboundary = mx-20
+        stdscr.vline(1, sidebarboundary, curses.ACS_VLINE, my-1)
+        cursesplus.utils.fill_line(stdscr,my,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(0,mx-19,"Keybinds: ",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(my,0,f"{len(activefile)} files ({parse_size(get_tree_size(adir))})",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(1,0,"Name".ljust(sidebarboundary-30)+"Size".ljust(15)+"Last Modified".ljust(15))
+
+        fi = 0
+        for file in activefile[yoffset:yoffset+my-2]:
+            stdscr.addstr(fi+2,0,os.path.split(file.path)[1][0:sidebarboundary])
+            fi += 1
+
+        stdscr.refresh()
+        ch = stdscr.getch()
 
 def collapse_datapack_description(desc):
     if type(desc) == str:

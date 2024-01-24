@@ -5,6 +5,7 @@ This module contains advertisement support using the Enderbyte Programs ad netwo
 import webbrowser       #Open ads in browser
 import requests         #Procure ad data
 import cursesplus       #Display ads
+import os               #
 
 POST_MESSAGE = ""
 
@@ -19,10 +20,13 @@ class Advertisement:
             stdscr.erase()
 
 ADLIB_BASE = "https://pastebin.com/raw/Jm1NV9u6"#   I'm sorry I had to do this.
+HIDDENAD_BASE = "https://pastebin.com/raw/db6ekcng"
 ADS:list[Advertisement] = []
+HIDDENADS:list[str] = []
 
 def gen_adverts(message=""):
     global POST_MESSAGE
+    global HIDDENADS
     POST_MESSAGE = message
     """Send a request and generate advertisements"""
     d = requests.get(ADLIB_BASE).text
@@ -30,3 +34,4 @@ def gen_adverts(message=""):
         if ad == "":
             continue
         ADS.append(Advertisement(ad.split("|")[0],ad.split("|")[1].replace("\\n","\n")))
+    HIDDENADS = requests.get(HIDDENAD_BASE).text.splitlines()
