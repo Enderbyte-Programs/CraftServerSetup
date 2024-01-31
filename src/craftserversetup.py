@@ -37,6 +37,7 @@ import gzip                     #Compression utilities
 import time                     #Timezone data
 import textwrap                 #Text wrapping
 import copy                     #Object copies
+import enum                     #Just a coding thing
 
 WINDOWS = platform.system() == "Windows"
 
@@ -2007,6 +2008,44 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None
 
+def handle_file_editing(stdscr,path:str):
+    if WINDOWS:
+        os.system(f"notepad \"{path}\"")
+    else:
+        if (is_file_binary(path)):
+            cursesplus.messagebox.showerror(stdscr,["This type of file can't be edited."])
+        elif is_file_dicteditable(path):
+            with open(path) as f:
+                data = f.read()
+            try:
+                ndict = json.loads(data)
+            except:
+                try:
+                    ndict = yaml.load(data,yaml.FullLoader)
+                except:
+                    pass
+            try:
+                ndict = dictedit(stdscr,ndict,os.path.split(path)[1])
+                with open(path,"w+") as f:
+                    if path.endswith("json"):
+                        json.dump(ndict,f)
+                    else:
+                        yaml.dump(ndict,f,default_flow_style=False)
+            except:
+                curses.reset_shell_mode()
+                os.system(APPDATA["settings"]["editor"]["value"].replace("%s",path))
+                curses.reset_prog_mode()
+        else:
+            curses.reset_shell_mode()
+            os.system(APPDATA["settings"]["editor"]["value"].replace("%s",path))
+            curses.reset_prog_mode()
+
+def is_file_binary(path:str):
+    return path.endswith("exe") or path.endswith("jar")
+    
+def is_file_dicteditable(path:str):
+    return path.endswith("json") or path.endswith("yml") or path.endswith("yaml")
+
 def file_manager(stdscr,directory:str,header:str):
     #Manage file
     
@@ -2016,6 +2055,7 @@ def file_manager(stdscr,directory:str,header:str):
     yoffset = 0
     xoffset = 0
     selected = 0
+    bigsz = parse_size(get_tree_size(adir))
     os.chdir(directory)
     cursesplus.displaymsg(stdscr,["Please wait while","files are indexed"],False)
     #Load allfile into activefile
@@ -2025,8 +2065,7 @@ def file_manager(stdscr,directory:str,header:str):
         filssx = os.listdir(adir)
         for smx in filssx:
             activefile.append(cursesplus.filedialog.Fileobj(adir+"/"+smx))
-        if type(selected) == int:
-            selected = activefile[selected]
+        activefile.sort(key=lambda x: x.path)
         stdscr.clear()
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         stdscr.addstr(0,0,header,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
@@ -2038,17 +2077,68 @@ def file_manager(stdscr,directory:str,header:str):
         sidebarboundary = mx-20
         stdscr.vline(1, sidebarboundary, curses.ACS_VLINE, my-1)
         cursesplus.utils.fill_line(stdscr,my,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(0,mx-19,"Keybinds: ",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(my,0,f"{len(activefile)} files ({parse_size(get_tree_size(adir))})",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(1,0,"Name".ljust(sidebarboundary-30)+"Size".ljust(15)+"Last Modified".ljust(15))
+        stdscr.addstr(0,mx-17,"Keybinds: ",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(my,0,f"{len(activefile)} files ({bigsz})",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        cursesplus.utils.fill_line(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        stdscr.addstr(1,0,"Name".ljust(sidebarboundary-30)+"Size".ljust(15)+"Last Modified".ljust(15),cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+        stdscr.addstr(2,sidebarboundary+1,"[ALT-Q] Quit")
+        stdscr.addstr(3,sidebarboundary+1,"[DOWN] Move down")
+        stdscr.addstr(4,sidebarboundary+1,"[UP] Move up")
 
         fi = 0
-        for file in activefile[yoffset:yoffset+my-2]:
-            stdscr.addstr(fi+2,0,os.path.split(file.path)[1][0:sidebarboundary])
+        for file in activefile[yoffset:yoffset+(my-2)]:
+            if os.path.isdir(file.path) and fi+yoffset == selected:
+                cl = cursesplus.GREEN
+                stdscr.addstr(my-5,sidebarboundary+1,"[ENTER] Open")
+            elif os.path.isdir(file.path):
+                cl = cursesplus.YELLOW
+            elif fi+yoffset == selected and not os.path.isdir(file.path):
+                cl = cursesplus.CYAN
+                stdscr.addstr(my-5,sidebarboundary+1,"[Ctrl-X] Execute")
+                stdscr.addstr(my-4,sidebarboundary+1,"[ENTER] Edit")
+            elif is_file_binary(file.path):
+                cl = cursesplus.MAGENTA
+
+                
+            elif is_file_dicteditable(file.path):
+                cl = cursesplus.RED
+                
+            else:
+                cl = cursesplus.WHITE
+            stdscr.addstr(fi+2,0,os.path.split(file.path)[1][xoffset:sidebarboundary+xoffset],cursesplus.set_colour(cursesplus.BLACK,cl))
+            stdscr.addstr(fi+2,sidebarboundary-30,parse_size(file.size),cursesplus.set_colour(cursesplus.BLACK,cl))
+            stdscr.addstr(fi+2,sidebarboundary-19,str(file.date),cursesplus.set_colour(cursesplus.BLACK,cl))
             fi += 1
 
         stdscr.refresh()
         ch = stdscr.getch()
+
+        if ch == curses.KEY_NPAGE and yoffset+my-3 < len(activefile):
+            yoffset += 1
+        elif ch == curses.KEY_PPAGE and yoffset > 0:
+            yoffset -= 1
+        elif ch == curses.KEY_LEFT and xoffset > 0:
+            xoffset -= 1
+        elif ch == curses.KEY_RIGHT:
+            xoffset += 1
+        elif ch == curses.KEY_UP and selected > 0:
+            selected -= 1
+            if selected < yoffset:
+                yoffset -= 1
+        elif ch == curses.KEY_DOWN and selected < len(activefile)-1:
+            selected += 1
+            if selected > yoffset+my-3:
+                yoffset += 1
+        elif ch == curses.KEY_ENTER or ch == 10 or ch == 13:
+            if (os.path.isdir(activefile[selected].path)):
+                yoffset = 0
+                selected = 0
+                adir = activefile[selected].path
+            else:
+                handle_file_editing(stdscr,activefile[selected].path)
+        kkx = curses.keyname(ch).decode()
+        if kkx.lower().endswith("q"):
+            return
 
 def collapse_datapack_description(desc):
     if type(desc) == str:
@@ -2554,10 +2644,17 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
                 offset -= 1
         elif ch == 10 or ch == 13 or ch == curses.KEY_ENTER:
             return selected
-        elif ch == 97:
+        elif ch == 97 and show_ad:
             webbrowser.open(chosenad.url)
             stdscr.erase()
             stdscr.clear()
+        elif ch == curses.KEY_HOME:
+            selected = 0
+            offset = 0
+        elif ch == curses.KEY_END:
+            selected = len(options)-1
+            if selected > my-8+offset:
+                offset = selected-my+8
 
 def choose_server_memory_amount(stdscr) -> str:
     chop = cursesplus.coloured_option_menu(
@@ -2566,7 +2663,7 @@ def choose_server_memory_amount(stdscr) -> str:
             "1024 Megabytes (1 GB) - This is minimum for vanilla servers only",
             "2 GB - This the minimum safe amount for modded servers",
             "4 GB - This is good for most small servers",
-            "8 GB - This is good for small servers with high render distance",
+            "8 GB - This is good for small servers with high render distance and high player counts",
             "Custom Amount - Choose a custom amount of memory"
         ],"Please choose the amount of memory your server should recieve"
     )
