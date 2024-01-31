@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.34"#The semver version
+APP_UF_VERSION = "1.35"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -2084,6 +2084,10 @@ def file_manager(stdscr,directory:str,header:str):
         stdscr.addstr(2,sidebarboundary+1,"[ALT-Q] Quit")
         stdscr.addstr(3,sidebarboundary+1,"[DOWN] Move down")
         stdscr.addstr(4,sidebarboundary+1,"[UP] Move up")
+        stdscr.addstr(5,sidebarboundary+1,"[Ctrl-R] Go up dir")
+        stdscr.addstr(7,sidebarboundary+1,"[N] New ...")
+        stdscr.addstr(8,sidebarboundary+1,"[DEL] Delete")
+        stdscr.addstr(9,sidebarboundary+1,"[M] Rename")
 
         fi = 0
         for file in activefile[yoffset:yoffset+(my-2)]:
@@ -2094,8 +2098,8 @@ def file_manager(stdscr,directory:str,header:str):
                 cl = cursesplus.YELLOW
             elif fi+yoffset == selected and not os.path.isdir(file.path):
                 cl = cursesplus.CYAN
-                stdscr.addstr(my-5,sidebarboundary+1,"[Ctrl-X] Execute")
-                stdscr.addstr(my-4,sidebarboundary+1,"[ENTER] Edit")
+                #stdscr.addstr(my-5,sidebarboundary+1,"[Ctrl-X] Execute")
+                stdscr.addstr(my-5,sidebarboundary+1,"[ENTER] Edit")
             elif is_file_binary(file.path):
                 cl = cursesplus.MAGENTA
 
@@ -2131,14 +2135,50 @@ def file_manager(stdscr,directory:str,header:str):
                 yoffset += 1
         elif ch == curses.KEY_ENTER or ch == 10 or ch == 13:
             if (os.path.isdir(activefile[selected].path)):
+                adir = activefile[selected].path
                 yoffset = 0
                 selected = 0
-                adir = activefile[selected].path
+                
             else:
                 handle_file_editing(stdscr,activefile[selected].path)
+        elif ch == curses.KEY_DC:
+            if os.path.isfile(activefile[selected].path):
+                os.remove(activefile[selected].path)
+            elif os.path.isdir(activefile[selected].path):
+                shutil.rmtree(activefile[selected].path)
         kkx = curses.keyname(ch).decode()
         if kkx.lower().endswith("q"):
             return
+        elif kkx == "^R":
+            if adir == basedir+axt:
+                cursesplus.messagebox.showerror(stdscr,["You may not move back further."])
+            else:
+                adir = os.path.split(adir)[0]
+                yoffset = 0
+                selected = 0
+        elif kkx == "n":
+            whattpmake = crss_custom_ad_menu(stdscr,["Cancel","New File","New Directory"])
+            if whattpmake == 1:
+                newname = cursesplus.cursesinput(stdscr,"Name of new file")
+                try:
+                    with open(adir+"/"+newname,"x") as f:
+                        f.write("")
+                except:
+                    cursesplus.messagebox.showerror(stdscr,["Failed to create file"])
+            elif whattpmake == 2:
+                newname = cursesplus.cursesinput(stdscr,"Name of new directory")
+                try:
+                    os.mkdir(adir+"/"+newname)
+                except:
+                    cursesplus.messagebox.showerror(stdscr,["Failed to create directory"])
+            elif whattpmake == 2:
+                pass
+        elif kkx == "m":
+            newname = cursesplus.cursesinput(stdscr,"New name?")
+            try:
+                os.rename(activefile[selected].path,adir+"/"+newname)
+            except:
+                cursesplus.messagebox.showerror(stdscr,["Failed to move data"])
 
 def collapse_datapack_description(desc):
     if type(desc) == str:
