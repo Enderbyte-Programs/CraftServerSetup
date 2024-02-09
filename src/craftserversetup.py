@@ -1407,7 +1407,33 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq)
         elif wtd == 2:
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
-            
+
+def spigot_api_manager(stdscr,modfolder,serverversion):
+    px = 1
+    final = []
+    headers = {
+            "User-Agent" : MODRINTH_USER_AGENT
+        }
+    shiftedversion = ".".join(serverversion.split(".")[0:2])
+    while True:
+        cursesplus.displaymsg(stdscr,["Downloading package list",f"Page {px}"],False)
+        rq = f"https://api.spiget.org/v2/resources/for/{shiftedversion}"
+        #rq = "https://api.spiget.org/v2/resources/for/1.20?size=1000&page=2"
+        #cursesplus.messagebox.showinfo(stdscr,[rq])
+        r = requests.get(rq,headers=headers,params={"size":1000,"page":px}).json()
+        #cursesplus.textview(stdscr,text=json.dumps(r))
+        px += 1
+        final += r["match"]
+        if len(r["match"]) ==0:
+            break
+    activesearch = ""
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["FINISH","New Search"]+[z["name"][0:40] for z in final],f"Searching for {activesearch} from Spigot")
+        if wtd == 0:
+            break
+        elif wtd == 1:
+            tosearch = cursesplus.cursesinput(stdscr,"What do you want to search for?")
+    
 def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
     modsforlder = SERVERDIRECTORY + "/plugins"
     if not os.path.isdir(modsforlder):
@@ -1419,7 +1445,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
             return
         elif spldi == 1:
             #add mod
-            minstype = cursesplus.coloured_option_menu(stdscr,["Back","Install from file on this computer","Download from Modrinth"])
+            minstype = cursesplus.coloured_option_menu(stdscr,["Back","Install from file on this computer","Download from Modrinth","Download from Spigot"])
             if minstype == 1:
                 modfiles = cursesplus.filedialog.openfilesdialog(stdscr,"Please choose the plugins you would like to add",[["*.jar","JAR Executables"],["*","All files"]])
                 for modfile in modfiles:
@@ -1438,6 +1464,8 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
                 stdscr.erase()
             elif minstype == 2:
                 modrinth_api_download_system(stdscr,modsforlder,serverversion)
+            elif minstype == 3:
+                spigot_api_manager(stdscr,modsforlder,serverversion)
         else:
             chosenplug = spldi - 2
 

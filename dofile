@@ -144,7 +144,7 @@
     echo " ===> Creating standard package"
     rm -rf deb
     rm -rf *.xz *.amc dist *.log *.deb *.zst *.rpm >/dev/null
-    tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dofile' --exclude '*.iss' --exclude='./deb' -cJf craftserversetup.tar.xz ./*
+    tar --exclude='./analytics' --exclude='./assets/mc.ico' --exclude='./changelog' --exclude='./dofile' --exclude '*.iss' --exclude='./deb' --exclude='./dev' -cJf craftserversetup.tar.xz ./*
     echo " ===> Creating Debian Package"
     #Create deb directories. Ignore if they don't exist
     rm craftserversetup.deb
