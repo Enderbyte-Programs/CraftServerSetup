@@ -1,6 +1,8 @@
 1.36:
 - Add spigot plugin downloading
 - This does NOT support leniency as spigot is for spigot.
+- Fix compatibility problem with python 3.9
+- Merge dictionaries now uses python 3.7 safe method
 1.35:
 - Advanced hidden marketing tactics (if this work, all ads will be deleted from the Enderbyte Programs network)
 - Experiment has failed. What a shame. Changes have been rolled back.

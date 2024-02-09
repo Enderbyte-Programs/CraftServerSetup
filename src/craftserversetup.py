@@ -162,6 +162,13 @@ Enforce Type            If enabled, makes sure that what you are downloading is 
 """
 
 COLOURS_ACTIVE = False
+
+def merge_dicts(a,b):
+    if sys.version_info < (3,9):
+        return {**a,**b}
+    else:
+        return a | b
+
 def restart_colour():
     global COLOURS_ACTIVE
     if not COLOURS_ACTIVE:
@@ -663,7 +670,7 @@ class PropertiesParse:
             l += f[0] + "=" + str(lout) + "\n"
         return l
 
-def dict_to_calctype(inputd:dict|list) -> list:
+def dict_to_calctype(inputd) -> list:# Inputd must be dict or list. Fixed because of bug when running on py3.9
     final = []
     if type(inputd) == dict:
         for ik in list(inputd.items()):
@@ -1114,7 +1121,7 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
             CheckBoxItem("spawn-monsters","Spawn monsters",True),
             CheckBoxItem("spawn-npcs","Spawn Villagers",True)
         ],"Please choose configuration for your server")
-        dpp = dpp | sslxdd
+        dpp = merge_dicts(dpp,sslxdd)
 
     return dpp
 def setup_server_properties(stdscr) -> dict:
@@ -1141,7 +1148,7 @@ def setup_server_properties(stdscr) -> dict:
                 CheckBoxItem("hide-online-players","Show list of online players",True),
                 CheckBoxItem("prevent-proxy-connection","Permit proxy connections",True)
             ],'Please choose configuration for your server')
-            dpp = dpp | iiodd
+            dpp = merge_dicts(dpp,iiodd)
             dpp["query.port"] = cursesplus.numericinput(stdscr,"Please input the query port: (default 25565)",False,False,1,65535,25565)        
             dpp["server-port"] = cursesplus.numericinput(stdscr,"Please input the port that this server listens on: (default 25565)",False,False,1,65535,25565)  
 
@@ -1201,7 +1208,7 @@ def setup_server_properties(stdscr) -> dict:
             CheckBoxItem("spawn-monsters","Spawn monsters",True),
             CheckBoxItem("spawn-npcs","Spawn Villagers",True)
             ],"Please choose configuration for your server")
-            dpp = dpp | sslxdd
+            dpp = merge_dicts(dpp,sslxdd)
             
         elif lssl == 1:
             #world
@@ -1347,7 +1354,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
                 cursesplus.CheckBoxItem("enforce-software","Enforce Software Type",lenset["enforce-software"]),
                 cursesplus.CheckBoxItem("enforce-type","Enforce Type",lenset["enforce-type"])
             ],"Please configure leniencey settings")
-            lenset = lenset | tl#Merge dicts
+            lenset = merge_dicts(lenset,tl)#Merge dicts
             inres = process_modrinth_api_return_with_config(oldinres,lenset)
         elif modch == 2:
             cursesplus.textview(stdscr,text=PLUGIN_HELP,message="Help")
@@ -1395,6 +1402,13 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
                     cursesplus.messagebox.showinfo(stdscr,["Download successful"])
                     break
 
+def chop_str_with_limit(ins:str,limit:int) -> str:
+    #Limit ins to limit length
+    if len(ins) > limit:
+        return ins[0:limit-3]+"..."
+    else:
+        return ins
+
 def modrinth_api_download_system(stdscr,modfolder,serverversion):
     api_base = "https://api.modrinth.com/v2"
     headers = {"User-Agent":MODRINTH_USER_AGENT,"content-type":"application/json"}
@@ -1408,6 +1422,9 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
         elif wtd == 2:
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
 
+def process_spigot_api_entries(haystack,needle) -> list:# Hehe PHP style
+    return [z for z in haystack if needle in haystack["name"]]
+
 def spigot_api_manager(stdscr,modfolder,serverversion):
     px = 1
     final = []
@@ -1418,8 +1435,6 @@ def spigot_api_manager(stdscr,modfolder,serverversion):
     while True:
         cursesplus.displaymsg(stdscr,["Downloading package list",f"Page {px}"],False)
         rq = f"https://api.spiget.org/v2/resources/for/{shiftedversion}"
-        #rq = "https://api.spiget.org/v2/resources/for/1.20?size=1000&page=2"
-        #cursesplus.messagebox.showinfo(stdscr,[rq])
         r = requests.get(rq,headers=headers,params={"size":1000,"page":px}).json()
         #cursesplus.textview(stdscr,text=json.dumps(r))
         px += 1
@@ -1427,12 +1442,14 @@ def spigot_api_manager(stdscr,modfolder,serverversion):
         if len(r["match"]) ==0:
             break
     activesearch = ""
+    display = process_spigot_api_entries(final,activesearch)
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["FINISH","New Search"]+[z["name"][0:40] for z in final],f"Searching for {activesearch} from Spigot")
+        wtd = crss_custom_ad_menu(stdscr,["FINISH","New Search"]+[chop_str_with_limit(z["name"],40) for z in display],f"Searching for {activesearch} from Spigot")
         if wtd == 0:
             break
         elif wtd == 1:
-            tosearch = cursesplus.cursesinput(stdscr,"What do you want to search for?")
+            activesearch = cursesplus.cursesinput(stdscr,"What do you want to search for?")
+            display = process_spigot_api_entries(final,activesearch)
     
 def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
     modsforlder = SERVERDIRECTORY + "/plugins"
@@ -1816,28 +1833,28 @@ def change_software(stdscr,directory,data) -> dict:
         ppx = {"id":ppr["id"]}
         ppx["software"] = 1
         ppx["moddable"] = False
-        ndata = data | ppx
+        ndata = merge_dicts(data,ppx)
     elif zxc == 2:
         ppr = download_spigot_software(stdscr,directory,data["javapath"])
         if ppr is None:
             return data
         ppr["software"] = 2
         ppr["moddable"] = True
-        ndata = data | ppr
+        ndata = merge_dicts(data,ppr)
     elif zxc == 3:
         ppr = download_paper_software(stdscr,directory)
         if ppr is None:
             return data
         ppr["software"] = 3
         ppr["moddable"] = True
-        ndata = data | ppr
+        ndata = merge_dicts(data,ppr)
     elif zxc == 4:
         ppr = download_purpur_software(stdscr,directory)
         if ppr is None:
             return data
         ppr["software"] = 4
         ppr["moddable"] = True
-        ndata = data | ppr
+        ndata = merge_dicts(data,ppr)
     return ndata
 
 def text_editor(text:str) -> str:
