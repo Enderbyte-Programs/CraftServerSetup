@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.35"#The semver version
+APP_UF_VERSION = "1.36"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -331,6 +331,7 @@ if not WINDOWS:
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
     ASSETSDIR = APPDATADIR + "/assets"
+    PACKAGEFILE = TEMPDIR+"/packages-spigot.json"
 else:
     
     APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
@@ -341,6 +342,7 @@ else:
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expandvars("%APPDATA%/crss_backup")
     ASSETSDIR = APPDATADIR + "/assets"
+    PACKAGEFILE = TEMPDIR+"/packages-spigot.json"
 DOCDOWNLOAD = ASSETSDIR + "/craftserversetup.epdoc"
 
 if not os.path.isdir(APPDATADIR):
@@ -1422,25 +1424,55 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
         elif wtd == 2:
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
 
-def process_spigot_api_entries(haystack,needle) -> list:# Hehe PHP style
-    return [z for z in haystack if needle in haystack["name"]]
+def process_spigot_api_entries(haystack:list,needle:str) -> list:# Hehe PHP style
+    return [z for z in haystack if needle.lower() in z["name"].lower()]
+
+def is_package_file_old_or_dead(stdscr) -> bool:
+    
+    if not os.path.isfile(PACKAGEFILE) :
+        return False
+    else:
+        try:
+            with open(PACKAGEFILE) as f:
+                data = json.load(f)
+            if (datetime.datetime.now() - datetime.datetime.strptime(data["date"],"%Y%m%d")).days > 5:
+                if cursesplus.messagebox.askyesno(stdscr,["Your packages list is old.","Would you like to update it?"]):
+                    return False
+        except:
+            return False
+        else:
+            return True
+
+def write_package_file(packages:list):
+    with open(PACKAGEFILE,"w+") as f:
+        f.write(json.dumps({"date":datetime.datetime.now().strftime("%Y%m%d"),"packages":[{"name":z["name"],"id":z["id"]} for z in packages]},indent=2))
 
 def spigot_api_manager(stdscr,modfolder,serverversion):
-    px = 1
     final = []
     headers = {
-            "User-Agent" : MODRINTH_USER_AGENT
-        }
-    shiftedversion = ".".join(serverversion.split(".")[0:2])
-    while True:
-        cursesplus.displaymsg(stdscr,["Downloading package list",f"Page {px}"],False)
-        rq = f"https://api.spiget.org/v2/resources/for/{shiftedversion}"
-        r = requests.get(rq,headers=headers,params={"size":1000,"page":px}).json()
-        #cursesplus.textview(stdscr,text=json.dumps(r))
-        px += 1
-        final += r["match"]
-        if len(r["match"]) ==0:
-            break
+                "User-Agent" : MODRINTH_USER_AGENT
+            }
+    if not is_package_file_old_or_dead(stdscr):
+        px = 1
+        
+        
+        shiftedversion = ".".join(serverversion.split(".")[0:2])
+        while True:
+            cursesplus.displaymsg(stdscr,["Downloading package list",f"Page {px}"],False)
+            rq = f"https://api.spiget.org/v2/resources/for/{shiftedversion}"
+            r = requests.get(rq,headers=headers,params={"size":1000,"page":px}).json()
+            #cursesplus.textview(stdscr,text=json.dumps(r))
+            px += 1
+            final += r["match"]
+            if len(r["match"]) ==0:
+                break
+        write_package_file(final)
+    else:
+        with open(PACKAGEFILE) as f:
+            data = json.load(f)
+            final = data["packages"]
+    final.sort(key=lambda x: x["name"])
+    
     activesearch = ""
     display = process_spigot_api_entries(final,activesearch)
     while True:
@@ -1450,6 +1482,34 @@ def spigot_api_manager(stdscr,modfolder,serverversion):
         elif wtd == 1:
             activesearch = cursesplus.cursesinput(stdscr,"What do you want to search for?")
             display = process_spigot_api_entries(final,activesearch)
+        else:
+            chosenplugin = display[wtd-2]
+            cursesplus.displaymsg(stdscr,["Fetching plugin info"],False)
+            pldat = requests.get(f"https://api.spiget.org/v2/resources/{chosenplugin['id']}",headers=headers).json()
+            if pldat["premium"]:
+                cursesplus.messagebox.showerror(stdscr,["This is a premium plugin","it can't be downloaded by CRSS.","Please purchase and download","manually."])
+                continue
+            stdscr.clear()
+            cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+            stdscr.addstr(0,0,f"Plugin info for {chosenplugin['name']}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+            stdscr.addstr(1,0,"Press D to download. Press any other key to go back")
+            stdscr.addstr(3,0,"Name")
+            stdscr.addstr(4,0,"Downloads")
+            stdscr.addstr(5,0,"Description:")
+            stdscr.addstr(3,20,pldat["name"])
+            stdscr.addstr(4,20,str(pldat["downloads"]))
+            stdscr.addstr(6,10,pldat["tag"])
+            stdscr.refresh()
+            ch = stdscr.getch()
+            if ch == 100:
+                cursesplus.displaymsg(stdscr,["Downloading"],False)
+                _dloc = pldat["file"]["url"].split("/")
+                _dloc[1] = _dloc[1].split(".")[1]
+                dloc = "/".join(_dloc)
+                try:
+                    urllib.request.urlretrieve(f"https://api.spiget.org/v2/{dloc}",modfolder+"/"+pldat["name"]+".jar")
+                except:
+                    cursesplus.messagebox.showerror(stdscr,["There was an error downloading","the plugin. You may have to download it manually."])
     
 def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
     modsforlder = SERVERDIRECTORY + "/plugins"
@@ -3120,6 +3180,9 @@ def main(stdscr):
         stdscr.addstr(0,0,"Initializing application data...                 ")
         stdscr.refresh()
         signal.signal(signal.SIGINT,sigint)
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-agent', MODRINTH_USER_AGENT)]
+        urllib.request.install_opener(opener)
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
