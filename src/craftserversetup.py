@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.36"#The semver version
+APP_UF_VERSION = "1.36.2"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -260,6 +260,13 @@ def compatibilize_appdata(data:dict) -> dict:
             "display" : "Text Editor",
             "type" : "str",
             "value" : "/usr/bin/editor %s"
+        }
+    if not "autoupdate" in data["settings"]:
+        data["settings"]["autoupdate"] = {
+            "name":"autoupdate",
+            "display":"Update automatically",
+            "type":"bool",
+            "value":True
         }
     if not "productKey" in list(data.keys()):
         data["productKey"] = ""
@@ -2577,8 +2584,10 @@ def updateappdata():
     global APPDATAFILE
     with open(APPDATAFILE,"w+") as f:
         f.write(json.dumps(APPDATA,indent=2))
+
 def choose_java_install(stdscr) -> str:
-    #Return path of selected java
+
+    #Return path of selected java- Smart java?
     while True:
         stdscr.erase()
         jsl = crss_custom_ad_menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]],"Please choose a Java installation from the list")
@@ -2641,6 +2650,7 @@ def managejavainstalls(stdscr):
         updateappdata()
 
 def compare_versions(version1, version2):
+    """0: Same, -1: 1 < 2. 1: 1 > 2"""
     version1_parts = tuple(map(int, version1.split('.')))
     version2_parts = tuple(map(int, version2.split('.')))
 
@@ -2657,8 +2667,9 @@ def compare_versions(version1, version2):
 
     return 0
 
-def windows_update_software(stdscr):
-    cursesplus.displaymsg(stdscr,["Checking for updates"],False)
+def windows_update_software(stdscr,interactive=True):
+    if interactive:
+        cursesplus.displaymsg(stdscr,["Checking for updates"],False)
     td = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").text
     tdz = td.split("|")
     svr = tdz[1]
@@ -2672,7 +2683,8 @@ def windows_update_software(stdscr):
             os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
             sys.exit()
     else:
-        cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
+        if interactive:
+            cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
 
 def import_amc_server(stdscr,chlx):
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
@@ -2939,18 +2951,23 @@ def settings_mgr(stdscr):
 
 def doc_system(stdscr):
     while True:
-        z = crss_custom_ad_menu(stdscr,["BACK","View documentation","Help on using text-based software"])
+        z = crss_custom_ad_menu(stdscr,["BACK","View documentation","Help on using text-based software","CONTACT SUPPORT"])
         if z == 0:
             break
         elif z == 1:
-            if not os.path.isfile(DOCDOWNLOAD):
-                cursesplus.displaymsg(stdscr,["Downloading Documentation"],False)
-                urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
+            cursesplus.displaymsg(stdscr,["Downloading Documentation"],False)
+            urllib.request.urlretrieve(DOCFILE,DOCDOWNLOAD)
             efile: epdoc.EPDocfile = epdoc.load_from_file(DOCDOWNLOAD,"Craft Server Setup")
             efile.load()
             efile.show_documentation(stdscr)
         elif z == 2:
             usertutorial(stdscr)
+        elif z == 3:
+            source = crss_custom_ad_menu(stdscr,["Cancel","Via E-mail","Via Discord"],"How do you wish to contact support?")
+            if source == 1:
+                webbrowser.open("mailto:?to=enderbyte09@gmail.com&subject=Craft Server Setup Support", new=1)
+            elif source == 2:
+                cursesplus.messagebox.showinfo(stdscr,["Contact @enderbyte09 on Discord"])
 
 def license(stdscr):
     global APPDATA
@@ -3020,12 +3037,13 @@ Software used in the making of this program:
 
     """,message="CREDITS")
 
-def do_linux_update(stdscr) -> bool:
+def do_linux_update(stdscr,interactive=True) -> bool:
     if os.path.isfile("/usr/lib/craftserversetup/updateblock"):
         cursesplus.messagebox.showerror(stdscr,["You are using a debian or arch install setup","Please download the latest version from GitHub"])
         return False
     try:
-        cursesplus.displaymsg(stdscr,["Querrying updates"],False)
+        if interactive:
+            cursesplus.displaymsg(stdscr,["Querrying updates"],False)
         r = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/releases/latest")
         mostrecentreleasedversion = r.url.split("/")[-1][1:]
         if compare_versions(mostrecentreleasedversion,APP_UF_VERSION) == 1:
@@ -3074,7 +3092,8 @@ def do_linux_update(stdscr) -> bool:
             else:
                 return False#Quit by user preference
         else:
-            cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
+            if interactive:
+                cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
             return False#Quit because no update
     except:
         cursesplus.messagebox.showerror(stdscr,["There was an error applying an update"])
@@ -3179,10 +3198,12 @@ def main(stdscr):
         global APPDATA
         stdscr.addstr(0,0,"Initializing application data...                 ")
         stdscr.refresh()
+        cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         signal.signal(signal.SIGINT,sigint)
         opener = urllib.request.build_opener()
         opener.addheaders = [('User-agent', MODRINTH_USER_AGENT)]
         urllib.request.install_opener(opener)
+        
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
         if not os.path.isfile(APPDATAFILE):
@@ -3215,6 +3236,14 @@ def main(stdscr):
         if DEBUG:
             introsuffix=" | SRC DEBUG"
         threading.Thread(target=send_telemetry).start()
+        if APPDATA["settings"]["autoupdate"]["value"]:
+            if WINDOWS:
+                windows_update_software(stdscr,False)
+            #OLD UPDATE MAY BE REMOVED IN 0.18.3
+            else:
+                if do_linux_update(stdscr,False):
+                    UPDATEINSTALLED = True
+                    return
         while True:
             stdscr.erase()
             #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]

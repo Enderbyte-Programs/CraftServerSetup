@@ -1,3 +1,9 @@
+1.36.2:
+- Documentation is now downloaded every time
+- Add support link
+1.36.1:
+- Add auto-update
+- On by default
 1.36:
 - Add spigot plugin downloading
 - This does NOT support leniency as spigot is for spigot.
