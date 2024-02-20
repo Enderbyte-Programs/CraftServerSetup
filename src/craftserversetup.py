@@ -2121,32 +2121,36 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 _SCREEN = None
 
 def handle_file_editing(stdscr,path:str):
-    if WINDOWS:
-        os.system(f"notepad \"{path}\"")
-    else:
-        if (is_file_binary(path)):
-            cursesplus.messagebox.showerror(stdscr,["This type of file can't be edited."])
-        elif is_file_dicteditable(path):
-            with open(path) as f:
-                data = f.read()
+    
+    if (is_file_binary(path)):
+        cursesplus.messagebox.showerror(stdscr,["This type of file can't be edited."])
+    elif is_file_dicteditable(path):
+        with open(path) as f:
+            data = f.read()
+        try:
+            ndict = json.loads(data)
+        except:
             try:
-                ndict = json.loads(data)
+                ndict = yaml.load(data,yaml.FullLoader)
             except:
-                try:
-                    ndict = yaml.load(data,yaml.FullLoader)
-                except:
-                    pass
-            try:
-                ndict = dictedit(stdscr,ndict,os.path.split(path)[1])
-                with open(path,"w+") as f:
-                    if path.endswith("json"):
-                        json.dump(ndict,f)
-                    else:
-                        yaml.dump(ndict,f,default_flow_style=False)
-            except:
+                pass
+        try:
+            ndict = dictedit(stdscr,ndict,os.path.split(path)[1])
+            with open(path,"w+") as f:
+                if path.endswith("json"):
+                    json.dump(ndict,f)
+                else:
+                    yaml.dump(ndict,f,default_flow_style=False)
+        except:
+            if WINDOWS:
+                os.system(f"notepad \"{path}\"")
+            else:
                 curses.reset_shell_mode()
                 os.system(APPDATA["settings"]["editor"]["value"].replace("%s",path))
                 curses.reset_prog_mode()
+    else:
+        if WINDOWS:
+            os.system(f"notepad \"{path}\"")
         else:
             curses.reset_shell_mode()
             os.system(APPDATA["settings"]["editor"]["value"].replace("%s",path))
