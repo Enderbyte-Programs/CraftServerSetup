@@ -1,3 +1,9 @@
+1.36.4:
+- Fix duplicate license on Windows
+- Update all copyrights
+- Remove all obsolete licensing sections
+1.36.3:
+- No changeset as this is a test update only
 1.36.2:
 - Documentation is now downloaded every time
 - Add support link

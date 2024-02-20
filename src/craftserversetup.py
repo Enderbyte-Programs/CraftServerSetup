@@ -2,14 +2,14 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.36.3"#The semver version
+APP_UF_VERSION = "1.36.4"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
 MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
 SHOW_ADVERT = False
 
-print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023")
+print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2024")
 
 ### Standard Library Imports ###
 
@@ -2971,7 +2971,7 @@ def doc_system(stdscr):
 
 def license(stdscr):
     global APPDATA
-    if not APPDATA["license"]:
+    if not APPDATA["license"] and not WINDOWS:
         if not os.path.isfile(ASSETSDIR+"/license"):
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",ASSETSDIR+"/license")
         with open(ASSETSDIR+"/license") as f:

@@ -1,7 +1,7 @@
 ENDERBYTE PROGRAMS LICENSE
 Craft Server Setup Division
 
-Copyright (c) 2022-2023 Enderbyte Programs. All rights reserved
+Copyright (c) 2023-2024 Enderbyte Programs. All rights reserved
 
 DEFINITIONS
 
@@ -17,7 +17,7 @@ Begin Terms and Conditions
 This software includes:
 -The computer program (This is the code written by Enderbyte Programs that runs directly)
 -All required third-party libraries (These are third-party libraries written by other people.)
--Scripts (Scripts are small programs that install and uninstall the program)
+-Scripts (Scripts are small programs that perform tasks typically unavailable to the main program)
 
 This software DOES NOT include (Linux):
 -Python and the base library (This is the interpreter required to execute the software.)
@@ -26,6 +26,8 @@ This software includes (WINDOWS):
 -Everything required to execute, install, and remove this program (Compiled)
 
 2. Support Policy:
+
+Support shall be given to those who ask, always.
 
 If this software causes damage to your device, you are elligible to the following:
 -Lots of free support
@@ -54,7 +56,7 @@ MINECRAFT SERVERS MAY SEND INTERNET TRAFFIC TO MANY OTHER SERVERS. ENDERBYTE PRO
 
 5. Commercial Licenses
 
-This program uses optional product keys. If you choose not to use a product key (which costs $2), you will see advertisements. Advertisements appear 20% of the time you choose an option from the main menu or server management menu. Enderbyte Programs has to personally approve every ad that you see, so you need not worry about bad advertisements. If you purchase a product key, you send $2 to Enderbyte09 on PayPal. Then, send a message to Enderbyte09 using PayPal, Discord (@enderbyte09), or email (enderbyte09@gmail.com). Your product key will be sent as quickly as the developer can.
+This program uses optional product keys. If you choose not to use a product key (which costs $2), you will see advertisements. Advertisements appear on menus at the bottom. Enderbyte Programs has to personally approve every ad that you see, so you need not worry about bad advertisements. If you purchase a product key, you purchase directly from me or from GumRoad
 
 6. Valid Uses of this Software
 
