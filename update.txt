@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.35/CraftServerSetup-1.35-installer.exe|1.35|File Manager
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.36.3/CraftServerSetup-1.36.3-installer.exe|1.36.3|Spigot Download
