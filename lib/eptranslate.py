@@ -10,12 +10,12 @@ class Config:
 
 def load(file:str):
     global MASTER
-    with open(file) as f:
+    with open(file,'rb') as f:
         MASTER = tomllib.load(f)
     Config.choice = MASTER["-info"]["default"]
 
 def prompt(stdscr,message="Please choose a language"):
-    Config.choice = MASTER["-info"]["available"].keys()[cursesplus.optionmenu(stdscr,MASTER["-info"]["available"].keys(),message)]
+    Config.choice = list(MASTER["-info"]["available"].keys())[cursesplus.optionmenu(stdscr,MASTER["-info"]["available"].values(),message)]
   
 def __find(element, json):
     return __r(__o.getitem, element.split('.'), json)

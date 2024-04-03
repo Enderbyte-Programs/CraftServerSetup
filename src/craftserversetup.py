@@ -209,6 +209,9 @@ def compatibilize_appdata(data:dict) -> dict:
     except:
         data["version"] = APP_VERSION
 
+    if not "language" in data:
+        data["language"] = None
+
     if not "settings" in data:
         data["settings"] = {
         "telemetry":{
@@ -410,7 +413,8 @@ __DEFAULTAPPDATA__ = {
             "message" : "N/A"
         }
     },
-    "license" : False
+    "license" : False,
+    "language" : None
 }
 
 _transndt = True
@@ -3022,7 +3026,7 @@ def oobe(stdscr):
     global APPDATA
     if not APPDATA["hasCompletedOOBE"]:       
         stdscr.clear()
-        cursesplus.displaymsg(stdscr,["Out of Box Experience","","Welcome to Craft Server Setup: The best way to make a Minecraft server","This guide will help you set up your first Minecraft Server"])
+        cursesplus.displaymsg(stdscr,[t("oobe.welcome.0"),"",t("oobe.welcome.1"),"This guide will help you set up your first Minecraft Server"])
         if not cursesplus.messagebox.askyesno(stdscr,["Do you know how to use a text-based program like this?"]):
             usertutorial(stdscr)
         if not bool(APPDATA["javainstalls"]):
@@ -3224,7 +3228,9 @@ def main(stdscr):
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
         if _transndt:
-            urllib.request.urlretrieve()
+            urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/src/translations.toml",APPDATADIR+"/translations.toml")
+            eptranslate.load(APPDATADIR+"/translations.toml")
+        
         if DEBUG:
             stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
             stdscr.refresh()
@@ -3262,6 +3268,10 @@ def main(stdscr):
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
 
+        if APPDATA["language"] is None:
+            eptranslate.prompt(stdscr)
+            APPDATA["language"] = eptranslate.Config.choice
+            cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         license(stdscr)
         oobe(stdscr)
         if len(sys.argv) > 1:
