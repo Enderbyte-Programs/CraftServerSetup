@@ -1,0 +1,20 @@
+[-info]
+name = "CraftServerSetup"
+default = "en"
+fallback = "en"
+
+[-info.available]
+
+en = "English"
+fr = "Français"
+gb = "Gibberish"
+
+[oobe]
+[oobe.welcome]
+[oobe.welcome.0]
+en = "Out of Box Experience"
+gb = "sdfsdf"
+[oobe.welcome.1]
+en = "Welcome to Craft Server Setup: The best way to make a Minecraft Server"
+fr = "Bienvenue à Craft Server Setup, le meilleur method à faire une serveur du Minecraft"
+gb = "123456789"

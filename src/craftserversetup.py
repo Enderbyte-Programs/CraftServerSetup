@@ -82,6 +82,8 @@ from epadvertisements import *  #Advertisements library (BY ME)
 import epdoc                    #Documentations library (BY ME)
 import pngdim                   #Calculate dimensions of a PNG file
 import epprodkey                #Product key manager
+import eptranslate              #Translations
+from eptranslate import t       #Shorthand
 
 ___DEFAULT_SERVER_PROPERTIES___ = """
 enable-jmx-monitoring=false
@@ -410,6 +412,15 @@ __DEFAULTAPPDATA__ = {
     },
     "license" : False
 }
+
+_transndt = True
+try:
+    eptranslate.load("translations.toml")
+except:
+    try:
+        eptranslate.load(APPDATADIR+"/translations.toml")
+    except:
+        _transndt = True
 
 def product_key_page(stdscr):
     while True:
@@ -3207,11 +3218,13 @@ def main(stdscr):
     try:
         cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         stdscr.addstr(0,0,"Waiting for internet connection...")
-        stdscr.erase()
+        stdscr.refresh()
         cursesplus.utils.hidecursor()
         issue = False
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
+        if _transndt:
+            urllib.request.urlretrieve()
         if DEBUG:
             stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
             stdscr.refresh()
