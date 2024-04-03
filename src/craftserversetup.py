@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.36.4"#The semver version
+APP_UF_VERSION = "1.37"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -311,6 +311,9 @@ def internet_on():
     except:
         return False
 
+def assemble_package_file_path(serverdir:str):
+    return TEMPDIR+"/packages-spigot-"+serverdir.replace("\\","/").split("/")[-1]+".json"
+
 ### DETECT PORTABLE INSTALLATION ###
 ogpath = sys.argv[0]
 execdir = os.path.split(ogpath)[0]
@@ -338,7 +341,6 @@ if not WINDOWS:
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
     ASSETSDIR = APPDATADIR + "/assets"
-    PACKAGEFILE = TEMPDIR+"/packages-spigot.json"
 else:
     
     APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
@@ -349,7 +351,7 @@ else:
     TEMPDIR = APPDATADIR + "/temp"
     BACKUPDIR = os.path.expandvars("%APPDATA%/crss_backup")
     ASSETSDIR = APPDATADIR + "/assets"
-    PACKAGEFILE = TEMPDIR+"/packages-spigot.json"
+
 DOCDOWNLOAD = ASSETSDIR + "/craftserversetup.epdoc"
 
 if not os.path.isdir(APPDATADIR):
@@ -1234,14 +1236,17 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
         elif z == 1:
             uurl = cursesplus.cursesinput(stdscr,"Input the URI to your resource pack (Direct download link)")
             cursesplus.displaymsg(stdscr,["Testing link"],False)
-            lzdir = TEMPDIR+"/rp"+str(random.randint(11111,99999))
-            os.mkdir(lzdir)
-            urllib.request.urlretrieve(uurl,lzdir+"pack.zip")
-            with open(lzdir+"pack.zip",'rb') as pack:
-                p = pack.read()
-            packsha = hashlib.sha1(p).hexdigest()
-            dpp["resource-pack"] = uurl
-            dpp["resource-pack-sha1"] = packsha
+            try:
+                lzdir = TEMPDIR+"/rp"+str(random.randint(11111,99999))
+                os.mkdir(lzdir)
+                urllib.request.urlretrieve(uurl,lzdir+"pack.zip")
+                with open(lzdir+"pack.zip",'rb') as pack:
+                    p = pack.read()
+                packsha = hashlib.sha1(p).hexdigest()
+                dpp["resource-pack"] = uurl
+                dpp["resource-pack-sha1"] = packsha
+            except:
+                cursesplus.messagebox.showerror(stdscr,["There was an error while verifying the resource pack.","Make sure you have inputted it correctly."])
         elif z == 2:
             dpp["require-resource-pack"] = cursesplus.messagebox.askyesno(stdscr,["Do you want this pack to be required?"])
         elif z == 3:
@@ -1434,13 +1439,13 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
 def process_spigot_api_entries(haystack:list,needle:str) -> list:# Hehe PHP style
     return [z for z in haystack if needle.lower() in z["name"].lower()]
 
-def is_package_file_old_or_dead(stdscr) -> bool:
+def is_package_file_old_or_dead(stdscr,serverdir) -> bool:
     
-    if not os.path.isfile(PACKAGEFILE) :
+    if not os.path.isfile(assemble_package_file_path(serverdir)) :
         return False
     else:
         try:
-            with open(PACKAGEFILE) as f:
+            with open(assemble_package_file_path(serverdir)) as f:
                 data = json.load(f)
             if (datetime.datetime.now() - datetime.datetime.strptime(data["date"],"%Y%m%d")).days > 5:
                 if cursesplus.messagebox.askyesno(stdscr,["Your packages list is old.","Would you like to update it?"]):
@@ -1450,16 +1455,16 @@ def is_package_file_old_or_dead(stdscr) -> bool:
         else:
             return True
 
-def write_package_file(packages:list):
-    with open(PACKAGEFILE,"w+") as f:
+def write_package_file(packages:list,serverdir:str):
+    with open(assemble_package_file_path(serverdir),"w+") as f:
         f.write(json.dumps({"date":datetime.datetime.now().strftime("%Y%m%d"),"packages":[{"name":z["name"],"id":z["id"]} for z in packages]},indent=2))
 
-def spigot_api_manager(stdscr,modfolder,serverversion):
+def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
     final = []
     headers = {
                 "User-Agent" : MODRINTH_USER_AGENT
             }
-    if not is_package_file_old_or_dead(stdscr):
+    if not is_package_file_old_or_dead(stdscr,serverdir):
         px = 1
         
         
@@ -1473,9 +1478,11 @@ def spigot_api_manager(stdscr,modfolder,serverversion):
             final += r["match"]
             if len(r["match"]) ==0:
                 break
-        write_package_file(final)
+        if len(final) == 0:
+            cursesplus.messagebox.showerror(stdscr,["No plugins are available for your server version."])
+        write_package_file(final,serverdir)
     else:
-        with open(PACKAGEFILE) as f:
+        with open(assemble_package_file_path(serverdir)) as f:
             data = json.load(f)
             final = data["packages"]
     final.sort(key=lambda x: x["name"])
@@ -1549,7 +1556,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
             elif minstype == 2:
                 modrinth_api_download_system(stdscr,modsforlder,serverversion)
             elif minstype == 3:
-                spigot_api_manager(stdscr,modsforlder,serverversion)
+                spigot_api_manager(stdscr,modsforlder,serverversion,SERVERDIRECTORY)
         else:
             chosenplug = spldi - 2
 
@@ -1936,6 +1943,7 @@ def text_editor(text:str) -> str:
         newdata = f.read()
     return newdata
 
+
 def startup_options(stdscr,serverdata:dict):
     while True:
         wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands"])
@@ -1949,9 +1957,6 @@ def startup_options(stdscr,serverdata:dict):
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
-    root_menu_options = ["RETURN TO MAIN MENU","Start Server","Server Settings","Manage Additional Content","Update Server Software","View Logs","Export server","Server info","Backups","Delete Server"]
-    content_manager_options = ["Back","Manage Plugins","Edit server resource pack"]
-    settings_options = ["Change MOTD","Advanced configuration","World Settings","Whitelist Settings","Administrators Settings","Bans settings","Server Icon Settings","Rename Server"]
     
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
@@ -1961,8 +1966,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     #Manager server
     while True:
 
-        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration","Delete server","Manage worlds","Update Server software","Manage plugins"]
-        x__ops += ["View logs","Export server","View server info","Manage Whitelist","Manage backups","Edit server resource pack","Manage Administrators","Manage bans","Manage server icon"]
+        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
+        x__ops += ["View logs","Export server","View server info","Administration and Backups >>","Manage server icon"]
         x__ops += ["Change server software","Startup Options","FILE MANAGER"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
@@ -2058,10 +2063,27 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 update_purpur_software(stdscr,os.getcwd(),chosenserver)
             else:
                 cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
-        elif w == 7 and APPDATA["servers"][chosenserver-1]["moddable"]:
-            svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"],APPDATA["servers"][chosenserver-1]["software"])
-        elif w == 7 and not APPDATA["servers"][chosenserver-1]["moddable"]:
-            cursesplus.messagebox.showerror(stdscr,["Vanilla servers can not have plugins."])
+        elif w == 7:
+            while True:
+                mmwtd = crss_custom_ad_menu(stdscr,["Back","Plugins and Mods","Datapacks","Resource Pack"],"CONTENT MANAGER | What would you like to edit?")
+                if mmwtd == 0:
+                    break
+                elif mmwtd == 1:
+                    svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"],APPDATA["servers"][chosenserver-1]["software"])
+                elif mmwtd == 2:
+                    world = crss_custom_ad_menu(stdscr,find_world_folders(SERVER_DIR),"Choose a world to apply datapacks to")
+                    manage_datapacks(stdscr,find_world_folders(SERVER_DIR)[world]+"/datapacks")
+                elif mmwtd == 3:
+                    if not os.path.isfile("server.properties"):
+                        cursesplus.messagebox.showerror(stdscr,["Please start your server to generate","server.properties"])
+                        continue
+                    with open("server.properties") as f:
+
+                        dpp = PropertiesParse.load(f.read())
+                    
+                    dpp = resource_pack_setup(stdscr,dpp)
+                    with open("server.properties","w+") as f:
+                        f.write(PropertiesParse.dump(dpp))
         elif w == 8:
             view_server_logs(stdscr,SERVER_DIR)
         elif w == 9:
@@ -2089,34 +2111,36 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.refresh()
             stdscr.getch()
         elif w == 11:
-            manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
+            while True:
+                abkwtd = crss_custom_ad_menu(stdscr,["Back","Whitelist","Backups","Admins","Banned Players"],"ADMIN MENU | What do you want to edit?")
+                if abkwtd == 0:
+                    break
+                elif abkwtd == 1:
+                    manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
+                elif abkwtd == 2:
+                    server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
+                elif abkwtd == 3:
+                    manage_ops(stdscr,SERVER_DIR)
+                elif abkwtd == 4:
+                    manage_bans(stdscr,SERVER_DIR)
+        # elif w == 11:
+        #     manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
+        # elif w == 12:
+        #     server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
+        # elif w == 13:
+        #     manage_ops(stdscr,SERVER_DIR)
+        # elif w == 14:
+        #     manage_bans(stdscr,SERVER_DIR)
         elif w == 12:
-            server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
-        elif w == 13:
-            if not os.path.isfile("server.properties"):
-                cursesplus.messagebox.showerror(stdscr,["Please start your server to generate","server.properties"])
-                continue
-            with open("server.properties") as f:
-
-                dpp = PropertiesParse.load(f.read())
-            
-            dpp = resource_pack_setup(stdscr,dpp)
-            with open("server.properties","w+") as f:
-                f.write(PropertiesParse.dump(dpp))
-        elif w == 14:
-            manage_ops(stdscr,SERVER_DIR)
-        elif w == 15:
-            manage_bans(stdscr,SERVER_DIR)
-        elif w == 16:
             manage_server_icon(stdscr)
-        elif w == 17:
+        elif w == 13:
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
-        elif w == 18:
+        elif w == 14:
             cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
             continue
             APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
-        elif w == 19:
+        elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None
 
@@ -3184,6 +3208,7 @@ def main(stdscr):
         cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         stdscr.addstr(0,0,"Waiting for internet connection...")
         stdscr.erase()
+        cursesplus.utils.hidecursor()
         issue = False
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)

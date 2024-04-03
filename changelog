@@ -1,3 +1,8 @@
+1.37:
+- Re-organize server manager menu to make it shorter
+- Fix bug in resource pack adder
+- Fix bug where cursor is shown throughout execution
+- Fix bad design flaw in spigot api
 1.36.4:
 - Fix duplicate license on Windows
 - Update all copyrights
