@@ -15,9 +15,9 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 - Download craftserversetup.tar.xz from the latest release
 
-- Unzip the tar.xz to a directory
+- Unzip the tar.xz to a directory with `tar -xf craftserversetup.tar.xz`
 
-- Open a terminal in that directory
+- Open a terminal in that directory `cd craftserversetup`
 
 - Run the command `./installer`
 
