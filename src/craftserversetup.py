@@ -417,13 +417,14 @@ __DEFAULTAPPDATA__ = {
     "language" : None
 }
 
-_transndt = True
+_transndt = False
 try:
     eptranslate.load("translations.toml")
 except:
     try:
         eptranslate.load(APPDATADIR+"/translations.toml")
     except:
+        print("WARN: Can't find translations file.")
         _transndt = True
 
 def product_key_page(stdscr):
@@ -3232,6 +3233,7 @@ def main(stdscr):
         issue = False
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
+        #cursesplus.messagebox.showerror(stdscr,[str(_transndt)])
         if _transndt:
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/src/translations.toml",APPDATADIR+"/translations.toml")
             eptranslate.load(APPDATADIR+"/translations.toml")
@@ -3309,7 +3311,7 @@ def main(stdscr):
                 lz += ["Upgrade to Premium"]
             if DEVELOPER:
                 lz += ["Developer Tools"]
-            m = crss_custom_ad_menu(stdscr,lz,f"Craft Server Setup by Enderbyte Programs | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
+            m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
             if m == 8:
                 cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                 updateappdata()
