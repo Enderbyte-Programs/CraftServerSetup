@@ -1,3 +1,5 @@
+1.37.2:
+- Fix horrible bug
 1.37.1:
 - Update code to Python 3.12 standard 
     - Convert DEFAULT SERVER PROPERTIES to raw string

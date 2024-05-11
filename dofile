@@ -213,7 +213,8 @@
     crss -d
 !def commit:private
     set -e
+    git pull
     git add .
     read -p "Commit message: " message
     git commit -m "$message"
-    git push
+    git push --force

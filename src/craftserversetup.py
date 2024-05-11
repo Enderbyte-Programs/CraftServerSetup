@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.37.1"#The semver version
+APP_UF_VERSION = "1.37.2"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -1316,6 +1316,7 @@ def retr_jplug(path: str) -> list[dict]:
     for fob in os.listdir(path):
         if os.path.isfile(path+"/"+fob):
             ltk.append(os.path.join(path,fob))
+    ltk = sorted(ltk,key=str.casefold)
     final = []
     for jf in ltk:
         try:
@@ -1547,7 +1548,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+sorted([f["name"]+" ("+f["version"]+")" for f in PLUGSLIST]),"Choose a plugin to manage")
+        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
         if spldi == 0:
             return
         elif spldi == 1:
