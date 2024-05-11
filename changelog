@@ -2,6 +2,9 @@
 - Update code to Python 3.12 standard 
     - Convert DEFAULT SERVER PROPERTIES to raw string
 - translations.toml will now display key name if it could not be found
+- Add the ability for multiple languages. Very few strings have been migrated. This is just to test the entire system.
+- Move displaymsg to PleaseWaitScreen for loading and creating backups as they typically take a long time.
+- Lists of plugins are now alphabetically sorted.
 1.37:
 - Re-organize server manager menu to make it shorter
 - Fix bug in resource pack adder

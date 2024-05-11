@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.37"#The semver version
+APP_UF_VERSION = "1.37.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -1547,7 +1547,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
+        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+sorted([f["name"]+" ("+f["version"]+")" for f in PLUGSLIST]),"Choose a plugin to manage")
         if spldi == 0:
             return
         elif spldi == 1:
@@ -2588,11 +2588,13 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
             cursesplus.displaymsg(stdscr,["Calculating size requirements"],False)
             if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
                 #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
-                
-                cursesplus.displaymsg(stdscr,["Creating Backup..."],False)
+                w = cursesplus.PleaseWaitScreen(stdscr,["Creating Backup"])
+                w.start()
+                #cursesplus.displaymsg(stdscr,["Creating Backup..."],False)
                 with open(serverdir+"/crss.json","w+") as f:
                     f.write(json.dumps(serverdata))
                 shutil.copytree(serverdir,LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
+                w.stop()
                 cursesplus.messagebox.showinfo(stdscr,["Backup completed"])
         elif z == 2:
             if len(os.listdir(LBKDIR)) == 0:
@@ -2600,7 +2602,9 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                 continue
             if cursesplus.messagebox.askyesno(stdscr,["This will completely overwrite your server directory","Are you sure you wish to proceed"]):
                 selbk = cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a backup dir",directory=LBKDIR)
-                cursesplus.displaymsg(stdscr,["Restoring Backup"],False)
+                #cursesplus.displaymsg(stdscr,["Restoring Backup"],False)
+                w = cursesplus.PleaseWaitScreen(stdscr,["Restoring Backup"])
+                w.start()
                 os.chdir("/")
                 shutil.rmtree(serverdir)
                 shutil.copytree(selbk,serverdir)
@@ -2612,7 +2616,9 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                         APPDATA["servers"][tom_index] = nd
                 except:
                     pass
-                cursesplus.messagebox.showinfo(stdscr,["Restore completed"])              
+                w.stop()
+                cursesplus.messagebox.showinfo(stdscr,["Restore completed"])
+                os.chdir(serverdir)              
 
 def get_tree_size(start_path = '.'):
     total_size = 0
