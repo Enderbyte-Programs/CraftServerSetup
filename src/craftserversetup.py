@@ -85,7 +85,7 @@ import epprodkey                #Product key manager
 import eptranslate              #Translations
 from eptranslate import t       #Shorthand
 
-___DEFAULT_SERVER_PROPERTIES___ = """
+___DEFAULT_SERVER_PROPERTIES___ = r"""
 enable-jmx-monitoring=false
 rcon.port=25575
 level-seed=
@@ -145,7 +145,7 @@ resource-pack-sha1=
 max-world-size=29999984
 """
 
-PLUGIN_HELP = """
+PLUGIN_HELP = r"""
 So You Can't Find Your Plugin
 
 Sometimes Modrinth can be finicky and you can't find your plugin. Here are some things that could have happened:
@@ -2587,6 +2587,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
             cursesplus.displaymsg(stdscr,["Calculating size requirements"],False)
             if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
                 #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
+                
                 cursesplus.displaymsg(stdscr,["Creating Backup..."],False)
                 with open(serverdir+"/crss.json","w+") as f:
                     f.write(json.dumps(serverdata))
@@ -2951,7 +2952,7 @@ def settings_mgr(stdscr):
     global COLOURS_ACTIVE
     global APPDATA
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
             updateappdata()
             return
@@ -2981,9 +2982,13 @@ def settings_mgr(stdscr):
                     shutil.rmtree(TEMPDIR)
         elif m == 2:
             managejavainstalls(stdscr)
+        elif m == 3:
+            eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
+            APPDATA["language"] = eptranslate.Config.choice
+            cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         else:
-            selm = list(APPDATA["settings"].values())[m-3]
-            selk = list(APPDATA["settings"].keys())[m-3]
+            selm = list(APPDATA["settings"].values())[m-4]
+            selk = list(APPDATA["settings"].keys())[m-4]
             if selm["type"] == "bool":
                 selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
@@ -3026,7 +3031,7 @@ def oobe(stdscr):
     global APPDATA
     if not APPDATA["hasCompletedOOBE"]:       
         stdscr.clear()
-        cursesplus.displaymsg(stdscr,[t("oobe.welcome.0"),"",t("oobe.welcome.1"),"This guide will help you set up your first Minecraft Server"])
+        cursesplus.displaymsg(stdscr,[t("oobe.welcome.0"),"",t("oobe.welcome.1"),t("oobe.welcome.2")])
         if not cursesplus.messagebox.askyesno(stdscr,["Do you know how to use a text-based program like this?"]):
             usertutorial(stdscr)
         if not bool(APPDATA["javainstalls"]):
@@ -3269,7 +3274,7 @@ def main(stdscr):
         APPDATA = compatibilize_appdata(APPDATA)
 
         if APPDATA["language"] is None:
-            eptranslate.prompt(stdscr)
+            eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
             APPDATA["language"] = eptranslate.Config.choice
             cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         license(stdscr)

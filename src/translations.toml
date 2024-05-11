@@ -6,8 +6,8 @@ fallback = "en"
 [-info.available]
 
 en = "English"
-fr = "Français"
-gb = "Gibberish"
+#fr = "Français"
+#gb = "Gibberish"
 
 [oobe]
 [oobe.welcome]
@@ -18,3 +18,5 @@ gb = "sdfsdf"
 en = "Welcome to Craft Server Setup: The best way to make a Minecraft Server"
 fr = "Bienvenue à Craft Server Setup, le meilleur method à faire une serveur du Minecraft"
 gb = "123456789"
+[oobe.welcome.2]
+en = "This guide will help you set up your first Minecraft Server"

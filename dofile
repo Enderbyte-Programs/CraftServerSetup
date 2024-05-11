@@ -108,6 +108,7 @@
     fi
 
     cp doc/craftserversetup.epdoc $LIBDIR
+    cp src/translations.toml $APPDATADIR
     rm -rf dist
     printf "${GREEN}CraftServerSetup installed successfully!${NC}\n"
 !def uninstall
@@ -200,6 +201,7 @@
     cp assets/defaulticon.png $DEBTEMPFOLDER
     cp doc/* $DEBTEMPFOLDER
     cp LICENSE $DEBTEMPFOLDER
+    cp src/translations.toml $DEBTEMPFOLDER
 
     #Copy postinstall
     cp scripts/debian/postinstall.sh deb/DEBIAN/postinst
