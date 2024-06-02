@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.37/CraftServerSetup-1.37-installer.exe|1.37|QOL Updates
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.38/CraftServerSetup-1.38-installer.exe|1.38|QOL Updates
