@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.37.2"#The semver version
+APP_UF_VERSION = "1.38"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -52,12 +52,13 @@ if sys.version_info < (3,7):
 
 ### SET UP SYS.PATH TO ONLY USE my special library directory
 if not WINDOWS:#Windows edition will package libraries already
+    sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
+    sys.path.insert(1,"/usr/lib/craftserversetup")
     if "bin" in sys.argv[0]:
         sys.path = [s for s in sys.path if not "site-packages" in s]#Removing conflicting dirs TODO!!!! REMOVE THIS LATER
-        sys.path.insert(1,os.path.expanduser("~/.local/lib/craftserversetup"))
-        sys.path.insert(1,"/usr/lib/craftserversetup")
-        DEBUG=False
         
+        DEBUG=False
+      
     else:
         DEBUG=True
         rpr = sys.argv[0]
@@ -860,6 +861,73 @@ def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
                         mydata = mydata[i]
                 mydata[epath] = newval      
 
+def is_int(val) -> bool:
+    try:
+        int(val)
+    except:
+        return False
+    else:
+        return True
+
+class MinecraftVersionTypes(enum.Enum):
+    NORMAL = 0
+    SNAPSHOT = 1
+    PRERELEASE = 2
+    RELEASECANDIDATE = 3
+
+class MinecraftVersion:
+    vtype:MinecraftVersionTypes
+    raw:str
+    majorversion:int
+    minorversion:int
+    patch:int = None
+    prenum:int = None
+    rcnum:int = None
+    snapshotyear:int = None
+    snapshotno:int = None
+    snapshoti:int = None
+    def __init__(self,r:str):
+        self.vtype = MinecraftVersionTypes.NORMAL
+        self.raw = r
+        spl = r.split(".")
+        if len(spl) == 1:
+            self.snapshotyear = int(r[0:1])
+            self.snapshotno = int(r[3:4])
+            n = ["a","b","c","d","e","f","g"]
+            self.snapshoti = n.index(r[5])
+        else:
+            self.majorversion = int(spl[0])
+            if "-" in spl[1]:
+                self.minorversion = spl[1].split("-")[0]
+                suf = spl[1].split("-")[1]
+                sufv = suf[-1]
+                if suf.startswith("pre"):
+                    self.vtype = MinecraftVersionTypes.PRERELEASE
+                    self.prenum = suf
+                elif suf.startswith("r"):
+                    self.vtype = MinecraftVersionTypes.RELEASECANDIDATE
+                    self.rcnum = sufv
+            else:
+                self.minorversion = spl[1]
+            if len(spl) == 3:
+                if "-" in spl[2]:
+                    self.patch = spl[2].split("-")[0]
+                    suf = spl[2].split("-")[1]
+                    sufv = suf[-1]
+                    if suf.startswith("pre"):
+                        self.vtype = MinecraftVersionTypes.PRERELEASE
+                        self.prenum = suf
+                    elif suf.startswith("r"):
+                        self.vtype = MinecraftVersionTypes.RELEASECANDIDATE
+                        self.rcnum = sufv
+                else:
+                    self.patch = spl[2]
+    def __lt__(self,other):
+        pass
+
+def is_mc_version_newer(a:str,b:str) -> bool:
+    pass
+
 def package_server(stdscr,serverdir:str,chosenserver:int):
     sdata = APPDATA["servers"][chosenserver]
     with open(serverdir+"/exdata.json","w+") as f:
@@ -978,9 +1046,7 @@ def download_purpur_software(stdscr,serverdir) -> dict:
 
 def setupnewserver(stdscr):
     stdscr.erase()
-    if len(APPDATA["servers"]) != 0 and not prodkeycheck(APPDATA["productKey"]):
-        cursesplus.messagebox.showerror(stdscr,["Non-premium users can only have one server","Upgrade to make more or delete the current one"])
-        return
+    
     wtd = crss_custom_ad_menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
     if wtd == 0:
         return
@@ -1273,17 +1339,6 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 def servermgrmenu(stdscr):
     stdscr.clear()
     global APPDATA
-    if len(APPDATA["servers"]) > 1 and not prodkeycheck(APPDATA["productKey"]):
-        cursesplus.messagebox.showerror(stdscr,["Non-premium users can only have one server","Upgrade to make more"])
-        leftserver = crss_custom_ad_menu(stdscr,["Cancel"]+[a["name"] for a in APPDATA["servers"]],"Choose the ONE server you want to preserve")
-        if leftserver == 0:
-            return
-        else:
-            savex = APPDATA["servers"][leftserver-1]
-            del APPDATA["servers"]
-            APPDATA["servers"] = [savex]
-            updateappdata()
-        cursesplus.messagebox.showinfo(stdscr,["The other servers have been unregistered","The data is still safe."])
     chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
     if chosenserver == 0:
         return
@@ -1762,7 +1817,7 @@ def view_server_logs(stdscr,server_dir:str):
         return
     pushd(logsdir)
     while True:
-        availablelogs = [l for l in os.listdir(logsdir) if os.path.isfile(l)]
+        availablelogs = list(reversed(sorted([l for l in os.listdir(logsdir) if os.path.isfile(l)])))
         chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
         if chosenlog == 0:
             popd()

@@ -1,3 +1,7 @@
+1.38:
+- Remove one server limit
+- Sort log list
+- Change init library behaviour
 1.37.2:
 - Fix horrible bug
 1.37.1:
