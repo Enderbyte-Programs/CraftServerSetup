@@ -875,58 +875,6 @@ class MinecraftVersionTypes(enum.Enum):
     PRERELEASE = 2
     RELEASECANDIDATE = 3
 
-class MinecraftVersion:
-    vtype:MinecraftVersionTypes
-    raw:str
-    majorversion:int
-    minorversion:int
-    patch:int = None
-    prenum:int = None
-    rcnum:int = None
-    snapshotyear:int = None
-    snapshotno:int = None
-    snapshoti:int = None
-    def __init__(self,r:str):
-        self.vtype = MinecraftVersionTypes.NORMAL
-        self.raw = r
-        spl = r.split(".")
-        if len(spl) == 1:
-            self.snapshotyear = int(r[0:1])
-            self.snapshotno = int(r[3:4])
-            n = ["a","b","c","d","e","f","g"]
-            self.snapshoti = n.index(r[5])
-        else:
-            self.majorversion = int(spl[0])
-            if "-" in spl[1]:
-                self.minorversion = spl[1].split("-")[0]
-                suf = spl[1].split("-")[1]
-                sufv = suf[-1]
-                if suf.startswith("pre"):
-                    self.vtype = MinecraftVersionTypes.PRERELEASE
-                    self.prenum = suf
-                elif suf.startswith("r"):
-                    self.vtype = MinecraftVersionTypes.RELEASECANDIDATE
-                    self.rcnum = sufv
-            else:
-                self.minorversion = spl[1]
-            if len(spl) == 3:
-                if "-" in spl[2]:
-                    self.patch = spl[2].split("-")[0]
-                    suf = spl[2].split("-")[1]
-                    sufv = suf[-1]
-                    if suf.startswith("pre"):
-                        self.vtype = MinecraftVersionTypes.PRERELEASE
-                        self.prenum = suf
-                    elif suf.startswith("r"):
-                        self.vtype = MinecraftVersionTypes.RELEASECANDIDATE
-                        self.rcnum = sufv
-                else:
-                    self.patch = spl[2]
-    def __lt__(self,other):
-        pass
-
-def is_mc_version_newer(a:str,b:str) -> bool:
-    pass
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
     sdata = APPDATA["servers"][chosenserver]
