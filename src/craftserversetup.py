@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.38"#The semver version
+APP_UF_VERSION = "1.38.1"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -428,16 +428,21 @@ except:
         print("WARN: Can't find translations file.")
         _transndt = True
 
-def product_key_page(stdscr):
-    while True:
-        o = crss_custom_ad_menu(stdscr,["Upgrade to Premium","Open sale website","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
+def product_key_page(stdscr,force=False):
+    if force:
+        npk = crssinput(stdscr,"Please insert your key (case sensitive)")
+        if not verifykey(npk):
+            cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
+    else:
+        while True:
+            o = crss_custom_ad_menu(stdscr,["Upgrade to Premium","Open sale website","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
 
-        if o == 3:
-            cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
-            return
-        elif o == 2:
-            cursesplus.textview(stdscr,text=
-"""
+            if o == 3:
+                cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
+                return
+            elif o == 2:
+                cursesplus.textview(stdscr,text=
+    """
 There are a few ways you can get a product key.
 
 1. Pay the $2 (select Open sale website next time)
@@ -447,20 +452,20 @@ There are a few ways you can get a product key.
 3. Contribute source code (free)
 
 4. Contribute translation data to a different language (free)
-"""
-            ,message="Ways to get a key")
-        elif o == 1:
-            webbrowser.open("https://enderbyteprograms.gumroad.com/l/craftserversetup")
-            cursesplus.messagebox.showinfo(stdscr,["Check your web browser"])
-        elif o == 0:
-            npk = cursesplus.cursesinput(stdscr,"Please insert your key (case sensitive)")
-            if not verifykey(npk):
-                cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
-            else:
-                APPDATA["productKey"] = npk
-                cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
-                updateappdata()
-                return
+    """
+                ,message="Ways to get a key")
+            elif o == 1:
+                webbrowser.open("https://enderbyteprograms.gumroad.com/l/craftserversetup")
+                cursesplus.messagebox.showinfo(stdscr,["Check your web browser"])
+            elif o == 0:
+                npk = crssinput(stdscr,"Please insert your key (case sensitive)")
+                if not verifykey(npk):
+                    cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
+                else:
+                    APPDATA["productKey"] = npk
+                    cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
+                    updateappdata()
+                    return
 
 ### BEGIN UTILS ###
 
@@ -637,14 +642,14 @@ def manage_whitelist(stdscr,whitefile:str):
     except:
         dat = []#Fix bug number 18: Running this before setup finish causes crash
     while True:
-        dop = crss_custom_ad_menu(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove")
+        dop = crss_custom_ad_menu(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove or choose bolded options")
         if dop == 1:
             with open(whitefile,"w+") as f:
                 f.write(json.dumps(dat))
             return
         elif dop == 0:
             cursesplus.utils.showcursor()
-            name = cursesplus.cursesinput(stdscr,"Name(s) of players allowed: (Seperate with commas)")
+            name = crssinput(stdscr,"Name(s) of players allowed: (Seperate with commas)")
             cursesplus.utils.hidecursor()
             names = name.split(",")
             for player in names:
@@ -652,7 +657,8 @@ def manage_whitelist(stdscr,whitefile:str):
                 try:
                     pluid = get_player_uuid(player)
                 except:
-                    pass
+                    cursesplus.messagebox.showerror(stdscr,[f"{player} does not appear to be a valid username.","Please make sure you have typed it correctly."])
+                    continue
                 dat.append({"uuid":pluid,"name":player})
         else:
             del dat[dop-2]
@@ -776,7 +782,7 @@ def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
                 continue
         elif e == 2:
             if type(dictpath(inputd,path)) == dict:
-                keynamne = cursesplus.cursesinput(stdscr,"Please input the key name.")
+                keynamne = crssinput(stdscr,"Please input the key name.")
                 ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
                 if ktype > 3 and isflat:
                     cursesplus.messagebox.showerror(stdscr,["The selected type is not supported by this","file format"])
@@ -784,7 +790,7 @@ def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
                 if ktype == 0:
                     continue
                 elif ktype == 1:
-                    val = cursesplus.cursesinput(stdscr,"What is the value of this key?")
+                    val = crssinput(stdscr,"What is the value of this key?")
                 elif ktype == 2:
                     val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
                     if int(val) == val:
@@ -804,12 +810,12 @@ def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
                         mydata = mydata[i]
                 mydata[keynamne] = val 
             elif type(dictpath(inputd,path)) == list:
-                #keynamne = cursesplus.cursesinput(stdscr,"Please input the key name.")
+                #keynamne = crssinput(stdscr,"Please input the key name.")
                 ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
                 if ktype == 0:
                     continue
                 elif ktype == 1:
-                    val = cursesplus.cursesinput(stdscr,"What is the value of this key?")
+                    val = crssinput(stdscr,"What is the value of this key?")
                 elif ktype == 2:
                     val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
                     if int(val) == val:
@@ -837,7 +843,7 @@ def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
             epath = path.split("/")[-1]
             if type(dictpath(inputd,path)) == str:
                 cursesplus.utils.showcursor()
-                newval = cursesplus.cursesinput(stdscr,f"Please input a new value for {path}",prefiltext=dictpath(inputd,path))
+                newval = crssinput(stdscr,f"Please input a new value for {path}",prefiltext=dictpath(inputd,path))
                 cursesplus.utils.hidecursor()
             elif type(dictpath(inputd,path)) == int or type(dictpath(inputd,path)) == float:
                 cursesplus.utils.showcursor()
@@ -922,7 +928,7 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
         p = cursesplus.ProgressBar(stdscr,13000,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,message="Building Spigot")
         if not build_lver:
             curses.curs_set(1)
-            xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            xver = crssinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
             curses.curs_set(0)
         else:
             xver = "latest"
@@ -1027,7 +1033,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
         return
     while True:
         curses.curs_set(1)
-        servername = cursesplus.cursesinput(stdscr,"Please choose a name for your server").strip()
+        servername = crssinput(stdscr,"Please choose a name for your server").strip()
         curses.curs_set(0)
         if not os.path.isdir(SERVERSDIR):
             os.mkdir(SERVERSDIR)
@@ -1105,17 +1111,17 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         if not cursesplus.messagebox.askyesno(stdscr,["This will modify your world settings. Are you sure you wish to proceed?"]):
             return
     while True:
-        dpp["level-name"] = cursesplus.cursesinput(stdscr,"What should your world be called")
+        dpp["level-name"] = crssinput(stdscr,"What should your world be called")
         if os.path.isdir(serverdir+"/"+dpp["level-name"]):
             if cursesplus.messagebox.showwarning(stdscr,["This world may already exist.","Are you sure you want to edit its settings?"]):
                 break
         else:
             break
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to use a custom seed?","Answer no for a random seed"]):
-        dpp["level-seed"] = cursesplus.cursesinput(stdscr,"What should the seed be?")
+        dpp["level-seed"] = crssinput(stdscr,"What should the seed be?")
     wtype = crss_custom_ad_menu(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
     if wtype == 7:
-        wname = cursesplus.cursesinput(stdscr,"Please type the full name of the custom world type")
+        wname = crssinput(stdscr,"Please type the full name of the custom world type")
     elif wtype == 0:
         wname = "minecraft:normal"
     elif wtype == 1:
@@ -1134,9 +1140,9 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
     if wtype == 1 or wtype == 4 or wtype == 5 or wtype == 6:
         if wtype == 1:
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to customize the flat world?"]):
-               dpp["generator-settings"] = cursesplus.cursesinput(stdscr,f"Please type generator settings for {wname}") 
+               dpp["generator-settings"] = crssinput(stdscr,f"Please type generator settings for {wname}") 
         else:
-            dpp["generator-settings"] = cursesplus.cursesinput(stdscr,f"Please type generator settings for {wname}")
+            dpp["generator-settings"] = crssinput(stdscr,f"Please type generator settings for {wname}")
 
     if not initialconfig:
         #Provide more settings
@@ -1196,7 +1202,7 @@ def setup_server_properties(stdscr) -> dict:
 
             if dpp["enable-rcon"]:
                 dpp["broadcast-rcon-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable RCON (Remote CONtrol) output to operators?"])
-                dpp["rcon.password"] = cursesplus.cursesinput(stdscr,"Please input RCON password",passwordchar="*")
+                dpp["rcon.password"] = crssinput(stdscr,"Please input RCON password",passwordchar="*")
                 dpp["rcon.port"] = cursesplus.numericinput(stdscr,"Please input the RCON port: (default 25575)",False,False,1,65535,25575)
 
         elif lssl == 2:
@@ -1234,7 +1240,7 @@ def setup_server_properties(stdscr) -> dict:
             dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
             #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
             dpp["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed? (max players)",minimum=1,maximum=1000000,prefillnumber=20)
-            dpp["motd"] = "\\n".join(cursesplus.cursesinput(stdscr,"What should your server message say?",2,59).splitlines())
+            dpp["motd"] = "\\n".join(crssinput(stdscr,"What should your server message say?",2,59).splitlines())
             #dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
             dpp["simulation-distance"] = cursesplus.numericinput(stdscr,"What should the maximum simulation distance on the server be?",False,False,2,32,10)
             dpp["view-distance"] = cursesplus.numericinput(stdscr,"What should the maximum view distance on the server be?",False,False,2,32,10)
@@ -1264,7 +1270,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
         if z == 0:
             return dpp
         elif z == 1:
-            uurl = cursesplus.cursesinput(stdscr,"Input the URI to your resource pack (Direct download link)")
+            uurl = crssinput(stdscr,"Input the URI to your resource pack (Direct download link)")
             cursesplus.displaymsg(stdscr,["Testing link"],False)
             try:
                 lzdir = TEMPDIR+"/rp"+str(random.randint(11111,99999))
@@ -1451,7 +1457,7 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
         if wtd == 0:
             break
         elif wtd == 1:
-            searchq = cursesplus.cursesinput(stdscr,"What is the name of the mod you are looking for?")
+            searchq = crssinput(stdscr,"What is the name of the mod you are looking for?")
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq)
         elif wtd == 2:
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
@@ -1514,7 +1520,7 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
         if wtd == 0:
             break
         elif wtd == 1:
-            activesearch = cursesplus.cursesinput(stdscr,"What do you want to search for?")
+            activesearch = crssinput(stdscr,"What do you want to search for?")
             display = process_spigot_api_entries(final,activesearch)
         else:
             chosenplugin = display[wtd-2]
@@ -1692,7 +1698,7 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
         build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
         if not build_lver:
             curses.curs_set(1)
-            xver = cursesplus.cursesinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            xver = crssinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
             curses.curs_set(0)
         else:
             xver = "latest"
@@ -1905,7 +1911,7 @@ def config_server(stdscr,chosenserver):
                     with open(lkz[dz-1],"w+") as f:
                         f.write(yaml.dump(data,default_flow_style=False))
     elif __l == 5:
-        newname = cursesplus.cursesinput(stdscr,"Choose a new name for this server")
+        newname = crssinput(stdscr,"Choose a new name for this server")
         APPDATA["servers"][chosenserver-1]["name"] = newname
         #APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 6:
@@ -2033,7 +2039,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     config = PropertiesParse.load(f.read())
                 cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
                 curses.curs_set(1)
-                newmotd = cursesplus.cursesinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
+                newmotd = crssinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
                 curses.curs_set(0)
                 config["motd"] = newmotd.replace("\n","\\n")
                 with open("server.properties","w+") as f:
@@ -2319,14 +2325,14 @@ def file_manager(stdscr,directory:str,header:str):
         elif kkx == "n":
             whattpmake = crss_custom_ad_menu(stdscr,["Cancel","New File","New Directory"])
             if whattpmake == 1:
-                newname = cursesplus.cursesinput(stdscr,"Name of new file")
+                newname = crssinput(stdscr,"Name of new file")
                 try:
                     with open(adir+"/"+newname,"x") as f:
                         f.write("")
                 except:
                     cursesplus.messagebox.showerror(stdscr,["Failed to create file"])
             elif whattpmake == 2:
-                newname = cursesplus.cursesinput(stdscr,"Name of new directory")
+                newname = crssinput(stdscr,"Name of new directory")
                 try:
                     os.mkdir(adir+"/"+newname)
                 except:
@@ -2334,7 +2340,7 @@ def file_manager(stdscr,directory:str,header:str):
             elif whattpmake == 2:
                 pass
         elif kkx == "m":
-            newname = cursesplus.cursesinput(stdscr,"New name?")
+            newname = crssinput(stdscr,"New name?")
             try:
                 os.rename(activefile[selected].path,adir+"/"+newname)
             except:
@@ -2445,7 +2451,7 @@ def manage_ops(stdscr,serverdir):
                     f.write(json.dumps(data))
                 break
             elif dz == 1:
-                player = cursesplus.cursesinput(stdscr,"Please input the player's name")
+                player = crssinput(stdscr,"Please input the player's name")
                 try:
                     uuid = get_player_uuid(player)
                 except:
@@ -2524,7 +2530,7 @@ def manage_bans(stdscr,serverdir):
                     f.write(json.dumps(data))
                 break
             elif dz  == 1:
-                player = cursesplus.cursesinput(stdscr,"Please input the player's name")
+                player = crssinput(stdscr,"Please input the player's name")
                 try:
                     uuid = get_player_uuid(player)
                 except:
@@ -2535,10 +2541,10 @@ def manage_bans(stdscr,serverdir):
                     if cursesplus.messagebox.askyesno(stdscr,["Should this ban be forever?"]):
                         dend = "forever"
                     else:
-                        ddate = cursesplus.cursesinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
-                        dtime = cursesplus.cursesinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
+                        ddate = crssinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
+                        dtime = crssinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
                         dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
-                    reason = cursesplus.cursesinput(stdscr,"What is the reason for this ban?")
+                    reason = crssinput(stdscr,"What is the reason for this ban?")
                     data.append(
                         {
                             "name" : player,
@@ -2574,8 +2580,8 @@ def manage_bans(stdscr,serverdir):
                         del data[dz-2]
                         break
                     elif ch == 99:
-                        ddate = cursesplus.cursesinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
-                        dtime = cursesplus.cursesinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
+                        ddate = crssinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
+                        dtime = crssinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
                         dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
                         active["expires"] = dend
                         data[dz-2] = active
@@ -2672,7 +2678,7 @@ def managejavainstalls(stdscr):
                     stdscr.erase()
                     ndict = {"path":njavapath.replace("\\","/"),"ver":"Unknown"}
                     if cursesplus.messagebox.askyesno(stdscr,["Do you know what java version this is?"]):
-                        ndict["ver"] = cursesplus.cursesinput(stdscr,"Java version?",maxlen=10)
+                        ndict["ver"] = crssinput(stdscr,"Java version?",maxlen=10)
                         APPDATA["javainstalls"].append(ndict)
             else:
                 fver = get_java_version(njavapath.replace("\\","/"))
@@ -2760,7 +2766,7 @@ def import_amc_server(stdscr,chlx):
         while True:
             if nname in [l["name"] for l in APPDATA["servers"]]:
                 cursesplus.utils.showcursor()
-                nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
+                nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
                 cursesplus.utils.hidecursor()
             else:
                 xdat["name"] = nname
@@ -2784,6 +2790,19 @@ def str_contains_word(s:str,string:str) -> bool:
 
 def list_get_maxlen(l:list) -> int:
     return max([len(s) for s in l])
+
+def crssinput(stdscr,
+    prompt: str,
+    lines: int = 1,
+    maxlen: int = 0,
+    passwordchar: str = None,
+    retremptylines: bool = False,
+    prefiltext: str = "",
+    bannedcharacters: str = "") -> str:
+    cursesplus.utils.showcursor()
+    r = cursesplus.cursesinput(stdscr,prompt,lines,maxlen,passwordchar,retremptylines,prefiltext,bannedcharacters)
+    cursesplus.utils.hidecursor()
+    return r
 
 def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=True) -> int:
     """An alternate optionmenu that will be used in primary areas. has an ad"""
@@ -2889,7 +2908,7 @@ def choose_server_memory_amount(stdscr) -> str:
         return "8G"
     elif chop == 4:
         while True:
-            mtoal = cursesplus.cursesinput(stdscr,"How much memory should your server get? (for example 1024M or 5G)")
+            mtoal = crssinput(stdscr,"How much memory should your server get? (for example 1024M or 5G)")
             if not (mtoal.endswith("M") or mtoal.endswith("G")):
                 cursesplus.messagebox.showerror(stdscr,["Memory strings must end with M for megabytes","or G for gigabytes,","For example 3G or 1600M"])
                 continue
@@ -2919,11 +2938,11 @@ def import_server(stdscr):
             ffile = cursesplus.filedialog.openfiledialog(stdscr,"Please choose the server JAR file",[["*.jar","Java Archive files"],["*","All Files"]],ddir)
             fpl = os.path.split(ffile)[1]
             delaftercomplete = cursesplus.messagebox.askyesno(stdscr,["Delete original folder after import?"])
-            nname = cursesplus.cursesinput(stdscr,"Please enter the name of this server")
+            nname = crssinput(stdscr,"Please enter the name of this server")
             while True:
                 if nname in [l["name"] for l in APPDATA["servers"]]:
                     cursesplus.utils.showcursor()
-                    nname = cursesplus.cursesinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
+                    nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
                     cursesplus.utils.hidecursor()
                 else:
                     xdat["name"] = nname
@@ -2942,7 +2961,7 @@ def import_server(stdscr):
             xdat["javapath"] = choose_java_install(stdscr)
             memorytoall = choose_server_memory_amount(stdscr)
             xdat["memory"] = memorytoall
-            xdat["version"] = cursesplus.cursesinput(stdscr,"What version is your server?")
+            xdat["version"] = crssinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?","That is, Can it be changed with plugins/mods"])
             xdat["software"] = crss_custom_ad_menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
             xdat["script"] = generate_script(xdat)
@@ -3005,7 +3024,7 @@ def settings_mgr(stdscr):
             elif selm["type"] == "int":
                 selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
             elif selm["type"] == "str":
-                selm["value"] = cursesplus.cursesinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
+                selm["value"] = crssinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
             APPDATA["settings"][selk] = selm
 
 def doc_system(stdscr):
@@ -3052,8 +3071,8 @@ def oobe(stdscr):
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
         APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
         cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
-        if cursesplus.messagebox.askyesno(stdscr,["Would you like to change your default text editor?","YES: Choose a custom command","NO: use the default editor (usually nano)"]):
-            APPDATA["settings"]["editor"]["value"] = cursesplus.cursesinput(stdscr,"Please type a custom command: use %s to represent the file name")
+        if cursesplus.messagebox.askyesno(stdscr,["Would you like to change your default text editor?","YES: Choose a custom command","NO: use the default editor (usually nano)"],default=cursesplus.messagebox.MessageBoxStates.NO):
+            APPDATA["settings"]["editor"]["value"] = crssinput(stdscr,"Please type a custom command: use %s to represent the file name")
         APPDATA["hasCompletedOOBE"] = True
         updateappdata()
 
@@ -3122,7 +3141,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
                     pushd("/tmp/crssupdate")
                     if os.path.isfile("/usr/bin/craftserversetup"):
                         #admin
-                        spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
+                        spassword = crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                         with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
                             r = subprocess.call(f"echo -e \"{spassword}\" | sudo -S -k python3 /tmp/crssupdate/installer install",stdout=std0,stderr=std0,shell=True)
                     else:
@@ -3144,7 +3163,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
                     os.mkdir("/tmp/crssupdate")
                     urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.deb")
                     cursesplus.displaymsg(stdscr,["Installing update"],False)
-                    spassword = cursesplus.cursesinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
+                    spassword = crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                     with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
                         r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k dpkg -i /tmp/crssupdate/craftserversetup.deb",stdout=std0,stderr=std0,shell=True)
 
@@ -3296,7 +3315,9 @@ def main(stdscr):
                 import_amc_server(stdscr,sys.argv[1])        
         
         if not APPDATA["pkd"]:
-            product_key_page(stdscr)
+            if cursesplus.messagebox.askyesno(stdscr,["Have you purchased a product key?","If so, press yes and you will be prompted to enter it."]):
+                
+                product_key_page(stdscr,True)
         APPDATA["pkd"] = True
         updateappdata()
         if not os.path.isdir(BACKUPDIR):
@@ -3305,6 +3326,13 @@ def main(stdscr):
         if DEBUG:
             introsuffix=" | SRC DEBUG"
         threading.Thread(target=send_telemetry).start()
+        if APPDATA["settings"]["showprog"]["value"]:
+            mx = stdscr.getmaxyx()[1]-1
+            md = round(mx//20)
+            for i in range(0,20):
+                stdscr.addstr(stdscr.getmaxyx()[0]-1,i*md," "*md,cursesplus.set_colour(cursesplus.GREEN,cursesplus.WHITE))
+                stdscr.refresh()
+                time.sleep(1/40)
         if APPDATA["settings"]["autoupdate"]["value"]:
             if WINDOWS:
                 windows_update_software(stdscr,False)
