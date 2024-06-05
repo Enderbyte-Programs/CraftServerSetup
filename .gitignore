@@ -8,3 +8,4 @@ dist/
 *.pyc
 installer
 lib/__pycache__/
+output/

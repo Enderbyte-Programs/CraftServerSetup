@@ -208,6 +208,13 @@
     chmod +x deb/DEBIAN/postinst
 
     dpkg-deb --build deb craftserversetup.deb
+    if [ -d output ]; then
+        rm -rf output
+    fi
+    mkdir output
+    cp src/linux_universal_installer.sh output
+    mv craftserversetup.tar.xz output
+    mv craftserversetup.deb output
 !def run:
     !execute install
     crss -d
