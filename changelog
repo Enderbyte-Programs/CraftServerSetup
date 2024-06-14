@@ -1,3 +1,10 @@
+1.39:
+- Add ability to set 1.21 server.properties options
+- Add base functions for a massive future 1.40 update... (Guess what it is)
+- Add "Chat Only" mode to the log viewer
+    - Note I may add a feature to build a chat from every log file in the future. (Check a future 1.39.1 for more)
+1.38.1:
+- Fix a bug so horrible, I forgot what it was
 1.38:
 - Remove one server limit
 - Sort log list
