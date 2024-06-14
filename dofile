@@ -215,6 +215,7 @@
     cp src/linux_universal_installer.sh output
     mv craftserversetup.tar.xz output
     mv craftserversetup.deb output
+    cp universalwindowsinstaller/bin/Debug/CRSSAutoInstall* output/WindowsUniversalInstaller.exe
 !def run:
     !execute install
     crss -d
