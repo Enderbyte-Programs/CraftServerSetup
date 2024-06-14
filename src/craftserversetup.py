@@ -2,13 +2,13 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.38.1"#The semver version
+APP_UF_VERSION = "1.39"#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
 MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
 SHOW_ADVERT = False
-
+#TODO 1.40 - Bedrock servers
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2024")
 
 ### Standard Library Imports ###
@@ -427,6 +427,13 @@ except:
     except:
         print("WARN: Can't find translations file.")
         _transndt = True
+
+def extract_links_from_page(data: str) -> list[str]:
+    dl = data.split("href=")
+    final = []
+    for dm in dl[1:]:
+        final.append(dm.split("\"")[1])
+    return final
 
 def product_key_page(stdscr,force=False):
     if force:
@@ -998,6 +1005,30 @@ def download_purpur_software(stdscr,serverdir) -> dict:
     PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
     return PACKAGEDATA
 
+def list_recursive_contains(lst: list,item:str) -> int:
+    ii = 0
+    for i in lst:
+        if item in i:
+            return ii
+        ii += 1
+    raise IndexError("Could not find item")
+
+def get_by_list_contains(lst: list,item:str):
+    return lst[list_recursive_contains(lst,item)]
+
+def setup_bedrock_server(stdscr):
+    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
+    link_win_normal = get_by_list_contains(availablelinks,"win/")
+    link_lx_normal = get_by_list_contains(availablelinks,"linux/")
+    link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
+    link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
+    if WINDOWS:
+        availablelinks = [link_win_normal,link_win_preview]
+    else:
+        availablelinks = [link_lx_normal,link_lx_preview]
+    cursesplus.messagebox.showinfo(stdscr,["Not available in this version yet."])   
+    
+
 def setupnewserver(stdscr):
     stdscr.erase()
     
@@ -1007,7 +1038,15 @@ def setupnewserver(stdscr):
     elif wtd == 2:
         import_server(stdscr)
         return
+    bigserverblock = crss_custom_ad_menu(stdscr,["Cancel","Java (Computer, PC)","Bedrock (Console, Tablet, etc)"],"Choose Minecraft kind to install")
+    if bigserverblock == 0:
+        return
+    elif bigserverblock == 2:
+        setup_bedrock_server(stdscr)
+        return
+        
     while True:
+        
         serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Help me choose","Vanilla","Spigot","Paper","Purpur"],"Please choose your server software")
         if serversoftware != 1:
             break
@@ -1233,6 +1272,12 @@ def setup_server_properties(stdscr) -> dict:
                 dpp["player-idle-timeout"] = cursesplus.numericinput(stdscr,"Minutes of AFK before player is kicked:",False,False,0,1000000)
             else:
                 dpp["player-idle-timeout"] = 0
+            dpp["accept-transfers"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow people to automatically transfer to this server?"])
+            dpp["region-file-compression"] = ["deflate","lz4","none"][crss_custom_ad_menu(
+                stdscr,
+                ["Deflate (old algorithm, small size, high cpu)","LZ4 (more space, low cpu)","No compression (slow, huge space, no cpu)"],
+                "What compression should the world files use?"
+            )]
             
         elif lssl == 0:
             #basic
@@ -1763,6 +1808,7 @@ def update_purpur_software(stdscr,serverdir:str,chosenserver:int):
     PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
 
+
 def view_server_logs(stdscr,server_dir:str):
     logsdir = server_dir+"/logs"
     
@@ -1784,8 +1830,11 @@ def view_server_logs(stdscr,server_dir:str):
             else:
                 with open(cl) as f:
                     data = f.read()
-            
-            cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
+            wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only"])
+            if wtd == 1:
+                cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
+            else:
+                cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if "<" in d and ">" in d and "INFO" in d]))
 
 def load_backup(stdscr):
     backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
