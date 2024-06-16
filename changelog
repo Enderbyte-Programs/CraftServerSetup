@@ -1,3 +1,7 @@
+1.39.1
+- Fix bug where vanilla servers could download plugins
+- Move startup options to Advanced Configuration
+- Add Who Said What
 1.39:
 - Add ability to set 1.21 server.properties options
 - Add base functions for a massive future 1.40 update... (Guess what it is)

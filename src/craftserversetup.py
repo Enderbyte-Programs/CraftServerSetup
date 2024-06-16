@@ -2,7 +2,8 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.39"#The semver version
+APP_UF_VERSION = "1.39.1"
+#The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
@@ -1016,6 +1017,42 @@ def list_recursive_contains(lst: list,item:str) -> int:
 def get_by_list_contains(lst: list,item:str):
     return lst[list_recursive_contains(lst,item)]
 
+class LogEntry:
+    def __init__(self,file:str,date:datetime.date,data:str):
+        self.data = data
+        self.file = file
+        self.logdate = date
+        if is_log_line_a_chat_line(data):
+            self.playername = data.split("<")[1].split(">")[0]
+        else:
+            self.playername = ""
+    def __str__(self):
+        return f"{self.logdate} {self.data}"
+
+def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
+    if "latest" in fromfilename:
+        ld = datetime.datetime.now().date()
+    else:
+        ld = datetime.date(
+            int(fromfilename.split("-")[0]),
+            int(fromfilename.split("-")[1]),
+            int(fromfilename.split("-")[2])
+        )
+    final = []
+    for le in data.splitlines():
+        final.append(LogEntry(fromfilename,ld,le))
+    return final
+        
+def is_log_line_a_chat_line(line:str) -> bool:
+    if "INFO" in line and "<" in line and ">" in line:
+        return True
+    else:
+        return False
+    
+def is_log_entry_a_chat_line(le:LogEntry) -> bool:
+    return is_log_line_a_chat_line(le.data)
+
+
 def setup_bedrock_server(stdscr):
     availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
     link_win_normal = get_by_list_contains(availablelinks,"win/")
@@ -1918,7 +1955,7 @@ def manage_server_icon(stdscr):
                     pass
 
 def config_server(stdscr,chosenserver):
-    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server properties","Modify crss Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory"])#Todo rename server, memory
+    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options"])#Todo rename server, memory
     if __l == 0:
         return
     elif __l == 1:
@@ -1967,6 +2004,10 @@ def config_server(stdscr,chosenserver):
         newmem = choose_server_memory_amount(stdscr)
         APPDATA["servers"][chosenserver-1]["memory"] = newmem
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
+    elif __l == 7:
+        cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
+        return
+        APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
 
 def change_software(stdscr,directory,data) -> dict:
     zxc = crss_custom_ad_menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
@@ -2029,6 +2070,65 @@ def startup_options(stdscr,serverdata:dict):
         elif wtd == 2:
             serverdata["settings"]["exitcommands"]
 
+def strict_word_search(haystack:str,needle:str) -> bool:
+    #PHP
+    words = haystack.split(" ")
+    return needle in words
+
+def who_said_what(stdscr,serverdir):
+    cursesplus.displaymsg(stdscr,["Please wait..."],False)
+    logfile = serverdir + "/logs"
+    if not os.path.isdir(logfile):
+        cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
+        return
+    pushd(logfile)
+    logs = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
+    allentries:list[LogEntry] = []
+
+    for lf in logs:
+        p.step(lf)
+        if lf.endswith(".gz"):
+            with open(lf,'rb') as f:
+                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
+        else:
+            with open(lf) as f:
+                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
+    allentries = [a for a in allentries if is_log_entry_a_chat_line(a)]
+    allentries.sort(key=lambda x: x.logdate,reverse=True)
+    p.done()
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server"])
+        if wtd == 0:
+            break
+        elif wtd == 1:
+            wws = crssinput(stdscr,"What message would you like to search for?")
+            strict = cursesplus.messagebox.askyesno(stdscr,["Do you want to search strictly?","(Full words only)"])
+            cassen = cursesplus.messagebox.askyesno(stdscr,["Do you want to be case sensitive?"])
+            if not strict and cassen:
+                ft = "\n".join([str(a) for a in allentries if wws in a.data])
+            elif not strict and not cassen:
+                ft = "\n".join([str(a) for a in allentries if wws.lower() in a.data.lower()])
+            elif strict and cassen:
+                ft = "\n".join([str(a) for a in allentries if strict_word_search(a.data,wws)])
+            elif strict and not cassen:
+                ft = "\n".join([str(a) for a in allentries if strict_word_search(a.data.lower(),wws.lower())])
+            cursesplus.textview(stdscr,text=ft,message="Search Results")
+        elif wtd == 2:
+            wws = crssinput(stdscr,"What player would you like to search for?")
+            cursesplus.textview(stdscr,text=
+                                "\n".join(
+                                [
+                                    str(a) for a in allentries if wws in a.playername
+                                ]),message="Search Results")
+        elif wtd == 3:
+            cursesplus.textview(stdscr,text=
+                                "\n".join(
+                                [
+                                    str(a) for a in allentries
+                                ]),message="Search Results")
+    popd()
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -2043,7 +2143,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
         x__ops += ["View logs","Export server","View server info","Administration and Backups >>","Manage server icon"]
-        x__ops += ["Change server software","Startup Options","FILE MANAGER"]
+        x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
@@ -2094,6 +2194,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(config))
         elif w == 3:
+            
             config_server(stdscr,chosenserver)
         elif w == 4:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"],default=cursesplus.messagebox.MessageBoxStates.NO):
@@ -2144,6 +2245,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 if mmwtd == 0:
                     break
                 elif mmwtd == 1:
+                    if APPDATA["servers"][chosenserver-1]["software"] == 1:
+                        cursesplus.messagebox.showerror(stdscr,["Vanilla servers cannot have plugins."])
+                        continue
                     svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"],APPDATA["servers"][chosenserver-1]["software"])
                 elif mmwtd == 2:
                     world = crss_custom_ad_menu(stdscr,find_world_folders(SERVER_DIR),"Choose a world to apply datapacks to")
@@ -2212,9 +2316,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
         elif w == 14:
-            cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
-            continue
-            APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
+            w2 = crss_custom_ad_menu(stdscr,["Back","Who Said What?"],"Additional Utilities")
+            if w2 == 1:
+                who_said_what(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None

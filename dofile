@@ -226,3 +226,9 @@
     read -p "Commit message: " message
     git commit -m "$message"
     git push --force
+!def sumsize:private
+    set -e
+    mkdir -p ~/.local/bin/crsssum
+    cp ~/.local/bin/crss ~/.local/bin/crsssum
+    du -cs --exclude=~/.local/share/mcserver/temp --exclude=~/.local/share/mcserver/servers ~/.local/bin/crsssum ~/.local/lib/craftserversetup ~/.local/share/mcserver/assets 
+    rm -rf ~/.local/bin/crsssum
