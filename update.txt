@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.39/CraftServerSetup-1.39-installer.exe|1.39|Add 1.21 support
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.39.1/CraftServerSetup-1.39.1-installer.exe|1.39.1|Chat Finder Utilities
