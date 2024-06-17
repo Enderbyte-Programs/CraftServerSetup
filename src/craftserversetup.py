@@ -624,7 +624,42 @@ def error_handling(e:Exception,message="A serious error has occured"):
             webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
             _SCREEN.erase()
             cursesplus.displaymsg(_SCREEN,["In your bug report, please make sure to include","the contents of the","View Error Info screen"])
-    
+            
+def safe_error_handling(e:Exception):
+    global COLOURS_ACTIVE
+    global _SCREEN
+    _SCREEN.clear()
+    _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+    raw =  f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc()
+    #splitext = textwrap.wrap(raw,_SCREEN.getmaxyx()[1]-1)
+    splitext = raw.splitlines()
+    while True:
+        _SCREEN.clear()
+        my,mx = _SCREEN.getmaxyx()
+        cursesplus.utils.fill_line(_SCREEN,0,cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        cursesplus.utils.fill_line(_SCREEN,1,cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        cursesplus.utils.fill_line(_SCREEN,2,cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        _SCREEN.addstr(3,0,"─"*(mx-1))
+        _SCREEN.addstr(0,0,"A fatal error has occured in CraftServerSetup. Info is listed below.",cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        _SCREEN.addstr(1,0,"Press C to return to the main menu.",cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        _SCREEN.addstr(2,0,"Press R to open a bug report on Github. Include information listed below.",cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        ey = 3
+        for eline in splitext:
+            ey += 1
+            try:
+                _SCREEN.addstr(ey,0,eline)
+            except:
+                break
+        _SCREEN.refresh()
+        c = _SCREEN.getch()
+        if c == 99:
+            break
+        elif c == 114:
+            webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues/new")
+            _SCREEN.erase()
+            cursesplus.displaymsg(_SCREEN,["In your bug report, please make sure to include","the contents of the","error in the previous screen.","You can see the error again by pressing any key."])
+    _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
+        
 __DIR_LIST__ = [os.getcwd()]
 def pushd(directory:str):
     global __DIR_LIST__
@@ -1054,6 +1089,23 @@ def is_log_entry_a_chat_line(le:LogEntry) -> bool:
 
 
 def setup_bedrock_server(stdscr):
+    while True:
+        servername = crssinput(stdscr,"Please choose a name for your server").strip()
+        if not os.path.isdir(SERVERSDIR):
+            os.mkdir(SERVERSDIR)
+        if os.path.isdir(SERVERSDIR+"/"+servername):
+            cursesplus.displaymsg(stdscr,["Name already exists."])
+            continue
+        else:
+            try:
+                os.mkdir(SERVERSDIR+"/"+servername)
+            except:
+                cursesplus.displaymsg(stdscr,["Error","Server path is illegal"])
+            else:
+                break
+    S_INSTALL_DIR = SERVERSDIR+"/"+servername
+    p = cursesplus.ProgressBar(stdscr,10,cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Setting up bedrock server")
+    p.step("Getting download information")
     availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
     link_win_normal = get_by_list_contains(availablelinks,"win/")
     link_lx_normal = get_by_list_contains(availablelinks,"linux/")
@@ -1063,8 +1115,11 @@ def setup_bedrock_server(stdscr):
         availablelinks = [link_win_normal,link_win_preview]
     else:
         availablelinks = [link_lx_normal,link_lx_preview]
-    cursesplus.messagebox.showinfo(stdscr,["Not available in this version yet."])   
     
+    l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
+    p.step("Downloading server file")
+    urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
+    p.step("Extracting server file")
 
 def setupnewserver(stdscr):
     stdscr.erase()
@@ -3495,52 +3550,55 @@ def main(stdscr):
                     UPDATEINSTALLED = True
                     return
         while True:
-            stdscr.erase()
-            #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
-            lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit"]
-            if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
-                lz += ["Upgrade to Premium"]
-            if DEVELOPER:
-                lz += ["Developer Tools"]
-            m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
-            if m == 8:
-                cursesplus.displaymsg(stdscr,["Shutting down..."],False)
-                updateappdata()
-                break
-            elif m == 0:
+            try:
+                stdscr.erase()
+                #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
+                lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit"]
+                if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
+                    lz += ["Upgrade to Premium"]
+                if DEVELOPER:
+                    lz += ["Developer Tools"]
+                m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
+                if m == 8:
+                    cursesplus.displaymsg(stdscr,["Shutting down..."],False)
+                    updateappdata()
+                    break
+                elif m == 0:
 
-                setupnewserver(stdscr)
-            elif m == 1:
-                servermgrmenu(stdscr)
-            #elif m == 3:
-            #    managejavainstalls(stdscr)
-            elif m == 5:
-                if PORTABLE:
-                    cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
-                    continue
-                if WINDOWS:
-                    windows_update_software(stdscr)
-                    continue
-                #OLD UPDATE MAY BE REMOVED IN 0.18.3
-                if do_linux_update(stdscr):
-                    UPDATEINSTALLED = True
-                    return
+                    setupnewserver(stdscr)
+                elif m == 1:
+                    servermgrmenu(stdscr)
+                #elif m == 3:
+                #    managejavainstalls(stdscr)
+                elif m == 5:
+                    if PORTABLE:
+                        cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
+                        continue
+                    if WINDOWS:
+                        windows_update_software(stdscr)
+                        continue
+                    #OLD UPDATE MAY BE REMOVED IN 0.18.3
+                    if do_linux_update(stdscr):
+                        UPDATEINSTALLED = True
+                        return
 
-            elif m == 7:
-                global_backup_mgr(stdscr)
-            elif m == 4:
-                webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
-                cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
-            elif m == 2:
-                settings_mgr(stdscr)
-            elif m == 3:
-                doc_system(stdscr)
-            elif m == 6:
-                stats_and_credits(stdscr)
-            elif DEVELOPER and lz[m] == "Developer Tools":
-                devtools(stdscr)
-            elif m == 9:
-                product_key_page(stdscr)
+                elif m == 7:
+                    global_backup_mgr(stdscr)
+                elif m == 4:
+                    webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
+                    cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
+                elif m == 2:
+                    settings_mgr(stdscr)
+                elif m == 3:
+                    doc_system(stdscr)
+                elif m == 6:
+                    stats_and_credits(stdscr)
+                elif DEVELOPER and lz[m] == "Developer Tools":
+                    devtools(stdscr)
+                elif m == 9:
+                    product_key_page(stdscr)
+            except Exception as e2:
+                safe_error_handling(e2)
         if APPDATA["settings"]["transitions"]["value"]:
             cursesplus.transitions.horizontal_bars(stdscr)
     except Exception as e:
