@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.39.1"
+APP_UF_VERSION = "1.40"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -88,63 +88,105 @@ import eptranslate              #Translations
 from eptranslate import t       #Shorthand
 
 ___DEFAULT_SERVER_PROPERTIES___ = r"""
-enable-jmx-monitoring=false
-rcon.port=25575
-level-seed=
-gamemode=survival
-enable-command-block=false
-enable-query=false
-generator-settings={}
-enforce-secure-profile=true
-level-name=world
-motd=A Minecraft Server
-query.port=25565
-pvp=true
-generate-structures=true
-max-chained-neighbor-updates=1000000
-difficulty=easy
-network-compression-threshold=256
-max-tick-time=60000
-require-resource-pack=false
-use-native-transport=true
-max-players=20
-online-mode=true
-enable-status=true
+accepts-transfers=false
 allow-flight=false
-initial-disabled-packs=
-broadcast-rcon-to-ops=true
-view-distance=10
-server-ip=
-resource-pack-prompt=
 allow-nether=true
-server-port=25565
-enable-rcon=false
-sync-chunk-writes=true
-op-permission-level=4
-prevent-proxy-connections=false
-hide-online-players=false
-resource-pack=
-entity-broadcast-range-percentage=100
-simulation-distance=10
-rcon.password=
-player-idle-timeout=0
-debug=false
-force-gamemode=false
-rate-limit=0
-hardcore=false
-white-list=false
 broadcast-console-to-ops=true
-spawn-npcs=true
-spawn-animals=true
-function-permission-level=2
-initial-enabled-packs=vanilla
-level-type=minecraft\:normal
-text-filtering-config=
-spawn-monsters=true
+broadcast-rcon-to-ops=true
+difficulty=easy
+enable-command-block=false
+enable-jmx-monitoring=false
+enable-query=false
+enable-rcon=false
+enable-status=true
+enforce-secure-profile=true
 enforce-whitelist=false
-spawn-protection=16
-resource-pack-sha1=
+entity-broadcast-range-percentage=100
+force-gamemode=false
+function-permission-level=2
+gamemode=survival
+generate-structures=true
+generator-settings={}
+hardcore=false
+hide-online-players=false
+initial-disabled-packs=
+initial-enabled-packs=vanilla
+level-name=world
+level-seed=
+level-type=minecraft:normal
+log-ips=true
+max-chained-neighbor-updates=1000000
+max-players=20
+max-tick-time=60000
 max-world-size=29999984
+motd=A Minecraft Server
+network-compression-threshold=256
+online-mode=true
+op-permission-level=4
+player-idle-timeout=0
+prevent-proxy-connections=false
+pvp=true
+query.port=25565
+rate-limit=0
+rcon.password=
+rcon.port=25575
+region-file-compression=deflate
+require-resource-pack=false
+resource-pack=
+resource-pack-id=
+resource-pack-prompt=
+resource-pack-sha1=
+server-ip=
+server-port=25565
+simulation-distance=10
+spawn-animals=true
+spawn-monsters=true
+spawn-npcs=true
+spawn-protection=16
+sync-chunk-writes=true
+text-filtering-config=
+use-native-transport=true
+view-distance=10
+white-list=false
+"""
+
+__BEDROCK_DEFAULT_SERVER_PROPERTIES__ = r"""
+server-name=Dedicated Server
+gamemode=survival
+force-gamemode=false
+difficulty=easy
+allow-cheats=false
+max-players=10
+online-mode=true
+allow-list=false
+server-port=19132
+server-portv6=19133
+enable-lan-visibility=true
+view-distance=32
+tick-distance=4
+player-idle-timeout=30
+max-threads=8
+level-name=Bedrock level
+level-seed=
+default-player-permission-level=member
+texturepack-required=false
+content-log-file-enabled=false
+compression-threshold=1
+compression-algorithm=zlib
+server-authoritative-movement=server-auth
+player-position-acceptance-threshold=0.5
+player-movement-action-direction-threshold=0.85
+server-authoritative-block-breaking-pick-range-scalar=1.5
+chat-restriction=None
+disable-player-interaction=false
+client-side-chunk-generation-enabled=true
+block-network-ids-are-hashes=true
+disable-persona=false
+disable-custom-skins=false
+server-build-radius-ratio=Disabled
+allow-outbound-script-debugging=false
+allow-inbound-script-debugging=false
+script-debugger-auto-attach=disabled
 """
 
 PLUGIN_HELP = r"""
@@ -1087,6 +1129,28 @@ def is_log_line_a_chat_line(line:str) -> bool:
 def is_log_entry_a_chat_line(le:LogEntry) -> bool:
     return is_log_line_a_chat_line(le.data)
 
+def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["FINISH","Basic options","World settings","Advanced options"])
+        if wtd == 0:
+            return data
+        elif wtd == 1:
+            data["server-name"] = crssinput(stdscr,"What is the public name of the server?")
+            data["gamemode"] = ["survival","creative","adventure"][crss_custom_ad_menu(stdscr,["Survival","Creative","Adventure"],"Choose gamemode for server")]
+            cd = cursesplus.checkboxlist(stdscr,[
+                CheckBoxItem("fg","Force Gamemode"),
+                CheckBoxItem("cheat","Allow Cheats / commands"),
+                CheckBoxItem("secure","Use secure online mode",True),
+                CheckBoxItem("al","Use allowlist",False)
+            ],"Choose some options")
+            data["force-gamemode"] = cd["fg"]
+            data["allow-cheats"] = cd["cheat"]
+            data["online-mode"] = cd["secure"]
+            data["allow-list"] = cd["al"]
+            data["view-distance"] = cursesplus.numericinput(stdscr,"What view distance do you want?",minimum=5,maximum=48,prefillnumber=32)
+            data["tick-distance"] = cursesplus.numericinput(stdscr,"What simulation distance do you want?",minimum=4,maximum=12,prefillnumber=4)
+            data["default-player-permission-level"] = ["visitor","member","operator"][crss_custom_ad_menu(stdscr,["Visitor (very limited access)","Member (Normal player)","Operator (Admin)"],"Select default permissions")]
+            
 
 def setup_bedrock_server(stdscr):
     while True:
@@ -1120,6 +1184,133 @@ def setup_bedrock_server(stdscr):
     p.step("Downloading server file")
     urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
     p.step("Extracting server file")
+    pushd(S_INSTALL_DIR)#Make install easier
+    zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
+    zf.extractall(S_INSTALL_DIR)
+    zf.close()
+    p.step("Removing excess files")
+    os.remove(S_INSTALL_DIR+"/server.zip")
+    p.step("Preparing exec")
+    if not WINDOWS:
+        os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
+    
+    
+    sd = {
+        "name" : servername,
+        "javapath" : "",
+        "memory" : "",
+        "dir" : S_INSTALL_DIR,
+        "version" : l2d.split("-")[-1].replace(".zip",""),
+        "moddable" : False,
+        "software" : 0,
+        "id" : random.randint(1111,9999),
+        "settings": {
+            "launchcommands": [],
+            "exitcommands": [],
+            "safeexitcommands": []
+        },
+        "script" : S_INSTALL_DIR+"/bedrock_server",
+        "linkused" : l2d,
+        "ispreview" : l2d == link_lx_preview or l2d == link_win_preview
+    }
+    try:
+        shutil.copyfile(ASSETSDIR+"/defaulticon.png",S_INSTALL_DIR+"/server-icon.png")
+    except:
+        pass
+    if WINDOWS:
+        sd["script"] = S_INSTALL_DIR+"/bedrock_server.exe"
+    APPDATA["servers"].append(sd)
+    updateappdata()
+    if cursesplus.messagebox.askyesno(stdscr,["Would you like to configure your server's settings now?"]):
+        with open(S_INSTALL_DIR+"/server.properties") as f:
+            f.write(configure_bedrock_server(stdscr,S_INSTALL_DIR,__BEDROCK_DEFAULT_SERVER_PROPERTIES__))
+    popd()
+    p.done()
+    bedrock_manage_server(stdscr,servername,APPDATA["servers"].index(sd)+1)
+
+def bedrock_manage_server(stdscr,servername,chosenserver):
+    curver = APPDATA["servers"][chosenserver-1]["linkused"]
+    cursesplus.displaymsg(stdscr,["Checking for Bedrock updates"],False)
+    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
+    link_win_normal = get_by_list_contains(availablelinks,"win/")
+    link_lx_normal = get_by_list_contains(availablelinks,"linux/")
+    link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
+    link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
+    if WINDOWS:
+        availablelinks = [link_win_normal,link_win_preview]
+    else:
+        availablelinks = [link_lx_normal,link_lx_preview]
+    
+    if APPDATA["servers"][chosenserver-1]["ispreview"]:
+        sel = 1
+    else:
+        sel = 0
+        
+    latestlink = availablelinks[sel]
+    if curver != latestlink:
+        if cursesplus.messagebox.askyesno(stdscr,["A bedrock update has been detected.","If you don't install it, devices can't connect.","Do you want to install this update?"]):
+    
+            l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
+            #Remember: Don't overwrite server.properties or allowlist.json
+            safetydir = generate_temp_dir()
+            safefiles = ["server.properties","allowlist.json"]
+            safemap = {}
+            for sf in safefiles:
+                shutil.copyfile(sf,safetydir+"/"+file_get_md5(sf))
+                safemap[sf] = file_get_md5(sf)
+            S_INSTALL_DIR = APPDATA["servers"][chosenserver-1]["dir"]
+            cursesplus.displaymsg(stdscr,["Updating server","Please be patient."])
+            #p.step("Downloading server file")
+            urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
+            #p.step("Extracting server file")
+            pushd(S_INSTALL_DIR)#Make install easier
+            zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
+            zf.extractall(S_INSTALL_DIR)
+            zf.close()
+            #p.step("Removing excess files")
+            os.remove(S_INSTALL_DIR+"/server.zip")
+            #p.step("Preparing exec")
+            if not WINDOWS:
+                os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
+            APPDATA["servers"][chosenserver-1]["ispreview"] = l2d == availablelinks[1]
+            APPDATA["servers"][chosenserver-1]["version"] = l2d.split("-")[-1].replace(".zip","")
+            for sf in safefiles:
+                if os.path.isfile(sf):
+                    os.remove(sf)
+                shutil.copyfile(safetydir+"/"+safefiles[sf],sf)
+    svrd = APPDATA["servers"][chosenserver-1]["dir"]       
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Configure Server","Delete Server","FILE MANAGER"])
+        if wtd == 0:
+            os.chdir("/")
+            return
+        elif wtd == 4:
+            file_manager(stdscr,os.getcwd(),f"Managing files for {servername}")
+        elif wtd == 1:
+            os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
+            stdscr.clear()
+            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
+            stdscr.refresh()
+            if not WINDOWS:
+                curses.curs_set(1)
+                curses.reset_shell_mode()
+                lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
+                #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
+                #child.expect("Finished")
+                curses.reset_prog_mode()
+                curses.curs_set(0)
+            else:
+                curses.curs_set(1)
+                curses.reset_shell_mode()
+                #COLOURS_ACTIVE = False
+                lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
+                curses.reset_prog_mode()
+                curses.curs_set(0)
+                #restart_colour()
+            if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
+                cursesplus.messagebox.showwarning(stdscr,["Oh No! Your server crashed"])
+            stdscr.clear()
+            stdscr.refresh()
 
 def setupnewserver(stdscr):
     stdscr.erase()
@@ -1302,8 +1493,8 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         dpp = merge_dicts(dpp,sslxdd)
 
     return dpp
-def setup_server_properties(stdscr) -> dict:
-    dpp = PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)
+def setup_server_properties(stdscr,data=PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)) -> dict:
+    dpp = data
     cursesplus.utils.showcursor()
     while True:
         lssl = crss_custom_ad_menu(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
@@ -2193,6 +2384,9 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     os.chdir(APPDATA["servers"][chosenserver-1]["dir"])
     if APPDATA["settings"]["transitions"]["value"]:
         cursesplus.transitions.vertical_bars(stdscr)
+    if APPDATA["servers"][chosenserver-1]["software"] == 0:
+        bedrock_manage_server(stdscr,_sname,chosenserver)
+        return
     #Manager server
     while True:
 
@@ -2382,7 +2576,7 @@ def handle_file_editing(stdscr,path:str):
     
     if (is_file_binary(path)):
         cursesplus.messagebox.showerror(stdscr,["This type of file can't be edited."])
-    elif is_file_dicteditable(path):
+    elif is_file_dicteditable(path) or path.endswith(".properties"):
         with open(path) as f:
             data = f.read()
         try:

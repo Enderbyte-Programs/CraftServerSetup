@@ -1,3 +1,8 @@
+1.40
+- Add safe error handling to return to the main menu automatically
+- Add bedrock support
+- Update default server.properties to 1.21
+- .properties files are now handled as dicts in file manager
 1.39.1
 - Fix bug where vanilla servers could download plugins
 - Move startup options to Advanced Configuration
