@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.39.1/CraftServerSetup-1.39.1-installer.exe|1.39.1|Chat Finder Utilities
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.40/CraftServerSetup-1.40-installer.exe|1.40|BEDROCK SERVERS!!
