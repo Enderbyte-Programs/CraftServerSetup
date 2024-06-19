@@ -1129,6 +1129,9 @@ def is_log_line_a_chat_line(line:str) -> bool:
 def is_log_entry_a_chat_line(le:LogEntry) -> bool:
     return is_log_line_a_chat_line(le.data)
 
+def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
+    return data
+
 def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
     while True:
         wtd = crss_custom_ad_menu(stdscr,["FINISH","Basic options","World settings","Advanced options"])
@@ -1150,7 +1153,72 @@ def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
             data["view-distance"] = cursesplus.numericinput(stdscr,"What view distance do you want?",minimum=5,maximum=48,prefillnumber=32)
             data["tick-distance"] = cursesplus.numericinput(stdscr,"What simulation distance do you want?",minimum=4,maximum=12,prefillnumber=4)
             data["default-player-permission-level"] = ["visitor","member","operator"][crss_custom_ad_menu(stdscr,["Visitor (very limited access)","Member (Normal player)","Operator (Admin)"],"Select default permissions")]
-            
+            data["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed on the server?")
+        elif wtd == 2:
+            data = bedrock_world_settings(stdscr,directory,data)
+        elif wtd == 3:
+            data["server-port"] = cursesplus.numericinput(stdscr,"What port do you want to host the server on?",minimum=1,maximum=65535,prefillnumber=19132)
+            data["server-portv6"] = cursesplus.numericinput(stdscr,"What port do you want the IPV6 server to listen on?",minimum=1,maximum=65535,prefillnumber=19133)
+            data["enable-lan-visibility"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to make this server LAN-discoverable?","This will overwrite previous port choices."])
+            data["player-idle-timeout"] = cursesplus.numericinput(stdscr,"Choose AFK timeout (0 to disable)",prefillnumber=0)
+            data["max-threads"] = cursesplus.numericinput(stdscr,"How many multiprocessing threads should the server use? (0 for as many as possible)")
+            ii = cursesplus.checkboxlist(stdscr,[
+                cursesplus.CheckBoxItem("texturepack-required","Require use of custom texture pack"),
+                cursesplus.CheckBoxItem("content-log-file-enabled","Enable content error logging",True)
+            ])
+            data = merge_dicts(data,ii)
+            data["compression-algorithm"] = ["zlib","snappy"][crss_custom_ad_menu(stdscr,["zlib","snappy"],"Choose compression algorith")]
+            data["server-authoritative-movement"] = crss_option_retr_str(stdscr,["client-auth - No anticheat","server-auth - Weak anticheat","server-auth-with-rewind - Strong anticheat"],"Choose anticheat")
+            data["chat-restriction"] = crss_option_retr_str(stdscr,["None - Allow chat","Dropped - Disallow chat","Disabled - Silently hide chat"],"Choose chat restriction")
+            iii = cursesplus.checkboxlist(stdscr,[
+                CheckBoxItem("disable-player-interaction","Discourage players from interaction"),
+                CheckBoxItem("client-side-chunk-generation-enabled","Allow players to generate extra chunks",True),
+                CheckBoxItem("block-network-ids-are-hashes","Use randomized network ids"),
+                CheckBoxItem("disable-custom-skins","Forbid custom skins"),
+                CheckBoxItem("allow-outbound-script-debugging","Allow outbound debugging"),
+                CheckBoxItem("allow-inbound-script-debugging","Allow inbound debugging"),
+                CheckBoxItem("script-debugger-auto-attach","Auto enable debugger")
+            ])
+            data = merge_dicts(data,iii)
+
+def crss_option_retr_str(stdscr,options:list,header:str) -> str:
+    """Strips based on  - : Use as splitter"""
+    return options[crss_custom_ad_menu(stdscr,options,header)].split(" - ")[0]
+
+def bedrock_config_server(stdscr,chosenserver):
+    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Rename Server","Startup Options"])#Todo rename server, memory
+    if __l == 0:
+        return
+    elif __l == 1:
+        if not os.path.isfile("server.properties"):
+            cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+        else:
+            with open("server.properties") as f:
+                config = PropertiesParse.load(f.read())
+
+            config = dictedit(stdscr,config,"Editing Server Properties",True)
+            with open("server.properties","w+") as f:
+                f.write(PropertiesParse.dump(config))
+    elif __l == 2:
+        dt = APPDATA["servers"][chosenserver-1]
+        dt = dictedit(stdscr,dt,"More Server Properties")
+        APPDATA["servers"][chosenserver-1] = dt
+        APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+    elif __l == 3:
+        if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
+            os.remove("server.properties")
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
+                sd = setup_server_properties(stdscr)
+                with open("server.properties","w+") as f:
+                    f.write(PropertiesParse.dump(sd))
+    elif __l == 4:
+        newname = crssinput(stdscr,"Choose a new name for this server")
+        APPDATA["servers"][chosenserver-1]["name"] = newname
+        #APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+    elif __l == 5:
+        cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
+        return
+        APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
 
 def setup_bedrock_server(stdscr):
     while True:
@@ -1222,8 +1290,8 @@ def setup_bedrock_server(stdscr):
     APPDATA["servers"].append(sd)
     updateappdata()
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to configure your server's settings now?"]):
-        with open(S_INSTALL_DIR+"/server.properties") as f:
-            f.write(configure_bedrock_server(stdscr,S_INSTALL_DIR,__BEDROCK_DEFAULT_SERVER_PROPERTIES__))
+        with open(S_INSTALL_DIR+"/server.properties","w+") as f:
+            f.write(PropertiesParse.dump(configure_bedrock_server(stdscr,S_INSTALL_DIR,PropertiesParse.load(__BEDROCK_DEFAULT_SERVER_PROPERTIES__))))
     popd()
     p.done()
     bedrock_manage_server(stdscr,servername,APPDATA["servers"].index(sd)+1)
@@ -1280,12 +1348,26 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                 shutil.copyfile(safetydir+"/"+safefiles[sf],sf)
     svrd = APPDATA["servers"][chosenserver-1]["dir"]       
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Configure Server","Delete Server","FILE MANAGER"])
+        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Configure Server","Delete Server","Configure Allowlist","FILE MANAGER"],f"Managing {servername}")
         if wtd == 0:
             os.chdir("/")
             return
-        elif wtd == 4:
+        elif wtd == 2:
+            bedrock_config_server(stdscr,chosenserver)
+        elif wtd == 3:
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER"],default=cursesplus.messagebox.MessageBoxStates.NO):
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"],default=cursesplus.messagebox.MessageBoxStates.NO):
+                    os.chdir(SERVERSDIR)
+                    shutil.rmtree(svrd)
+                    del APPDATA["servers"][chosenserver-1]
+                    cursesplus.messagebox.showinfo(stdscr,["Deleted server"])
+                    stdscr.clear()
+                    break
+            stdscr.erase()
+        elif wtd == 5:
             file_manager(stdscr,os.getcwd(),f"Managing files for {servername}")
+        elif wtd == 4:
+            cursesplus.messagebox.showerror(stdscr,["Not yet implemented"])
         elif wtd == 1:
             os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
             stdscr.clear()
