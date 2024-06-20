@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.40/CraftServerSetup-1.40-installer.exe|1.40|BEDROCK SERVERS!!
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.40.2/CraftServerSetup-1.40.2-installer.exe|1.40.2|BEDROCK SERVERS!!
