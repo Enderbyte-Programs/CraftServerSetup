@@ -1,9 +1,18 @@
-1.40
+1.40.2:
+- Fix assorted terrible bugs in bedrock server upgrades
+- Delete is now red coloured
+- Add update bedrock software to bedrock menu as "re/change install"
+- What in the absolute **** happened to cursesplus.tar.xz. FIX IT NOW!!!!!!
+- Code is now minified
+1.40.1:
+- Fix bug in generate script
+- Fix problem in credits
+1.40:
 - Add safe error handling to return to the main menu automatically
 - Add bedrock support
 - Update default server.properties to 1.21
 - .properties files are now handled as dicts in file manager
-1.39.1
+1.39.1:
 - Fix bug where vanilla servers could download plugins
 - Move startup options to Advanced Configuration
 - Add Who Said What

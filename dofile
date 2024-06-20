@@ -6,7 +6,7 @@
     NC='\033[0m' # No Color
     FILEREGFILE="$HOME/.config/mimeapps.list"
     MIMEDIR="$HOME/.local/share/mime/packages"
-
+    echo "INFO: Verifying system"
     #Check program requirements
     set -e
     if ! command -v java &> /dev/null
@@ -29,6 +29,7 @@
     fi
     APPDATADIR="$HOME/.local/share/mcserver"
     ASSETSDIR="$APPDATADIR/assets"
+    echo "INFO: Setting up"
     if [ ! -d "$APPDATADIR" ]; then
         mkdir -p "$APPDATADIR"
     fi
@@ -48,7 +49,7 @@
     if [ ! -d $ASSETSDIR ]; then
         mkdir $ASSETSDIR
     fi
-
+    echo "INFO: Installing (Stage 1)"
     cp -r doc/* $ASSETSDIR # Copy assets
     cp assets/defaulticon.png $ASSETSDIR
     cp LICENSE $ASSETSDIR
@@ -57,15 +58,14 @@
         echo "WARNING: dist directory found. Deleting now."
         rm -rf dist # Clean dist directory
     fi
+    echo "INFO: Shortening source file"
     mkdir dist
     #Copy code and add exec permissions
     cp src/craftserversetup.py dist/craftserversetup.py
-    sed '2,${/^#/d}' dist/craftserversetup.py >dist/craftserversetup.py.tmp
-    #grep -o '^[^#]*' dist/craftserversetup.py >dist/craftserversetup.py.tmp
-    rm dist/craftserversetup.py
-    mv dist/craftserversetup.py.tmp dist/craftserversetup.py
-    grep -v -e '^[[:space:]]*$' dist/craftserversetup.py >dist/craftserversetup.py.tmp
-    rm dist/craftserversetup.py
+
+    tar -xf lib/python_minifier.tar.xz -C scripts
+    python3 scripts/minify.py dist/craftserversetup.py dist/craftserversetup.py.tmp
+    rm -rf scripts/python_minifier
     mv dist/craftserversetup.py.tmp dist/craftserversetup.py
     chmod +x dist/craftserversetup.py
     mv dist/craftserversetup.py dist/craftserversetup
@@ -74,6 +74,7 @@
     ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/mcserver"
     ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
     pushd lib >/dev/null
+    echo "INFO: Installing libraries"
     #Copy prebuilt python library
     for file in *.xz
     do
@@ -87,6 +88,7 @@
     if [ ! -d $SHORTCUTDIR ]; then
         mkdir -p $SHORTCUTDIR
     fi
+    echo "INFO: Installing (Stage 3)"
     cp assets/mc.png $ICONDIR/craftserversetup.png
     cp assets/craftserversetup.desktop "${SHORTCUTDIR}/craftserversetup.desktop"
     sed -i "s@}@${ICONDIR}@g" "${SHORTCUTDIR}/craftserversetup.desktop"

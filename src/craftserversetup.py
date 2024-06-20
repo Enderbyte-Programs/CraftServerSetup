@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.40"
+APP_UF_VERSION = "1.40.2"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -1285,8 +1285,7 @@ def setup_bedrock_server(stdscr):
         shutil.copyfile(ASSETSDIR+"/defaulticon.png",S_INSTALL_DIR+"/server-icon.png")
     except:
         pass
-    if WINDOWS:
-        sd["script"] = S_INSTALL_DIR+"/bedrock_server.exe"
+    sd["script"] = generate_script(sd)
     APPDATA["servers"].append(sd)
     updateappdata()
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to configure your server's settings now?"]):
@@ -1295,6 +1294,44 @@ def setup_bedrock_server(stdscr):
     popd()
     p.done()
     bedrock_manage_server(stdscr,servername,APPDATA["servers"].index(sd)+1)
+
+def bedrock_do_update(stdscr,chosenserver,availablelinks):
+    l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
+    #Remember: Don't overwrite server.properties or allowlist.json
+    p = cursesplus.ProgressBar(stdscr,5)
+    cursesplus.displaymsg(stdscr,["Updating server","Please be patient."],False)
+    p.step("Making backup")
+    safetydir = generate_temp_dir()
+    safefiles = ["server.properties","allowlist.json"]
+    safemap = {}
+    for sf in safefiles:
+        shutil.copyfile(sf,safetydir+"/"+file_get_md5(sf))
+        safemap[sf] = file_get_md5(sf)
+    S_INSTALL_DIR = APPDATA["servers"][chosenserver-1]["dir"]
+    p.step("Downloading new server")
+    #p.step("Downloading server file")
+    urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
+    #p.step("Extracting server file")
+    pushd(S_INSTALL_DIR)#Make install easier
+    p.step("Extracting new server")
+    zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
+    zf.extractall(S_INSTALL_DIR)
+    zf.close()
+    #p.step("Removing excess files")
+    os.remove(S_INSTALL_DIR+"/server.zip")
+    #p.step("Preparing exec")
+    if not WINDOWS:
+        os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
+    p.step("Restoring properties")
+    APPDATA["servers"][chosenserver-1]["ispreview"] = l2d == availablelinks[1]
+    APPDATA["servers"][chosenserver-1]["version"] = l2d.split("-")[-1].replace(".zip","")
+    APPDATA["servers"][chosenserver-1]["linkused"] = l2d
+    for sf in safefiles:
+        if os.path.isfile(sf):
+            os.remove(sf)
+        shutil.copyfile(safetydir+"/"+safemap[sf],sf)
+    p.done()
+    updateappdata()
 
 def bedrock_manage_server(stdscr,servername,chosenserver):
     curver = APPDATA["servers"][chosenserver-1]["linkused"]
@@ -1317,38 +1354,11 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
     latestlink = availablelinks[sel]
     if curver != latestlink:
         if cursesplus.messagebox.askyesno(stdscr,["A bedrock update has been detected.","If you don't install it, devices can't connect.","Do you want to install this update?"]):
-    
-            l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
-            #Remember: Don't overwrite server.properties or allowlist.json
-            safetydir = generate_temp_dir()
-            safefiles = ["server.properties","allowlist.json"]
-            safemap = {}
-            for sf in safefiles:
-                shutil.copyfile(sf,safetydir+"/"+file_get_md5(sf))
-                safemap[sf] = file_get_md5(sf)
-            S_INSTALL_DIR = APPDATA["servers"][chosenserver-1]["dir"]
-            cursesplus.displaymsg(stdscr,["Updating server","Please be patient."])
-            #p.step("Downloading server file")
-            urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
-            #p.step("Extracting server file")
-            pushd(S_INSTALL_DIR)#Make install easier
-            zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
-            zf.extractall(S_INSTALL_DIR)
-            zf.close()
-            #p.step("Removing excess files")
-            os.remove(S_INSTALL_DIR+"/server.zip")
-            #p.step("Preparing exec")
-            if not WINDOWS:
-                os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
-            APPDATA["servers"][chosenserver-1]["ispreview"] = l2d == availablelinks[1]
-            APPDATA["servers"][chosenserver-1]["version"] = l2d.split("-")[-1].replace(".zip","")
-            for sf in safefiles:
-                if os.path.isfile(sf):
-                    os.remove(sf)
-                shutil.copyfile(safetydir+"/"+safefiles[sf],sf)
+            bedrock_do_update(stdscr,chosenserver,availablelinks)
+            
     svrd = APPDATA["servers"][chosenserver-1]["dir"]       
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Configure Server","Delete Server","Configure Allowlist","FILE MANAGER"],f"Managing {servername}")
+        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Configure Server","Delete Server","Configure Allowlist","Re/change install","FILE MANAGER"],f"Managing {servername}")
         if wtd == 0:
             os.chdir("/")
             return
@@ -1364,8 +1374,10 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                     stdscr.clear()
                     break
             stdscr.erase()
-        elif wtd == 5:
+        elif wtd == 6:
             file_manager(stdscr,os.getcwd(),f"Managing files for {servername}")
+        elif wtd == 5:
+            bedrock_do_update(stdscr,chosenserver,availablelinks)
         elif wtd == 4:
             cursesplus.messagebox.showerror(stdscr,["Not yet implemented"])
         elif wtd == 1:
@@ -2050,12 +2062,18 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
                         cursesplus.messagebox.showerror(stdscr,["This plugin does not have a config file"])
 
 def generate_script(svrdict: dict) -> str:
-    _space = "\\ "
-    _bs = "\\"
-    if not WINDOWS:
-        __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
+    if svrdict["software"] == 0:
+        if WINDOWS:
+            __SCRIPT__ = svrdict["dir"]+"/bedrock_server.exe"
+        else:
+            __SCRIPT__ = svrdict["dir"]+"/bedrock_server"
     else:
-         __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
+        _space = "\\ "
+        _bs = "\\"
+        if not WINDOWS:
+            __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
+        else:
+            __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
     return __SCRIPT__
 
 def update_s_software_preinit(serverdir:str):
@@ -3314,7 +3332,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         oi = 0
         for op in options[offset:offset+my-7]:
-            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel"):
+            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete"):
                 col = cursesplus.RED
             elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add"):
                 col = cursesplus.GREEN
@@ -3572,10 +3590,10 @@ def stats_and_credits(stdscr):
 CRAFT SERVER SETUP CREDITS
 
 === DEVELOPERS ===
-Jordan Rahim
+Enderbyte09
 
 === ART ===
-Jordan Rahim
+Enderbyte09
 Finn Komuniecki
 
 === BUG TESTERS ===
