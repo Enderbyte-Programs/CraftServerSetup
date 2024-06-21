@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.40.2"
+APP_UF_VERSION = "1.40.3"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -1375,7 +1375,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                     break
             stdscr.erase()
         elif wtd == 6:
-            file_manager(stdscr,os.getcwd(),f"Managing files for {servername}")
+            file_manager(stdscr,APPDATA["servers"][chosenserver-1]["dir"],f"Managing files for {servername}")
         elif wtd == 5:
             bedrock_do_update(stdscr,chosenserver,availablelinks)
         elif wtd == 4:
@@ -1712,7 +1712,14 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
             dpp["require-resource-pack"] = "false"
             dpp["resource-pack-sha1"] = ""
 
+def prune_servers():
+    global APPDATA
+    
+    APPDATA["servers"] = [a for a in APPDATA["servers"] if os.path.isdir(a["dir"])]
+    updateappdata()
+
 def servermgrmenu(stdscr):
+    prune_servers()
     stdscr.clear()
     global APPDATA
     chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
