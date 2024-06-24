@@ -2328,7 +2328,8 @@ def config_server(stdscr,chosenserver):
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 3:
         if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
-            os.remove("server.properties")
+            if os.path.isfile("server.properties"):
+                os.remove("server.properties")
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
                 sd = setup_server_properties(stdscr)
                 with open("server.properties","w+") as f:
@@ -2542,7 +2543,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             else:
                 with open("server.properties") as f:
                     config = PropertiesParse.load(f.read())
-                cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
+                if not "motd" in config:
+                    cursesplus.messagebox.showwarning(stdscr,["For some reason, an old motd could not be found.","You will be prompted to choose one anyway."])
+                    config["motd"] = ""
+                else:
+                    cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
                 curses.curs_set(1)
                 newmotd = crssinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
                 curses.curs_set(0)
