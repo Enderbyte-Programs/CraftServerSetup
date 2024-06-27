@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.40.3"
+APP_UF_VERSION = "1.40.5"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -3610,7 +3610,8 @@ Finn Komuniecki
 
 === BUG TESTERS ===
 MangyCat (2 bugs)
-kbence (2 bug)
+kbence (2 bugs)
+StephenR18 (1 bug)
 
 Thank you very much, beta testers
 

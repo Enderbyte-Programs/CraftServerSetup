@@ -1,3 +1,5 @@
+1.40.5:
+- What is up with this thing
 1.40.4:
 - Fix bug in server reset
 - Fix bug in MOTD setter (haven't had to change that for 38 updates)
