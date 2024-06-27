@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Craft Server Setup"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.40.5"
 #define MyAppPublisher "Enderbyte Programs"
 #define MyAppURL "https://enderbyteprograms.weebly.com"
 #define MyAppExeName "craftserversetup.exe"
@@ -24,17 +24,20 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 ChangesAssociations=yes
 DisableProgramGroupPage=yes
-LicenseFile=C:\Users\Enderbyte09\Downloads\CraftServerSetup-main\CraftServerSetup-main\LICENSE
+LicenseFile=C:\Python\Scripts\LICENSE
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=C:\Python\Scripts
-OutputBaseFilename=CraftServerSetup-1.0-installer
+OutputDir=C:\Users\Enderbyte09\Desktop
+OutputBaseFilename=CraftServerSetup-1.40.5-installer
 SetupIconFile=C:\Python\Scripts\mc.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName},0
+UninstallDisplayName=CraftServerSetup
+WizardImageFile=C:\Python\Scripts\sidebar.bmp
+WizardSmallImageFile=C:\Python\Scripts\icon.bmp
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -45,7 +48,8 @@ Name: "reg";Description: "Register .amc file extension";GroupDescription: "Regis
 
 [Files]
 Source: "C:\Python\Scripts\dist\craftserversetup\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\Python\Scripts\craftserversetup.epdoc";DestDir:"{userappdata}\mcserver\assets"; Flags: ignoreversion
+;Source: "C:\Python\Scripts\craftserversetup.epdoc";DestDir:"{userappdata}\mcserver\assets"; Flags: ignoreversion
+Source: "C:\Python\Scripts\translations.toml"; DestDir: "{userappdata}\mcserver"; Flags: ignoreversion
 Source: "C:\Python\Scripts\defaulticon.png";DestDir:"{userappdata}\mcserver\assets"; Flags: ignoreversion
 Source: "C:\Python\Scripts\LICENSE";DestDir:"{userappdata}\mcserver\assets"; Flags: ignoreversion
 ;Source: "C:\Users\jorda\Downloads\mc.ico"; DestDir: "{app}"; Flags: ignoreversion
