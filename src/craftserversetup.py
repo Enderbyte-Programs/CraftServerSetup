@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.40.5"
+APP_UF_VERSION = "1.41"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -26,7 +26,6 @@ import subprocess               #Starting processes
 import glob                     #File system pattern matching
 import zipfile                  #Extracting ZIP Archive
 from time import sleep          #For delays
-import socket                   #Telemetry
 import hashlib                  #Calculate file hashes
 import platform                 #Get system information
 import threading                #Start threads
@@ -258,11 +257,7 @@ def compatibilize_appdata(data:dict) -> dict:
 
     if not "settings" in data:
         data["settings"] = {
-        "telemetry":{
-            "display" : "Enable Telemetry?",
-            "type" : "bool",
-            "value":True
-        },
+
         "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
@@ -278,11 +273,7 @@ def compatibilize_appdata(data:dict) -> dict:
     elif type(data["settings"]) == list:
         #Update data
         data["settings"] = {
-        "telemetry":{
-            "display" : "Enable Telemetry?",
-            "type" : "bool",
-            "value":data["settings"][0]["value"]
-        },
+
         "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
@@ -427,11 +418,6 @@ __DEFAULTAPPDATA__ = {
     "productKey" : "",
     "pkd" : False,
     "settings" : {
-        "telemetry":{
-            "display" : "Enable Telemetry?",
-            "type" : "bool",
-            "value":True
-        },
         "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
@@ -480,42 +466,29 @@ def extract_links_from_page(data: str) -> list[str]:
 
 def product_key_page(stdscr,force=False):
     if force:
-        npk = crssinput(stdscr,"Please insert your key (case sensitive)")
+        npk = crssinput(stdscr,"Please insert your product key (case sensitive)")
         if not verifykey(npk):
             cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
+        else:
+            APPDATA["productKey"] = npk
+            cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
+            updateappdata()
+            return
     else:
-        while True:
-            o = crss_custom_ad_menu(stdscr,["Upgrade to Premium","Open sale website","How to get a product key for free","Use without product key"],"You have not yet inserted a valid product key.")
-
-            if o == 3:
-                cursesplus.messagebox.showinfo(stdscr,["You can upgrade any time from the main menu"])
+        o = crss_custom_ad_menu(stdscr,["Open store website","Insert product key","Cancel"])
+        if o == 0:
+            webbrowser.open("https://ko-fi.com/s/f44efdb343")
+        elif o == 1:
+            npk = crssinput(stdscr,"Please insert your product key (case sensitive)")
+            if not verifykey(npk):
+                cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
+            else:
+                APPDATA["productKey"] = npk
+                cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
+                updateappdata()
                 return
-            elif o == 2:
-                cursesplus.textview(stdscr,text=
-    """
-There are a few ways you can get a product key.
-
-1. Pay the $2 (select Open sale website next time)
-
-2. Report a substantial bug in CraftServerSetup (free)
-
-3. Contribute source code (free)
-
-4. Contribute translation data to a different language (free)
-    """
-                ,message="Ways to get a key")
-            elif o == 1:
-                webbrowser.open("https://enderbyteprograms.gumroad.com/l/craftserversetup")
-                cursesplus.messagebox.showinfo(stdscr,["Check your web browser"])
-            elif o == 0:
-                npk = crssinput(stdscr,"Please insert your key (case sensitive)")
-                if not verifykey(npk):
-                    cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
-                else:
-                    APPDATA["productKey"] = npk
-                    cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
-                    updateappdata()
-                    return
+        elif o == 2:
+            return
 
 ### BEGIN UTILS ###
 
@@ -582,15 +555,14 @@ def unpackage_server(infile:str,outdir:str) -> int:
 
 def send_telemetry():
     global APPDATA
-    if APPDATA["settings"]["telemetry"]["value"]:
-        try:
-            #socket.setdefaulttimeout(10)
-            s = socket.socket()
-            s.connect(('enderbyteprograms.ddnsfree.com',11111))
-            s.sendall(f"GET /api/amcs/os={platform.platform()}&ver={APP_UF_VERSION}&activated={APPDATA['productKey'] != ''}".encode())
-            s.close()
-        except:
-            pass
+    rdx = {
+        "OperatingSystem" : platform.platform(),
+        "ServerCount" : len(APPDATA["servers"]),
+        "IsActivated" : APPDATA["productKey"] != "",
+        "ApplicationVersion" : APP_UF_VERSION
+        }
+    #cursesplus.textview(_SCREEN,text=str(rdx))
+    r = requests.post("http://enderbyteprograms.ddnsfree.com:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
 def parse_size(data: int) -> str:
     if data < 0:
         neg = True
@@ -789,7 +761,18 @@ class PropertiesParse:
             l += f[0] + "=" + str(lout) + "\n"
         return l
 
+def trail(ind,maxlen:int):
+    if maxlen < 1:
+        return ""
+    ind = str(ind)
+    if len(ind) > maxlen:
+        return ind[0:maxlen-4]+"..."
+    else:
+        return ind
+
 def dict_to_calctype(inputd) -> list:# Inputd must be dict or list. Fixed because of bug when running on py3.9
+    if inputd is None:
+        return ["NULL!!"]
     final = []
     if type(inputd) == dict:
         for ik in list(inputd.items()):
@@ -807,7 +790,7 @@ def dict_to_calctype(inputd) -> list:# Inputd must be dict or list. Fixed becaus
                 obtype = "bool"
             else:
                 obtype = str(type(dst))
-            final.append(f"{src} ( {obtype} )")
+            final.append(f"{src} ( {obtype} ) = {trail(dst,os.get_terminal_size()[1]-20)}")
     else:
         oi = 0
         for ik in list(inputd):
@@ -823,7 +806,7 @@ def dict_to_calctype(inputd) -> list:# Inputd must be dict or list. Fixed becaus
                 obtype = "bool"
             else:
                 obtype = str(type(ik))
-            final.append(f"Object {oi} ( {obtype} )")
+            final.append(f"Object {oi} ( {obtype} ) = {trail(ik,os.get_terminal_size()[1]-30)}")
             oi += 1
     return final
 
@@ -3318,7 +3301,7 @@ def crssinput(stdscr,
     cursesplus.utils.hidecursor()
     return r
 
-def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=True) -> int:
+def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=False) -> int:
     """An alternate optionmenu that will be used in primary areas. has an ad"""
     try:
         uselegacy = APPDATA["settings"]["oldmenu"]["value"]
@@ -3583,8 +3566,7 @@ def oobe(stdscr):
                 managejavainstalls(stdscr)
             else:
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
-        APPDATA["settings"]["telemetry"]["value"] = cursesplus.messagebox.askyesno(stdscr,["Do we have your permission to conduct telemetry?","Telemetry includes your OS Version and IP Address"])
-        cursesplus.messagebox.showinfo(stdscr,["You may change your mind at any time in the settings menu."],"Consent Info")
+        
         if cursesplus.messagebox.askyesno(stdscr,["Would you like to change your default text editor?","YES: Choose a custom command","NO: use the default editor (usually nano)"],default=cursesplus.messagebox.MessageBoxStates.NO):
             APPDATA["settings"]["editor"]["value"] = crssinput(stdscr,"Please type a custom command: use %s to represent the file name")
         APPDATA["hasCompletedOOBE"] = True
@@ -3767,6 +3749,7 @@ def main(stdscr):
     global ADS
     _SCREEN = stdscr
     global DEBUG
+    
     restart_colour()
     curses.curs_set(0)
     try:
@@ -3778,6 +3761,7 @@ def main(stdscr):
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
         #cursesplus.messagebox.showerror(stdscr,[str(_transndt)])
+        ADS.append(Advertisement("https://ko-fi.com/s/f44efdb343","Support Enderbyte Programs by Buying CraftServerSetup Premium"))#Ads are now empty
         if _transndt:
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/src/translations.toml",APPDATADIR+"/translations.toml")
             eptranslate.load(APPDATADIR+"/translations.toml")
@@ -3818,7 +3802,7 @@ def main(stdscr):
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
-
+        #send_telemetry()
         if APPDATA["language"] is None:
             eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
             APPDATA["language"] = eptranslate.Config.choice
@@ -3860,12 +3844,12 @@ def main(stdscr):
             try:
                 stdscr.erase()
                 #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
-                lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit"]
+                lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
                 if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
                     lz += ["Upgrade to Premium"]
                 if DEVELOPER:
                     lz += ["Developer Tools"]
-                m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}")
+                m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}",True)
                 if m == 8:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                     updateappdata()
@@ -3903,6 +3887,8 @@ def main(stdscr):
                 elif DEVELOPER and lz[m] == "Developer Tools":
                     devtools(stdscr)
                 elif m == 9:
+                    webbrowser.open("https://enderbyteprograms.weebly.com")
+                elif m == 10:
                     product_key_page(stdscr)
             except Exception as e2:
                 safe_error_handling(e2)

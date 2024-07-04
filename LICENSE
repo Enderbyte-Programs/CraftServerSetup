@@ -48,15 +48,19 @@ Enderbyte Programs has written this program to contact the following sites:
     -To get Message of the Day
     -To get advertisements list
 -Enderbyte Programs API Servers
-    -To send telemetry (with permission)
+    -To send telemetry
 -Github
     -To query updates
 
 MINECRAFT SERVERS MAY SEND INTERNET TRAFFIC TO MANY OTHER SERVERS. ENDERBYTE PROGRAMS IS NOT RESPONSIBLE IN ANY WAY FOR ANY INTERNET TRAFFIC SENT OR RECIEVED BY SERVERS OR MODS. NOR IS ENDERBYTE PROGRAMS RESPONSIBLE FOR THE CONTENT OF SUCH PAGES.
 
-5. Commercial Licenses
+5. Telemetry
 
-This program uses optional product keys. If you choose not to use a product key (which costs $2), you will see advertisements. Advertisements appear on menus at the bottom. Enderbyte Programs has to personally approve every ad that you see, so you need not worry about bad advertisements. If you purchase a product key, you purchase directly from me or from GumRoad
+The following data is sent to Enderbyte Programs, which is stored securely and never sold:
+- OS version
+- CraftServerSetup version
+- Premium Status
+- How many servers you have
 
 6. Valid Uses of this Software
 
