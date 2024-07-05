@@ -2,7 +2,7 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.41"
+APP_UF_VERSION = "1.42"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -1112,7 +1112,78 @@ def is_log_line_a_chat_line(line:str) -> bool:
 def is_log_entry_a_chat_line(le:LogEntry) -> bool:
     return is_log_line_a_chat_line(le.data)
 
+class BedrockWorld:
+    def __init__(self,path,name):
+        self.path = path
+        self.name = name
+
+def bedrock_enum_worlds(serverdir:str) -> list[BedrockWorld]:
+    worldsdir = serverdir + "/worlds"
+    if not os.path.isdir(worldsdir):
+        raise Exception("No worlds could be found")
+    else:
+        final = []
+        for file in os.listdir(worldsdir):
+            file = (worldsdir+"/"+file).strip()
+            #cursesplus.messagebox.showinfo(stdscr,[file])
+            if os.path.isdir(file):
+                
+                tmp = BedrockWorld("","")
+                tmp.path = file
+                with open(file+"/levelname.txt") as f:
+                    tmp.name = f.read().strip()
+                final.append(tmp)
+        return final
+
 def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
+
+    while True:
+        availableworlds = bedrock_enum_worlds(serverdir)
+        op = crss_custom_ad_menu(stdscr,["FINISH","Create New World"]+[a.name for a in availableworlds],footer="Choose a world to select or delete, or create a world",title=f"Current world: {data["level-name"]}")
+        if op == 0:
+            break
+        elif op == 1:
+            levelname = crssinput(stdscr,"Choose a name for the world")
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to choose a custom seed?","If you answer no, a random seed will be chosen."]):
+                newseed = crssinput(stdscr,"Choose a seed")
+            else:
+                newseed = ""
+            os.mkdir(serverdir+"/worlds/"+levelname)
+            with open(serverdir+"/worlds/"+levelname+"/levelname.txt","x") as f:
+                f.write(levelname)
+            cursesplus.messagebox.showinfo(stdscr,["The world will be generated","the next time you start your server."])
+            data["level-name"] = levelname
+            data["level-seed"] = newseed
+        else:
+            selectedworld = availableworlds[op-2]
+            while True:
+                stdscr.clear()
+                cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                stdscr.addstr(1,0,"Press C to do nothing and return to the previous menu")
+                stdscr.addstr(2,0,"Press S to select this world (load it on the server)")
+                stdscr.addstr(3,0,"Press D to delete this world")
+                stdscr.addstr(0,0,f"Inspecting {selectedworld.name}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                
+                stdscr.addstr(5,0,"Name")
+                stdscr.addstr(6,0,"File path")
+                stdscr.addstr(7,0,"World size")
+                stdscr.addstr(5,20,selectedworld.name)
+                stdscr.addstr(6,20,selectedworld.path)
+                stdscr.addstr(7,20,parse_size(get_tree_size(selectedworld.path)))
+                stdscr.refresh()
+                
+                ch = curses.keyname(stdscr.getch()).decode().lower()
+                if ch == "c":
+                    break
+                elif ch == "s":
+                    data["level-name"] = selectedworld.name
+                    data["level-seed"] = ""#Clear seed - Hope it doesn't cause problems
+                    cursesplus.messagebox.showinfo(stdscr,["This world is now selected","It will be loaded the next time","you start your server."])
+                    break
+                elif ch == "d":
+                    if cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to delete this world?","It will be gone forever!"],default=cursesplus.messagebox.MessageBoxStates.NO):
+                        shutil.rmtree(selectedworld.path)
+                        break
     return data
 
 def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
@@ -1341,7 +1412,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             
     svrd = APPDATA["servers"][chosenserver-1]["dir"]       
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Configure Server","Delete Server","Configure Allowlist","Re/change install","FILE MANAGER"],f"Managing {servername}")
+        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Server Settings","Delete Server","Configure Allowlist","Export Server","World Settings","Re/change install","FILE MANAGER"],f"Managing {servername}")
         if wtd == 0:
             os.chdir("/")
             return
@@ -1357,10 +1428,22 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                     stdscr.clear()
                     break
             stdscr.erase()
-        elif wtd == 6:
+        elif wtd == 8:
             file_manager(stdscr,APPDATA["servers"][chosenserver-1]["dir"],f"Managing files for {servername}")
-        elif wtd == 5:
+        elif wtd == 7:
             bedrock_do_update(stdscr,chosenserver,availablelinks)
+        elif wtd == 6:
+            try:
+                with open(svrd+"/server.properties") as f:
+                    r = f.read()
+                data = PropertiesParse.load(r)
+                data = bedrock_world_settings(stdscr,svrd,data)
+                with open(svrd+"/server.properties","w+") as f:
+                    f.write(PropertiesParse.dump(data))
+            except Exception as e:
+                cursesplus.messagebox.showerror(stdscr,["There was an error managing worlds.",str(e),"A world may be corrupt."])
+        elif wtd == 5:
+            pass#TODO Export
         elif wtd == 4:
             cursesplus.messagebox.showerror(stdscr,["Not yet implemented"])
         elif wtd == 1:
@@ -3301,8 +3384,8 @@ def crssinput(stdscr,
     cursesplus.utils.hidecursor()
     return r
 
-def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=False) -> int:
-    """An alternate optionmenu that will be used in primary areas. has an ad"""
+def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=False,footer="") -> int:
+    """An alternate optionmenu that will be used in primary areas. has an ad. footer will only be shown if no ad (so no problems after 1.40.5)"""
     try:
         uselegacy = APPDATA["settings"]["oldmenu"]["value"]
     except:
@@ -3358,6 +3441,8 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
                 stdscr.addstr(adx+li,0,l,curses.A_BOLD)
                 li += 1
             stdscr.addstr(adx+li,0,"Press A to check it out in your web browser!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.MAGENTA)|curses.A_BOLD)
+        else:
+            stdscr.addstr(oi+4,0,footer)#Add footer if no add
         stdscr.refresh()
         ch = stdscr.getch()
         if ch == curses.KEY_DOWN and selected < len(options)-1:
