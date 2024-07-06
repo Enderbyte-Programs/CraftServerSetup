@@ -4,6 +4,7 @@
 - Add nominify to the install rule of the dofile.
     - If you provide that argument, craftserversetup.py will not be shortened before it is copied.
 - Add world management support to bedrock servers
+- Add allowlist support for bedrock servers
 1.41:
 - Overhaul telemetry server
 - Telemetry is now mandatory
