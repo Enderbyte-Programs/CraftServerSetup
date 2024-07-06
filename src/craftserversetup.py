@@ -1398,6 +1398,8 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
     safefiles = ["server.properties","allowlist.json"]
     safemap = {}
     for sf in safefiles:
+        if not os.path.isfile(sf):
+            continue
         shutil.copyfile(sf,safetydir+"/"+file_get_md5(sf))
         safemap[sf] = file_get_md5(sf)
     S_INSTALL_DIR = APPDATA["servers"][chosenserver-1]["dir"]
@@ -1420,9 +1422,12 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
     APPDATA["servers"][chosenserver-1]["version"] = l2d.split("-")[-1].replace(".zip","")
     APPDATA["servers"][chosenserver-1]["linkused"] = l2d
     for sf in safefiles:
-        if os.path.isfile(sf):
-            os.remove(sf)
-        shutil.copyfile(safetydir+"/"+safemap[sf],sf)
+        try:
+            if os.path.isfile(sf):
+                os.remove(sf)
+            shutil.copyfile(safetydir+"/"+safemap[sf],sf)
+        except:
+            pass
     p.done()
     updateappdata()
 
@@ -1482,7 +1487,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             except Exception as e:
                 cursesplus.messagebox.showerror(stdscr,["There was an error managing worlds.",str(e),"A world may be corrupt."])
         elif wtd == 5:
-            pass#TODO Export
+            package_server(stdscr,svrd,chosenserver-1)
         elif wtd == 4:
             bedrock_whitelist(stdscr,svrd)
         elif wtd == 1:
@@ -3384,9 +3389,10 @@ def import_amc_server(stdscr,chlx):
         nname = xdat["name"]
         while True:
             if nname in [l["name"] for l in APPDATA["servers"]]:
-                cursesplus.utils.showcursor()
+                #cursesplus.utils.showcursor()
+                
                 nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
-                cursesplus.utils.hidecursor()
+                #cursesplus.utils.hidecursor()
             else:
                 xdat["name"] = nname
                 break
@@ -3394,13 +3400,36 @@ def import_amc_server(stdscr,chlx):
         #os.mkdir(SERVERSDIR+"/"+nname)
         shutil.copytree(f"{TEMPDIR}/{smd5}",SERVERSDIR+"/"+nname)
         xdat["dir"] = SERVERSDIR+"/"+nname
-        xdat["javapath"] = choose_java_install(stdscr)
+        bri = False
+        if xdat["software"] != 0:
+            xdat["javapath"] = choose_java_install(stdscr)
+        else:
+            if (os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and not WINDOWS) or (not os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and WINDOWS):
+                bri = True
+                nwait.stop()
+                cursesplus.messagebox.showinfo(stdscr,["This server was packaged on a different OS.","The new file will be downloaded on the next screen."])
+                nwait.start()
         xdat["script"] = generate_script(xdat)
         APPDATA["servers"].append(xdat)
+        chosensrver = len(APPDATA["servers"])
+        if bri:
+            availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
+            link_win_normal = get_by_list_contains(availablelinks,"win/")
+            link_lx_normal = get_by_list_contains(availablelinks,"linux/")
+            link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
+            link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
+            if WINDOWS:
+                availablelinks = [link_win_normal,link_win_preview]
+            else:
+                availablelinks = [link_lx_normal,link_lx_preview]
+            nwait.stop()
+            bedrock_do_update(stdscr,chosensrver,availablelinks)
+            
         nwait.stop()
         nwait.destroy()
         cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
-    except:
+    except Exception as e:
+        raise e
         cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
 
 def str_contains_word(s:str,string:str) -> bool:

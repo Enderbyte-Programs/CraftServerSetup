@@ -1,3 +1,7 @@
+1.42:
+- Read beta notes
+1.42-b5:
+- Add import and export bedrock servers
 1.42-b4:
 - Update libraries (for the first time in 1 year...)
     - Update certifi from 2023.5.7 to 2024.7.4
