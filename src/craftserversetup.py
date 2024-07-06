@@ -1135,6 +1135,38 @@ def bedrock_enum_worlds(serverdir:str) -> list[BedrockWorld]:
                 final.append(tmp)
         return final
 
+def bedrock_whitelist(stdscr,serverdir:str):
+    # Oh no! I'm racist!
+    allowfile = serverdir+"/allowlist.json"
+    if not os.path.isfile(allowfile):
+        cursesplus.messagebox.showerror(stdscr,["Please start your server at least once","to use this feature.;"])
+    else:
+        with open(allowfile) as f:
+            data:list = json.load(f)
+        while True:
+            wtd = crss_custom_ad_menu(stdscr,["FINISH","Add new player"]+[d["name"] for d in data],"Managing allowlist",footer="Add a player, or delete an existing player from the allowlist.")
+            if wtd == 0:
+                break
+            elif wtd == 1:
+                plname = crssinput(stdscr,"What is the player's Xbox/Minecraft username?")
+                plxuid = crssinput(stdscr,"If you know it, what is the user's XUID? (Press enter if unknown)")
+                data.append({
+                    "name" : plname,
+                    "xuid" : plxuid
+                })
+            else:
+                data.remove(data[wtd-2])
+        with open(allowfile,"w+") as f:
+            json.dump(data,f)
+        with open(serverdir+"/server.properties") as f:
+            r = f.read()
+        data = PropertiesParse.load(r)
+        if not data["allow-list"]:
+            if cursesplus.messagebox.askyesno(stdscr,["Allowlist is not enabled on your server","Would you like to enable and enforce it now?"]):
+                data["allow-list"] = True
+                with open(serverdir+"/server.properties","w+") as f:
+                    f.write(PropertiesParse.dump(data))
+
 def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
 
     while True:
@@ -1445,7 +1477,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
         elif wtd == 5:
             pass#TODO Export
         elif wtd == 4:
-            cursesplus.messagebox.showerror(stdscr,["Not yet implemented"])
+            bedrock_whitelist(stdscr,svrd)
         elif wtd == 1:
             os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
             stdscr.clear()
