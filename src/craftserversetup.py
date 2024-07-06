@@ -1178,7 +1178,7 @@ def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
 
     while True:
         availableworlds = bedrock_enum_worlds(serverdir)
-        op = crss_custom_ad_menu(stdscr,["FINISH","Create New World"]+[a.name for a in availableworlds],footer="Choose a world to select or delete, or create a world",title=f"Current world: {data["level-name"]}")
+        op = crss_custom_ad_menu(stdscr,["FINISH","Create New World"]+[a.name for a in availableworlds],footer="Choose a world to select or delete, or create a world",title=f"Current world: {data['level-name']}")
         if op == 0:
             break
         elif op == 1:
