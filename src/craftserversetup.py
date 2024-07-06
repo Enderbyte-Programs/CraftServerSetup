@@ -1135,16 +1135,26 @@ def bedrock_enum_worlds(serverdir:str) -> list[BedrockWorld]:
                 final.append(tmp)
         return final
 
+def uf_toggle_conv(b:bool) -> str:
+    if b:
+        return "[-] Disable"
+    else:
+        return "[+] Enable"
+
 def bedrock_whitelist(stdscr,serverdir:str):
     # Oh no! I'm racist!
+    
     allowfile = serverdir+"/allowlist.json"
     if not os.path.isfile(allowfile):
         cursesplus.messagebox.showerror(stdscr,["Please start your server at least once","to use this feature.;"])
     else:
+        with open(serverdir+"/server.properties") as f:
+            r = f.read()
+        pdata = PropertiesParse.load(r)
         with open(allowfile) as f:
             data:list = json.load(f)
         while True:
-            wtd = crss_custom_ad_menu(stdscr,["FINISH","Add new player"]+[d["name"] for d in data],"Managing allowlist",footer="Add a player, or delete an existing player from the allowlist.")
+            wtd = crss_custom_ad_menu(stdscr,["FINISH","Add new player",f"{uf_toggle_conv(pdata['allow-list'])} Allowlist"]+["[-] "+d["name"] for d in data],"Managing allowlist",footer="Add a player or delete an existing player from the allowlist.")
             if wtd == 0:
                 break
             elif wtd == 1:
@@ -1154,18 +1164,15 @@ def bedrock_whitelist(stdscr,serverdir:str):
                     "name" : plname,
                     "xuid" : plxuid
                 })
+            elif wtd == 2:
+                pdata["allow-list"] = not pdata["allow-list"]
             else:
-                data.remove(data[wtd-2])
+                data.remove(data[wtd-3])
         with open(allowfile,"w+") as f:
             json.dump(data,f)
-        with open(serverdir+"/server.properties") as f:
-            r = f.read()
-        data = PropertiesParse.load(r)
-        if not data["allow-list"]:
-            if cursesplus.messagebox.askyesno(stdscr,["Allowlist is not enabled on your server","Would you like to enable and enforce it now?"]):
-                data["allow-list"] = True
-                with open(serverdir+"/server.properties","w+") as f:
-                    f.write(PropertiesParse.dump(data))
+
+        with open(serverdir+"/server.properties","w+") as f:
+            f.write(PropertiesParse.dump(pdata))
 
 def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
 
@@ -1176,7 +1183,7 @@ def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
             break
         elif op == 1:
             levelname = crssinput(stdscr,"Choose a name for the world")
-            if cursesplus.messagebox.askyesno(stdscr,["Do you want to choose a custom seed?","If you answer no, a random seed will be chosen."]):
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to choose a custom seed?","If you answer no, a random seed will be chosen."],default=cursesplus.messagebox.MessageBoxStates.NO):
                 newseed = crssinput(stdscr,"Choose a seed")
             else:
                 newseed = ""
@@ -3442,9 +3449,9 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         oi = 0
         for op in options[offset:offset+my-7]:
-            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete"):
+            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable"):
                 col = cursesplus.RED
-            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add"):
+            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable"):
                 col = cursesplus.GREEN
             elif op.upper() == op:
                 col = cursesplus.CYAN
