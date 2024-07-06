@@ -3972,7 +3972,7 @@ def main(stdscr):
                 if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
                     lz += ["Upgrade to Premium"]
                 if DEVELOPER:
-                    lz += ["Developer Tools"]
+                    lz += ["Debug Tools"]
                 m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}",True)
                 if m == 8:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
@@ -4008,7 +4008,7 @@ def main(stdscr):
                     doc_system(stdscr)
                 elif m == 6:
                     stats_and_credits(stdscr)
-                elif DEVELOPER and lz[m] == "Developer Tools":
+                elif DEVELOPER and lz[m] == "Debug Tools":
                     devtools(stdscr)
                 elif m == 9:
                     webbrowser.open("https://enderbyteprograms.weebly.com")

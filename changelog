@@ -1,10 +1,26 @@
-1.42:
+1.42-b4:
+- Update libraries (for the first time in 1 year...)
+    - Update certifi from 2023.5.7 to 2024.7.4
+    - Update charset normalizer from 3.2 to 3.3.2
+    - Update cursesplus from 3.16.2 to 3.16.3
+    - Update idna from 3.4 to 3.7
+    - Update pyyaml from 6.0 to 6.1
+    - Update requests from 2.31 to 2.32
+    - Update urllib from 1.26.16 to 2.2.2
+1.42-b3:
+- Improve whitelist support
+- Enable and disable are now coloured
+1.42-b3:
+- Import the Craft Server Setup Windows Dynamic File Executor
+- It will be used later in a version 1.43 (I intend for 1.43 to be the end of CRSS Block 2 Standard)
+1.42-b2:
+- Add initial whitelist support
+1.42-b1:
 - Add footer to crss_custom_ad_menu
 - You can now manage worlds on bedrock
 - Add nominify to the install rule of the dofile.
     - If you provide that argument, craftserversetup.py will not be shortened before it is copied.
 - Add world management support to bedrock servers
-- Add allowlist support for bedrock servers
 1.41:
 - Overhaul telemetry server
 - Telemetry is now mandatory
