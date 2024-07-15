@@ -1,7 +1,0 @@
-C:\Users\jorda\source\repos\CWDFE\bin\Debug\CWDFE.exe.config
-C:\Users\jorda\source\repos\CWDFE\bin\Debug\CWDFE.exe
-C:\Users\jorda\source\repos\CWDFE\bin\Debug\CWDFE.pdb
-C:\Users\jorda\source\repos\CWDFE\obj\Debug\CWDFE.csproj.AssemblyReference.cache
-C:\Users\jorda\source\repos\CWDFE\obj\Debug\CWDFE.csproj.CoreCompileInputs.cache
-C:\Users\jorda\source\repos\CWDFE\obj\Debug\CWDFE.exe
-C:\Users\jorda\source\repos\CWDFE\obj\Debug\CWDFE.pdb
