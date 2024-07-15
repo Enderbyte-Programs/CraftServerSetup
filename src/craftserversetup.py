@@ -2,14 +2,13 @@
 #Early load variables
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.42"
+APP_UF_VERSION = "1.43"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
 MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
 SHOW_ADVERT = False
-#TODO 1.40 - Bedrock servers
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2024")
 
 ### Standard Library Imports ###
@@ -38,6 +37,8 @@ import time                     #Timezone data
 import textwrap                 #Text wrapping
 import copy                     #Object copies
 import enum                     #Just a coding thing
+import io                       #File streams
+import shlex                    #Data parsing
 
 WINDOWS = platform.system() == "Windows"
 
@@ -222,9 +223,11 @@ def restart_colour():
 REPAIR_SCRIPT = """cd ~/.local/share;mkdir crss-temp;cd crss-temp;tar -xf $1;bash scripts/install.sh;cd ~;rm -rf ~/.local/share/crss-temp"""#LINUX ONLY
 def sigint(signal,frame):
     restart_colour()
-    if cursesplus.messagebox.askyesno(_SCREEN,["Are you sure you want to quit?"]):
-        updateappdata()
-        sys.exit(0)
+    message = ["Are you sure you want to quit?"]
+    if len(SERVER_INITS.items()) > 0:
+        message.append(f"Your {len(SERVER_INITS.items())} running servers will be stopped")
+    if cursesplus.messagebox.askyesno(_SCREEN,message):
+        safe_exit(0)
 
 def verifykey(key:str):
     global SHOW_ADVERT
@@ -331,7 +334,9 @@ def compatibilize_appdata(data:dict) -> dict:
         if not "settings" in svr:
             data["servers"][svri]["settings"] = {}#New empty settings
         if data["servers"][svri]["settings"] == {}:
-            data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[],"safeexitcommands":[]}
+            data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[]}
+        if not "legacy" in data["servers"][svri]["settings"]:
+            data['servers'][svri]["settings"]["legacy"] = False
         svri += 1
 
     svk = 0
@@ -464,6 +469,56 @@ def extract_links_from_page(data: str) -> list[str]:
         final.append(dm.split("\"")[1])
     return final
 
+class ServerRunWrapper:
+    def __init__(self,command):
+        self.command = command
+        self.datastream = io.StringIO()
+    def launch(self):
+        self.process = subprocess.Popen(shlex.split(self.command),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+        self.pid = self.process.pid
+    def isprocessrunning(self):
+        return self.process.poll() is None
+    def send(self,lines):
+        if type(lines) == str:
+            lines = [lines]
+        for line in lines:
+            if line.strip() == "":
+                continue
+            self.process.stdin.write(line+"\n")
+            self.process.stdin.flush()
+    def safestop(self):
+        try:
+            self.send("stop")
+        except:
+            self.fullhalt()
+    def fullhalt(self):
+        try:
+            self.process.kill()
+        except:
+            return#Already dead
+    def getexitcode(self):
+        if not self.isprocessrunning() :
+            return self.process.returncode
+        else:
+            return None
+    def hascrashed(self):
+        if self.getexitcode() is None:
+            return None
+        else:
+            code = self.getexitcode()
+            if code != 0:
+                if code < 128 or code > 130:
+                    return True
+                else:
+                    return False
+            else:
+                return False
+    def get(self):
+        self.datastream.write(self.process.stdout.read())
+        self.datastream.write(self.process.stderr.read())
+
+SERVER_INITS:dict[str,ServerRunWrapper] = {}
+
 def product_key_page(stdscr,force=False):
     if force:
         npk = crssinput(stdscr,"Please insert your product key (case sensitive)")
@@ -553,6 +608,12 @@ def unpackage_server(infile:str,outdir:str) -> int:
 
 ### END UTILS
 
+def safe_exit(code):
+    updateappdata()
+    for server in list(SERVER_INITS.values()):
+        server.safestop()
+    sys.exit(code)
+
 def send_telemetry():
     global APPDATA
     rdx = {
@@ -584,6 +645,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
     global COLOURS_ACTIVE
     global _SCREEN
     _SCREEN.clear()
+    _SCREEN.nodelay(0)
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     #cursesplus.messagebox.showerror(_SCREEN,[
     #    "o3   /      We are sorry, but a serious error occured     ",
@@ -593,7 +655,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
     while True:
         erz = cursesplus.optionmenu(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f"{message}. What do you want to do?")
         if erz == 0:
-            sys.exit(1)
+            safe_exit(1)
         elif erz == 1:
             cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
            
@@ -642,6 +704,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
 def safe_error_handling(e:Exception):
     global COLOURS_ACTIVE
     global _SCREEN
+    _SCREEN.nodelay(0)
     _SCREEN.clear()
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
     raw =  f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc()
@@ -1595,7 +1658,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
 
     njavapath = njavapath.replace("//","/")
     serverid = random.randint(1111,9999)
-    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid,"settings":{}}
+    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid,"settings":{"legacy":False,"launchcommands":[],"exitcommands":[]}}
     #_space = "\\ "
     #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     __SCRIPT__ = generate_script(sd)
@@ -2611,6 +2674,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
         x__ops += ["View logs","Export server","View server info","Administration and Backups >>","Manage server icon"]
         x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
+        if _sname in SERVER_INITS and not APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
+            x__ops[1] = "Server is running >>"
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
@@ -2621,32 +2686,125 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             break
         
         elif w == 1:
-            os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
-            stdscr.clear()
-            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
-            stdscr.refresh()
-            if not WINDOWS:
-                curses.curs_set(1)
-                curses.reset_shell_mode()
-                lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
-                #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
-                #child.expect("Finished")
-                curses.reset_prog_mode()
-                curses.curs_set(0)
+            if APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
+                os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
+                stdscr.clear()
+                stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
+                stdscr.refresh()
+                if not WINDOWS:
+                    curses.curs_set(1)
+                    curses.reset_shell_mode()
+                    lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
+                    #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
+                    #child.expect("Finished")
+                    curses.reset_prog_mode()
+                    curses.curs_set(0)
+                else:
+                    curses.curs_set(1)
+                    curses.reset_shell_mode()
+                    #COLOURS_ACTIVE = False
+                    lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
+                    curses.reset_prog_mode()
+                    curses.curs_set(0)
+                    #restart_colour()
+                if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
+                    displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
+                    if displog:
+                        view_server_logs(stdscr,SERVER_DIR)
+                stdscr.clear()
+                stdscr.refresh()
             else:
-                curses.curs_set(1)
-                curses.reset_shell_mode()
-                #COLOURS_ACTIVE = False
-                lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
-                curses.reset_prog_mode()
-                curses.curs_set(0)
-                #restart_colour()
-            if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
-                displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
-                if displog:
-                    view_server_logs(stdscr,SERVER_DIR)
-            stdscr.clear()
-            stdscr.refresh()
+                if not _sname in SERVER_INITS:
+                    truecommand = APPDATA["servers"][chosenserver-1]["script"]
+                    if WINDOWS:
+                        truecommand = "cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")"
+                    SERVER_INITS[_sname] = ServerRunWrapper(truecommand)
+                    SERVER_INITS[_sname].launch()
+                    cursesplus.messagebox.showinfo(stdscr,["The server has been started.","It will be ready for use in a few minutes"])
+                latestlogfile = SERVER_DIR+"/logs/latest.log"
+                #pos = 0
+                obuffer = ["Getting logs. Please wait... (Old logs may appear)"]
+                ooffset = 0
+                oxoffset = 0
+                
+                if not os.path.isfile(latestlogfile):
+                    with open(latestlogfile,'x+') as f:
+                        f.write("-----STARTING SERVER-----")
+                tick = 0
+                #lfsize = os.path.getsize(latestlogfile)
+                stdscr.nodelay(1)
+                
+                
+                while True:
+                    tick += 1
+                    if tick % 30 == 0:
+                        tick = 0
+                        #SERVER_INITS[_sname].datastream.seek(0,0)
+                        #obuffer = SERVER_INITS[_sname].datastream.readlines()
+                        with open(latestlogfile) as f:
+                            obc = f.readlines()
+                            if obc != obuffer:
+                                obuffer = obc
+                                ooffset = len(obuffer)-my+headeroverhead
+                        
+                    #Visual part
+                    mx,my = os.get_terminal_size()
+                    mx -= 1
+                    my -= 1
+                    headeroverhead = 5
+                    
+                    stdscr.clear()
+                    cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                    stdscr.addstr(0,0,f"Live options for {_sname}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                    stdscr.addstr(1,0,"Press B to go back to the options")
+                    stdscr.addstr(2,0,"Press C to run a command")
+                    stdscr.addstr(3,0,"Press S to stop the server")
+                    stdscr.addstr(4,0,cursesplus.constants.THIN_HORIZ_LINE*mx)
+                    oi = 5
+                    for line in obuffer[ooffset:]:
+                        try:
+                            stdscr.addstr(oi,0,line[oxoffset:oxoffset+mx-1])
+                        except:
+                            break
+                        oi += 1
+                        
+                    svrstat = SERVER_INITS[_sname]
+                    if not svrstat.isprocessrunning():
+                        
+                        stdscr.nodelay(0)
+                        if svrstat.hascrashed():
+                            displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
+                            if displog:
+                                view_server_logs(stdscr,SERVER_DIR)
+                        else:
+                            cursesplus.messagebox.showwarning(stdscr,["The server has been stopped."])
+                        del SERVER_INITS[_sname]
+                        return
+
+                        
+                    stdscr.refresh()
+                    ch = stdscr.getch()
+                    if ch == curses.KEY_UP:
+                        ooffset -= 1
+                    elif ch == curses.KEY_DOWN:
+                        ooffset += 1
+                    elif ch == curses.KEY_LEFT and oxoffset > 0:
+                        oxoffset -= 1
+                    elif ch == curses.KEY_RIGHT:
+                        oxoffset += 1
+                        
+                    elif ch == 98:
+                        break
+                    elif ch == 99:
+                        stdscr.nodelay(0)
+                        svrstat.send(crssinput(stdscr,"Enter a command to run"))
+                        stdscr.nodelay(1)
+                    elif ch == 115:
+                        svrstat.send("stop")
+                        pass
+                        
+                    sleep(1/30)
+                stdscr.nodelay(0)
         elif w == 2:
             if not os.path.isfile("server.properties"):
                 cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
@@ -4005,7 +4163,10 @@ def main(stdscr):
                 m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}",True)
                 if m == 8:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
-                    updateappdata()
+                    if len(SERVER_INITS.items()):
+                        if not cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to quit?",f"{len(SERVER_INITS.items())} servers are still running!","They will be stopped."]):
+                            continue
+                    safe_exit(0)
                     break
                 elif m == 0:
 

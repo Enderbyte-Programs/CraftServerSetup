@@ -1,3 +1,6 @@
+1.43:
+- Add io and shlex imports
+- Overhaul server startup system
 1.42:
 - Read beta notes
 1.42-b5:
