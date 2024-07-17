@@ -2870,7 +2870,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 oxoffset = 0
                 
                 if not os.path.isfile(latestlogfile):
-                    with open(latestlogfile,'x+') as f:
+                    with open(latestlogfile,'w+') as f:
                         f.write("-----STARTING SERVER-----")
                 tick = 0
                 #lfsize = os.path.getsize(latestlogfile)

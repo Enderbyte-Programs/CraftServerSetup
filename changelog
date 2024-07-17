@@ -1,3 +1,5 @@
+1.43.1:
+- Fix crash
 1.43:
 - Add io and shlex imports
 - Overhaul server startup system
