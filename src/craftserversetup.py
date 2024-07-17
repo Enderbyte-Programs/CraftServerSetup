@@ -1554,6 +1554,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
         elif wtd == 4:
             bedrock_whitelist(stdscr,svrd)
         elif wtd == 1:
+            os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
             os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
@@ -1574,6 +1575,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                 curses.reset_prog_mode()
                 curses.curs_set(0)
                 #restart_colour()
+            os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
             if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
                 cursesplus.messagebox.showwarning(stdscr,["Oh No! Your server crashed"])
             stdscr.clear()
