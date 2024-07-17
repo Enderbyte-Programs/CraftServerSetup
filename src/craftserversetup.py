@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.43.4"
+APP_UF_VERSION = "1.43.5"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -476,7 +476,8 @@ class ServerRunWrapper:
         self.datastream = io.StringIO()
         
     def launch(self):
-        self.process = subprocess.Popen(shlex.split(self.command),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,process_group=0)
+        devnull = open(os.devnull)
+        self.process = subprocess.Popen(shlex.split(self.command),stdin=subprocess.PIPE,stdout=devnull,stderr=devnull,universal_newlines=True,process_group=0)
         self.pid = self.process.pid
         self.runtime = datetime.datetime.now()
     def isprocessrunning(self):
@@ -516,9 +517,6 @@ class ServerRunWrapper:
                     return False
             else:
                 return False
-    def get(self):
-        self.datastream.write(self.process.stdout.read())
-        self.datastream.write(self.process.stderr.read())
 
 SERVER_INITS:dict[str,ServerRunWrapper] = {}
 
