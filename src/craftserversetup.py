@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.43"
+APP_UF_VERSION = "1.43.3"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2868,11 +2868,6 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 obuffer = ["Getting logs. Please wait...","The log may take some time to appear.","Don't worry, your server is still running."]
                 ooffset = 0
                 oxoffset = 0
-                if not os.path.isdir(os.path.dirname(latestlogfile)):
-                    os.mkdir(os.path.dirname(latestlogfile))
-                if not os.path.isfile(latestlogfile):
-                    with open(latestlogfile,'w+') as f:
-                        f.write("-----STARTING SERVER-----")
                 tick = 0
                 #lfsize = os.path.getsize(latestlogfile)
                 stdscr.nodelay(1)
