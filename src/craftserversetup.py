@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.43.3"
+APP_UF_VERSION = "1.43.4"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2879,16 +2879,17 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         tick = 0
                         #SERVER_INITS[_sname].datastream.seek(0,0)
                         #obuffer = SERVER_INITS[_sname].datastream.readlines()
-                        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(latestlogfile))
-                        if mtime < SERVER_INITS[_sname].runtime:
-                            pass
-                        else:
-                        
-                            with open(latestlogfile) as f:
-                                obc = f.readlines()
-                                if obc != obuffer:
-                                    obuffer = obc
-                                    ooffset = len(obuffer)-my+headeroverhead
+                        if os.path.isfile(latestlogfile):
+                            mtime = datetime.datetime.fromtimestamp(os.path.getmtime(latestlogfile))
+                            if mtime < SERVER_INITS[_sname].runtime:
+                                pass
+                            else:
+                            
+                                with open(latestlogfile) as f:
+                                    obc = f.readlines()
+                                    if obc != obuffer:
+                                        obuffer = obc
+                                        ooffset = len(obuffer)-my+headeroverhead
                         
                     #Visual part
                     mx,my = os.get_terminal_size()
