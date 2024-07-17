@@ -1,3 +1,5 @@
+1.43.6:
+- Frame rate issues (linux update only for large screens)
 1.43.5:
 - Fix buffer problem
 1.43.4:

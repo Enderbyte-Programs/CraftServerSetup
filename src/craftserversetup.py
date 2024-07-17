@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.43.5"
+APP_UF_VERSION = "1.43.6"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2870,7 +2870,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 #lfsize = os.path.getsize(latestlogfile)
                 stdscr.nodelay(1)
                 
-                
+                redraw = True
                 while True:
                     tick += 1
                     if tick % 30 == 0:
@@ -2888,27 +2888,28 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                                     if obc != obuffer:
                                         obuffer = obc
                                         ooffset = len(obuffer)-my+headeroverhead
+                                        redraw = True
                         
                     #Visual part
                     mx,my = os.get_terminal_size()
                     mx -= 1
                     my -= 1
                     headeroverhead = 5
-                    
-                    stdscr.clear()
-                    cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-                    stdscr.addstr(0,0,f"Live options for {_sname}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-                    stdscr.addstr(1,0,"Press B to go back to the options")
-                    stdscr.addstr(2,0,"Press C to run a command | Press K to kill the server")
-                    stdscr.addstr(3,0,"Press S to stop the server")
-                    stdscr.addstr(4,0,cursesplus.constants.THIN_HORIZ_LINE*mx)
-                    oi = 5
-                    for line in obuffer[ooffset:]:
-                        try:
-                            stdscr.addstr(oi,0,line[oxoffset:oxoffset+mx-1])
-                        except:
-                            break
-                        oi += 1
+                    if redraw:
+                        stdscr.clear()
+                        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                        stdscr.addstr(0,0,f"Live options for {_sname}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                        stdscr.addstr(1,0,"Press B to go back to the options")
+                        stdscr.addstr(2,0,"Press C to run a command | Press K to kill the server")
+                        stdscr.addstr(3,0,"Press S to stop the server")
+                        stdscr.addstr(4,0,cursesplus.constants.THIN_HORIZ_LINE*mx)
+                        oi = 5
+                        for line in obuffer[ooffset:]:
+                            try:
+                                stdscr.addstr(oi,0,line[oxoffset:oxoffset+mx-1])
+                            except:
+                                break
+                            oi += 1
                         
                     svrstat = SERVER_INITS[_sname]
                     if not svrstat.isprocessrunning():
@@ -2924,8 +2925,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         del SERVER_INITS[_sname]
                         break
 
-                        
-                    stdscr.refresh()
+                    if redraw:    
+                        stdscr.refresh()
                     ch = stdscr.getch()
                     if ch == curses.KEY_UP:
                         ooffset -= 1
