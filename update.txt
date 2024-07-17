@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.42/CraftServerSetup-1.42-installer.exe|1.42|More bedrock updates
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.43/CraftServerSetup-1.43.5-installer.exe|1.43.5|Server Startup overhaul
