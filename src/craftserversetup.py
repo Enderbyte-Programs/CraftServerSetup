@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-#Early load variables
+#Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
 APP_UF_VERSION = "1.43"
@@ -473,9 +473,11 @@ class ServerRunWrapper:
     def __init__(self,command):
         self.command = command
         self.datastream = io.StringIO()
+        
     def launch(self):
-        self.process = subprocess.Popen(shlex.split(self.command),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+        self.process = subprocess.Popen(shlex.split(self.command),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True,process_group=0)
         self.pid = self.process.pid
+        self.runtime = datetime.datetime.now()
     def isprocessrunning(self):
         return self.process.poll() is None
     def send(self,lines):
@@ -1372,8 +1374,6 @@ def bedrock_config_server(stdscr,chosenserver):
         APPDATA["servers"][chosenserver-1]["name"] = newname
         #APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 5:
-        cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
-        return
         APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
 
 def setup_bedrock_server(stdscr):
@@ -2483,6 +2483,7 @@ def manage_server_icon(stdscr):
 def config_server(stdscr,chosenserver):
     __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options"])#Todo rename server, memory
     if __l == 0:
+        updateappdata()
         return
     elif __l == 1:
         if not os.path.isfile("server.properties"):
@@ -2532,8 +2533,6 @@ def config_server(stdscr,chosenserver):
         APPDATA["servers"][chosenserver-1]["memory"] = newmem
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
     elif __l == 7:
-        cursesplus.messagebox.showerror(stdscr,["Unfortunately, this feature has not yet been implemented","Please check back at a later date"])
-        return
         APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
 
 def change_software(stdscr,directory,data) -> dict:
@@ -2589,13 +2588,15 @@ def text_editor(text:str) -> str:
 
 def startup_options(stdscr,serverdata:dict):
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands"])
+        wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands","Set startup mode"])
         if wtd == 0:
             return serverdata
         elif wtd == 1:
             serverdata["settings"]["launchcommands"] = text_editor("\n".join(serverdata["settings"]["launchcommands"])).splitlines()
         elif wtd == 2:
-            serverdata["settings"]["exitcommands"]
+            serverdata["settings"]["exitcommands"] = text_editor("\n".join(serverdata["settings"]["exitcommands"])).splitlines()
+        elif wtd == 3:
+            serverdata["settings"]["legacy"] = crss_custom_ad_menu(stdscr,["New Startups (fancy)","Old Startups (legacy)"],"Choose startup mode") == 1
 
 def strict_word_search(haystack:str,needle:str) -> bool:
     #PHP
@@ -2686,6 +2687,10 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             break
         
         elif w == 1:
+            if sys.version_info[1] < 11:
+                cursesplus.messagebox.showerror(stdscr,["Unfortunately, the new startups can only be used with Python 3.11 or newer.",f"You are running {sys.version}.","Your server will be started in legacy mode (pre 1.43)"])
+                APPDATA["servers"][chosenserver-1]["settings"]["legacy"] = True
+            os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
             if APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
                 os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
                 stdscr.clear()
@@ -2707,6 +2712,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     curses.reset_prog_mode()
                     curses.curs_set(0)
                     #restart_colour()
+                os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
                 if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
                     displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
                     if displog:
@@ -2723,7 +2729,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     cursesplus.messagebox.showinfo(stdscr,["The server has been started.","It will be ready for use in a few minutes"])
                 latestlogfile = SERVER_DIR+"/logs/latest.log"
                 #pos = 0
-                obuffer = ["Getting logs. Please wait... (Old logs may appear)"]
+                obuffer = ["Getting logs. Please wait...","The log may take some time to appear.","Don't worry, your server is still running."]
                 ooffset = 0
                 oxoffset = 0
                 
@@ -2741,11 +2747,16 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         tick = 0
                         #SERVER_INITS[_sname].datastream.seek(0,0)
                         #obuffer = SERVER_INITS[_sname].datastream.readlines()
-                        with open(latestlogfile) as f:
-                            obc = f.readlines()
-                            if obc != obuffer:
-                                obuffer = obc
-                                ooffset = len(obuffer)-my+headeroverhead
+                        mtime = datetime.datetime.fromtimestamp(os.path.getmtime(latestlogfile))
+                        if mtime < SERVER_INITS[_sname].runtime:
+                            pass
+                        else:
+                        
+                            with open(latestlogfile) as f:
+                                obc = f.readlines()
+                                if obc != obuffer:
+                                    obuffer = obc
+                                    ooffset = len(obuffer)-my+headeroverhead
                         
                     #Visual part
                     mx,my = os.get_terminal_size()
@@ -2757,7 +2768,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
                     stdscr.addstr(0,0,f"Live options for {_sname}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
                     stdscr.addstr(1,0,"Press B to go back to the options")
-                    stdscr.addstr(2,0,"Press C to run a command")
+                    stdscr.addstr(2,0,"Press C to run a command | Press K to kill the server")
                     stdscr.addstr(3,0,"Press S to stop the server")
                     stdscr.addstr(4,0,cursesplus.constants.THIN_HORIZ_LINE*mx)
                     oi = 5
@@ -2772,14 +2783,15 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     if not svrstat.isprocessrunning():
                         
                         stdscr.nodelay(0)
+                        os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
                         if svrstat.hascrashed():
                             displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
                             if displog:
                                 view_server_logs(stdscr,SERVER_DIR)
                         else:
-                            cursesplus.messagebox.showwarning(stdscr,["The server has been stopped."])
+                            cursesplus.messagebox.showinfo(stdscr,["The server has been stopped safely."])
                         del SERVER_INITS[_sname]
-                        return
+                        break
 
                         
                     stdscr.refresh()
@@ -2802,6 +2814,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     elif ch == 115:
                         svrstat.send("stop")
                         pass
+                    elif ch == 107:
+                        stdscr.nodelay(0)
+                        if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to kill the server?","This can corrupt data.","Only do this if you believe the server to be frozen"]):
+                            svrstat.fullhalt()
+                        stdscr.nodelay(1)
                         
                     sleep(1/30)
                 stdscr.nodelay(0)

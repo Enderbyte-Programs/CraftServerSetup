@@ -223,7 +223,7 @@
     mv craftserversetup.tar.xz output
     mv craftserversetup.deb output
     cp universalwindowsinstaller/bin/Debug/CraftServerSetup-Universal-Installer.exe.exe output/WindowsUniversalInstaller.exe
-!def run:
+!def run:private
     !execute install
     crss -d
 !def commit:private
