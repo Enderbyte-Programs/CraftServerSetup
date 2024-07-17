@@ -2872,7 +2872,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 
                 redraw = True
                 while True:
-                    redraw = False
+                    
                     tick += 1
                     if tick % 30 == 0:
                         tick = 0
@@ -2958,6 +2958,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         stdscr.nodelay(1)
                         
                     sleep(1/30)
+                    redraw = False
                 stdscr.nodelay(0)
         elif w == 2:
             if not os.path.isfile("server.properties"):
