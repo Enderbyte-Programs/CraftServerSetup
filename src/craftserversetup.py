@@ -39,6 +39,7 @@ import copy                     #Object copies
 import enum                     #Just a coding thing
 import io                       #File streams
 import shlex                    #Data parsing
+import re                       #Pattern matching
 
 WINDOWS = platform.system() == "Windows"
 
@@ -2659,6 +2660,139 @@ def who_said_what(stdscr,serverdir):
                                 ]),message="Search Results")
     popd()
 
+class FormattedIP:
+    def __init__(self,a,c,p,d=datetime.datetime.now()):
+        self.address:str = a
+        self.country:str = c
+        self.players:list[str] = p
+        self.dateupdated = d
+    def todict(self):
+        return {
+            "players" : self.players,
+            "ip" : self.address,
+            "country" : self.country,
+            "date" : self.dateupdated.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    def fromdict(id):
+        return FormattedIP(id["ip"],id["country"],id["players"],datetime.datetime.strptime(id["date"],"%Y-%m-%d %H:%M:%S"))
+
+def formattediplist_getindexbyip(search:str,haystack:list[FormattedIP]):
+    """Look for an ip in a formatted ip list. Returns none if not found"""
+    i = 0
+    for needle in haystack:
+        if needle.address == search:
+            return i
+        i += 1
+    return None
+
+def ip_lookup(stdscr,serverdir):
+    ipdir = serverdir+"/.ipindex.json.gz"
+    cursesplus.displaymsg(stdscr,["Please wait..."],False)
+    logfile = serverdir + "/logs"
+    if not os.path.isdir(logfile):
+        cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
+        return
+    pushd(logfile)
+    logs = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
+    allentries:list[LogEntry] = []
+
+    for lf in logs:
+        p.step(lf)
+        if lf.endswith(".gz"):
+            with open(lf,'rb') as f:
+                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
+        else:
+            with open(lf) as f:
+                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
+                
+    IPS:dict[str,list] = {}
+    formattedips:list[FormattedIP] = []
+    if os.path.isfile(ipdir):
+        try:
+            with open(ipdir,'rb') as f:
+                formattedips = [FormattedIP.fromdict(d) for d in json.loads(gzip.decompress(f.read()).decode())]
+        except Exception as e:
+            #cursesplus.messagebox.showerror(stdscr,["Error loading cache",str(e)])
+            os.remove(ipdir)
+            
+    bigfatstring = "\n".join(l.data for l in allentries)
+    
+    for ip in re.findall(r"\s[A-Za-z]+\s[\[|\(]/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:",bigfatstring) + re.findall(r"\s[A-Za-z0-9]+\[/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:",bigfatstring):
+        #Look for IP addresses
+        n = ip.strip().replace("[","").replace("(","").replace(":","")
+        name = n.split("/")[0].strip()
+        ipaddress = n.split("/")[1].strip()
+        if ipaddress in IPS:
+            if not name in IPS[ipaddress]:
+                IPS[ipaddress].append(name)
+        else:
+            IPS[ipaddress] = [name]
+    p = cursesplus.ProgressBar(stdscr,len(IPS.keys())+10,cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Researching IPs")
+
+    for uniqueip in list(IPS.keys()):
+        p.step(uniqueip)
+        if formattediplist_getindexbyip(uniqueip,formattedips) is not None:
+            ind = formattediplist_getindexbyip(uniqueip,formattedips)
+            if (datetime.datetime.now() - formattedips[ind].dateupdated).days >= 40:
+                #Do it again
+                try:
+                    r = requests.get(f"https://reallyfreegeoip.org/json/{uniqueip}").json()
+                    country = r["country_name"]
+                except:
+                    
+                    country = "Unknown Country"
+                formattedips.append(FormattedIP(uniqueip,country,IPS[uniqueip]))
+            for pname in IPS[uniqueip]:
+                if not pname in formattedips[ind].players:
+                    formattedips[ind].players.append(pname)#If the IP has been looked at already
+        else:
+            time.sleep(0.5)#Am I getting blocked??
+            try:
+                r = requests.get(f"https://reallyfreegeoip.org/json/{uniqueip}").json()
+                country = r["country_name"]
+                if country.strip() == "":
+                    raise Exception()#On local network
+            except:
+                
+                country = "Unknown Country"
+            formattedips.append(FormattedIP(uniqueip,country,IPS[uniqueip]))
+    with open(ipdir,'wb+') as f:
+        f.write(gzip.compress(json.dumps([f.todict() for f in formattedips]).encode()))
+    p.done()
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country"])
+        if wtd == 0:
+            break
+        elif wtd == 1:
+            final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
+            for fi in formattedips:
+                final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
+            cursesplus.textview(stdscr,text=final,message="All IPs")
+        elif wtd == 2:
+            psearch = crssinput(stdscr,"What player do you want to search for?")
+            final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
+            for fi in formattedips:
+                if psearch in fi.players:
+                    final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
+            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+    
+        elif wtd == 3:
+            psearch = crssinput(stdscr,"What IP do you want to look for?")
+            final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
+            for fi in formattedips:
+                if psearch in fi.address:
+                    final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
+            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+            
+        elif wtd == 4:
+            psearch = crssinput(stdscr,"What country do you want to look for?")
+            final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
+            for fi in formattedips:
+                if psearch.lower() in fi.country.lower():
+                    final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
+            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -2964,9 +3098,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
         elif w == 14:
-            w2 = crss_custom_ad_menu(stdscr,["Back","Who Said What?"],"Additional Utilities")
+            w2 = crss_custom_ad_menu(stdscr,["Back","Who Said What?","IP Lookups"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
+            elif w2 == 2:
+                ip_lookup(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None

@@ -3,6 +3,8 @@
 - Overhaul server startup system
     - Unfortunately, due to limitations, it can only be used with python 3.11 or newer. Older users will still have to use the old version of startup
 - sbuild run now does not shorten the file for debug and speed. Normal installs will still shorten the source file
+- Add re import
+- Add ability to look up IP addresses
 1.42:
 - Read beta notes
 1.42-b5:
