@@ -2872,6 +2872,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 
                 redraw = True
                 while True:
+                    redraw = False
                     tick += 1
                     if tick % 30 == 0:
                         tick = 0
@@ -2930,12 +2931,16 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     ch = stdscr.getch()
                     if ch == curses.KEY_UP:
                         ooffset -= 1
+                        redraw = True
                     elif ch == curses.KEY_DOWN:
                         ooffset += 1
+                        redraw = True
                     elif ch == curses.KEY_LEFT and oxoffset > 0:
                         oxoffset -= 1
+                        redraw = True
                     elif ch == curses.KEY_RIGHT:
                         oxoffset += 1
+                        redraw = True
                         
                     elif ch == 98:
                         break
