@@ -2868,7 +2868,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 obuffer = ["Getting logs. Please wait...","The log may take some time to appear.","Don't worry, your server is still running."]
                 ooffset = 0
                 oxoffset = 0
-                
+                if not os.path.isdir(os.path.dirname(latestlogfile)):
+                    os.mkdir(os.path.dirname(latestlogfile))
                 if not os.path.isfile(latestlogfile):
                     with open(latestlogfile,'w+') as f:
                         f.write("-----STARTING SERVER-----")
