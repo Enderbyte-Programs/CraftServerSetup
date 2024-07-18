@@ -11,7 +11,7 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 ## Linux
 
-### Installing from tar.xz
+### Installing from release tar.xz
 
 - Download craftserversetup.tar.xz from the latest release
 
@@ -25,7 +25,8 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 - To remove it, run `./installer uninstall`
 
-- If for some reason the installer is not chmodded, run `python3 installer`
+- If for some reason the installer is not executable, run `python3 installer`
+
 
 ### Building from source
 
@@ -33,42 +34,32 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 - Install sbuild-dofile from https://github.com/Enderbyte-Programs/sbuild-dofile
 
-- In the repo directory, run `simbabuild`
+- In the repo directory, run `sbuild einstall`
 
 - This will install it
 
-## About The Folders
+Run the following script with or without root (depending on where you want CRSS installed):
 
-src: Source code
+```bash
+set -e
+if [ -d "crss-build" ];then
+    rm -rf crss-build
+fi
 
-src/utils: Utils scripts
+mkdir crss-build
+pushd crss-build
+mkdir crss
+mkdir build
+git clone https://github.com/Enderbyte-Programs/CraftServerSetup ./crss
+git clone https://github.com/Enderbyte-Programs/sbuild-dofile ./build
 
-scripts: Build system scripts
+pushd build
+python3 do.py
+popd
 
-lib: Special library versions to increase control and decrease dependancy
-
-analytics: The server side of the telemetry server (shown for transparency)
-
-assets: desktop files and icon files
-
-## BECOME A BETA TESTER!
-
-As CraftServerSetup reaches a milestone one (and thus the 1.0 update), I need some helpers to help me find the last bugs in this program so I can have a nice stable 1.0. To become a beta tester, please send me an email at enderbyte09@gmail.com or message me on discord @enderbyte09. 
-
-As a beta tester, you will need to just use the program, set servers up, screw around, do as much as you want. If you find any bugs, all you need to do is report in the Issues section of this GitHub page or send me an email or Discord.
-
-If you join the Beta Testing program, you will recieve the following rewards:
-
-1. Your name in the credits page of this program
-
-2. A free product key to this software (so you don't have to see any ads)
-
-3. One free infinite advertisement that will be put on the Enderbyte Programs ad network and displayed to all unupgraded CraftServerSetup users
-
-## Product Keys and Ads
-
-As of 0.12.4 this program is semiproprietary. The code remains open source but is commercial in nature. A product key costs $2. If you don't want to get a product key, you will see ads. The ads are approved by me so they are all safe. **If anybody would like to advertise on my ads system, please send me an email at enderbyte09@gmail.com**
-
-## My TODO List
-
-datapack/resource pack download from modrinth
+pushd crss
+../build/build/do
+popd
+popd
+echo "Installation finished with no errors."
+```

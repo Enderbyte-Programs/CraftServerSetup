@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.43.6"
+APP_UF_VERSION = "1.43.7"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2574,16 +2574,19 @@ def change_software(stdscr,directory,data) -> dict:
         ndata = merge_dicts(data,ppr)
     return ndata
 
-def text_editor(text:str) -> str:
+def text_editor(text:str,headmessage="edit") -> str:
     tmpdir = generate_temp_dir()
-    with open(tmpdir+"/edit","w+") as f:
+    pushd(tmpdir)
+    with open(tmpdir+"/"+headmessage,"w+") as f:
         f.write(text)
-    editcmd = (APPDATA["settings"]["editor"]["value"] % "\""+tmpdir+"/edit"+"\"")
+    editcmd = (APPDATA["settings"]["editor"]["value"] % "\""+headmessage+"\"")
     curses.reset_shell_mode()
     os.system(editcmd)#Wait for finish
     curses.reset_prog_mode()
-    with open(tmpdir+"/edit") as f:
+    with open(tmpdir+"/"+headmessage) as f:
         newdata = f.read()
+    cursesplus.utils.hidecursor()
+    popd()
     return newdata
 
 
@@ -2593,9 +2596,9 @@ def startup_options(stdscr,serverdata:dict):
         if wtd == 0:
             return serverdata
         elif wtd == 1:
-            serverdata["settings"]["launchcommands"] = text_editor("\n".join(serverdata["settings"]["launchcommands"])).splitlines()
+            serverdata["settings"]["launchcommands"] = text_editor("\n".join(serverdata["settings"]["launchcommands"]),"Edit Launch Commands").splitlines()
         elif wtd == 2:
-            serverdata["settings"]["exitcommands"] = text_editor("\n".join(serverdata["settings"]["exitcommands"])).splitlines()
+            serverdata["settings"]["exitcommands"] = text_editor("\n".join(serverdata["settings"]["exitcommands"]),"Edit Exit Commands").splitlines()
         elif wtd == 3:
             serverdata["settings"]["legacy"] = crss_custom_ad_menu(stdscr,["New Startups (fancy)","Old Startups (legacy)"],"Choose startup mode") == 1
 
@@ -2889,6 +2892,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                                     if obc != obuffer:
                                         obuffer = obc
                                         ooffset = len(obuffer)-my+headeroverhead
+                                        if ooffset < 0:
+                                            ooffset = 0
                                         redraw = True
                         
                     #Visual part
@@ -2925,11 +2930,12 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                             cursesplus.messagebox.showinfo(stdscr,["The server has been stopped safely."])
                         del SERVER_INITS[_sname]
                         break
-
+                    #stdscr.addstr(0,0,f"Y: {ooffset} X: {oxoffset}")
                     if redraw:    
                         stdscr.refresh()
+                    redraw = False
                     ch = stdscr.getch()
-                    if ch == curses.KEY_UP:
+                    if ch == curses.KEY_UP and ooffset > 0:
                         ooffset -= 1
                         redraw = True
                     elif ch == curses.KEY_DOWN:
@@ -2958,7 +2964,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         stdscr.nodelay(1)
                         
                     sleep(1/30)
-                    redraw = False
+                    
                 stdscr.nodelay(0)
         elif w == 2:
             if not os.path.isfile("server.properties"):

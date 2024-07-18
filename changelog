@@ -1,3 +1,7 @@
+1.43.7:
+- Fix a bug where output log couldn't be moved
+- Fix a bug where output log would scroll to the negatives
+- Update cursesplus to 3.16.4
 1.43.6:
 - Frame rate issues (linux update only for large screens)
 1.43.5:
