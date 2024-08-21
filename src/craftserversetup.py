@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.43.7"
+APP_UF_VERSION = "1.44"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2762,7 +2762,7 @@ def ip_lookup(stdscr,serverdir):
         f.write(gzip.compress(json.dumps([f.todict() for f in formattedips]).encode()))
     p.done()
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country"])
+        wtd = crss_custom_ad_menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country","Show bar graph"])
         if wtd == 0:
             break
         elif wtd == 1:
@@ -2793,6 +2793,117 @@ def ip_lookup(stdscr,serverdir):
                 if psearch.lower() in fi.country.lower():
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
             cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+            
+        elif wtd == 5:
+            fdata = {}
+            for fip in formattedips:
+                if fip.country in fdata:
+                    fdata[fip.country] += 1
+                else:
+                    fdata[fip.country] = 1
+            bargraph(stdscr,fdata,"Player Country Statistics")
+
+def friendly_positions(ins:int) -> str:
+    conv = str(ins)
+    if conv.endswith("1"):
+        conv += "st"
+    elif conv.endswith("2"):
+        conv += "nd"
+    elif conv.endswith("3"):
+        conv += "rd"
+    else:
+        conv += "th"
+    return conv
+
+def bargraph(stdscr,data:dict[str,int],message:str):
+    xoffset = 0
+    footerl = 1
+    selected = 0
+    data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
+    while True:
+        stdscr.clear()
+        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(0,0,message,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        maxval = int(max(list(data.values())))
+        my,mx = stdscr.getmaxyx()
+        my -= 1 #Strange bug
+        graphspace = my - 1 - footerl #Remove head and foot
+        ti = 4
+        #Add numbers]
+        for i in range(graphspace):
+            stdscr.addstr(my-(i+footerl),0,str(round(i/graphspace*maxval)))
+        for pset in list(data.items())[xoffset:xoffset+mx-5]:
+            ti += 1
+            pval = pset[1]
+            trueoffset = round((pval/maxval)*graphspace)
+            
+            for i in range(trueoffset):
+                if ti-5+xoffset == selected:
+                    stdscr.addstr(my-(i+footerl),ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
+                else:
+                    stdscr.addstr(my-(i+footerl),ti,"█")
+        dnsel = list(data.keys())[selected]
+        stdscr.addstr(my,0,f"{dnsel} ({list(data.values())[selected]} unique IPs) - {friendly_positions(sorted(list(data.values()),reverse=True).index(list(data.values())[selected])+1)} place")
+        stdscr.refresh()
+        ch = stdscr.getch()
+        if ch == curses.KEY_LEFT:
+            if selected > 0:
+                selected -= 1
+        elif ch == curses.KEY_RIGHT:
+            selected += 1
+            
+
+class JLLogFrame:
+    data:str
+    ext:datetime.datetime
+    def __init__(self,lowerdata:LogEntry):
+        rtime = lowerdata.data.split(" ")[0].strip()
+        rdate = lowerdata.logdate
+        
+        self.ext = datetime.datetime.strptime(f"{rdate.year}-{rdate.month}-{rdate.day} {rtime}","%Y-%m-%d %H:%M:%S")
+        self.data = lowerdata.data
+
+class ServerMinuteFrame:
+    minuteid:int
+    onlineplayers:list[str]
+    
+    def __init__(self,minuteid):
+        self.minuteid = minuteid
+    def wasonline(self,name):
+        return name in self.onlineplayers
+
+def sanalytics(stdscr,serverdir):
+    cursesplus.displaymsg(stdscr,["Please wait..."],False)
+    logfile = serverdir + "/logs"
+    if not os.path.isdir(logfile):
+        cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
+        return
+    pushd(logfile)
+    logs = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
+    allentries:list[LogEntry] = []
+
+    for lf in logs:
+        p.step(lf)
+        if lf.endswith(".gz"):
+            with open(lf,'rb') as f:
+                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
+        else:
+            with open(lf) as f:
+                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
+    p2 = cursesplus.ProgressBar(stdscr,len(allentries),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Parsing")
+    eventslist:list[JLLogFrame] = []
+    joins = {}
+    leavs = {}
+    for entry in allentries:
+        lz = re.match(r' \S* (joined the game|left the game)')
+        if lz is not None:
+            eventslist.append(JLLogFrame(entry))
+            rs:str = lz.group(0).strip()
+            plname = rs.split(" ")[0]
+            action = rs.split(" ")[1]
+    while True:
+        pass
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -3106,11 +3217,13 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
         elif w == 14:
-            w2 = crss_custom_ad_menu(stdscr,["Back","Who Said What?","IP Lookups"],"Additional Utilities")
+            w2 = crss_custom_ad_menu(stdscr,["Back","Who Said What?","IP Lookups","Server Analytics"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
                 ip_lookup(stdscr,SERVER_DIR)
+            elif w2 == 3:
+                sanalytics(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None

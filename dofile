@@ -70,9 +70,10 @@
         rm -rf scripts/python_minifier
         mv dist/craftserversetup.py.tmp dist/craftserversetup.py
         chmod +x dist/craftserversetup.py
-        mv dist/craftserversetup.py dist/craftserversetup
-        cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
+        
     fi
+    mv dist/craftserversetup.py dist/craftserversetup
+    cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
 
     ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/mcserver"
     ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
@@ -224,7 +225,7 @@
     mv craftserversetup.deb output
     cp universalwindowsinstaller/bin/Debug/CraftServerSetup-Universal-Installer.exe.exe output/WindowsUniversalInstaller.exe
 !def run:private
-    !execute install
+    !execute install nominify
     crss -d
 !def commit:private
     set -e
