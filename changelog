@@ -1,4 +1,10 @@
-1.44-b1:
+1.44.1:
+- Fix bugs on bar graph
+- Add xoffset on bar graph
+- Improve chat search function
+- Return to legacy startups by default.
+- Rename Who said what to chat utilities
+1.44:
 - Add Bar graph view for countries - VERY BUGGY!
 1.43.7:
 - Fix a bug where output log couldn't be moved

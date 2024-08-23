@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.44"
+APP_UF_VERSION = "1.44.1"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -337,7 +337,7 @@ def compatibilize_appdata(data:dict) -> dict:
         if data["servers"][svri]["settings"] == {}:
             data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[]}
         if not "legacy" in data["servers"][svri]["settings"]:
-            data['servers'][svri]["settings"]["legacy"] = False
+            data['servers'][svri]["settings"]["legacy"] = True
         svri += 1
 
     svk = 0
@@ -1147,9 +1147,13 @@ class LogEntry:
         self.file = file
         self.logdate = date
         if is_log_line_a_chat_line(data):
-            self.playername = data.split("<")[1].split(">")[0]
+            if "[Server]" in data:
+                self.playername = "[Server]"
+            else:
+                self.playername = data.split("<")[1].split(">")[0]
         else:
             self.playername = ""
+            
     def __str__(self):
         return f"{self.logdate} {self.data}"
 
@@ -1168,7 +1172,7 @@ def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
     return final
         
 def is_log_line_a_chat_line(line:str) -> bool:
-    if "INFO" in line and "<" in line and ">" in line:
+    if (("INFO" in line and "<" in line and ">" in line) or "[Server]" in line) and "chat" in line.lower():
         return True
     else:
         return False
@@ -1659,7 +1663,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
 
     njavapath = njavapath.replace("//","/")
     serverid = random.randint(1111,9999)
-    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid,"settings":{"legacy":False,"launchcommands":[],"exitcommands":[]}}
+    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid,"settings":{"legacy":True,"launchcommands":[],"exitcommands":[]}}
     #_space = "\\ "
     #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     __SCRIPT__ = generate_script(sd)
@@ -2394,11 +2398,13 @@ def view_server_logs(stdscr,server_dir:str):
             else:
                 with open(cl) as f:
                     data = f.read()
-            wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only"])
+            wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only","Chat Utilities"])
             if wtd == 1:
                 cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
+            elif wtd == 2:
+                who_said_what(stdscr,server_dir)
             else:
-                cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if "<" in d and ">" in d and "INFO" in d]))
+                cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
 
 def load_backup(stdscr):
     backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
@@ -2626,11 +2632,12 @@ def who_said_what(stdscr,serverdir):
         else:
             with open(lf) as f:
                 allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
-    allentries = [a for a in allentries if is_log_entry_a_chat_line(a)]
-    allentries.sort(key=lambda x: x.logdate,reverse=True)
+    allentries:list[LogEntry] = [a for a in allentries if is_log_entry_a_chat_line(a)]
+    allentries.sort(key=lambda x: x.logdate,reverse=False)
+    #allentries.reverse()
     p.done()
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server"])
+        wtd = crss_custom_ad_menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server","View Chat Bar Graph"])
         if wtd == 0:
             break
         elif wtd == 1:
@@ -2638,27 +2645,35 @@ def who_said_what(stdscr,serverdir):
             strict = cursesplus.messagebox.askyesno(stdscr,["Do you want to search strictly?","(Full words only)"])
             cassen = cursesplus.messagebox.askyesno(stdscr,["Do you want to be case sensitive?"])
             if not strict and cassen:
-                ft = "\n".join([str(a) for a in allentries if wws in a.data])
+                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws in a.data])
             elif not strict and not cassen:
-                ft = "\n".join([str(a) for a in allentries if wws.lower() in a.data.lower()])
+                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws.lower() in a.data.lower()])
             elif strict and cassen:
-                ft = "\n".join([str(a) for a in allentries if strict_word_search(a.data,wws)])
+                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data,wws)])
             elif strict and not cassen:
-                ft = "\n".join([str(a) for a in allentries if strict_word_search(a.data.lower(),wws.lower())])
+                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data.lower(),wws.lower())])
             cursesplus.textview(stdscr,text=ft,message="Search Results")
         elif wtd == 2:
             wws = crssinput(stdscr,"What player would you like to search for?")
             cursesplus.textview(stdscr,text=
                                 "\n".join(
                                 [
-                                    str(a) for a in allentries if wws in a.playername
+                                    f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws in a.playername
                                 ]),message="Search Results")
         elif wtd == 3:
             cursesplus.textview(stdscr,text=
                                 "\n".join(
                                 [
-                                    str(a) for a in allentries
+                                    f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries
                                 ]),message="Search Results")
+        elif wtd == 4:
+            sdata = {}
+            for entry in allentries:
+                if entry.playername in sdata:
+                    sdata[entry.playername] += 1
+                else:
+                    sdata[entry.playername] = 1
+            bargraph(stdscr,sdata,"Most Talkative Players","Messages")
     popd()
 
 class FormattedIP:
@@ -2801,7 +2816,7 @@ def ip_lookup(stdscr,serverdir):
                     fdata[fip.country] += 1
                 else:
                     fdata[fip.country] = 1
-            bargraph(stdscr,fdata,"Player Country Statistics")
+            bargraph(stdscr,fdata,"Player Country Statistics","unique IPs")
 
 def friendly_positions(ins:int) -> str:
     conv = str(ins)
@@ -2815,7 +2830,10 @@ def friendly_positions(ins:int) -> str:
         conv += "th"
     return conv
 
-def bargraph(stdscr,data:dict[str,int],message:str):
+def bargraph(stdscr,data:dict[str,int],message:str,unit=""):
+    if len(data) == 0:
+        cursesplus.messagebox.showerror(stdscr,["No data"])
+        return
     xoffset = 0
     footerl = 1
     selected = 0
@@ -2823,7 +2841,7 @@ def bargraph(stdscr,data:dict[str,int],message:str):
     while True:
         stdscr.clear()
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(0,0,message,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(0,0,message+" | Press Q to quit",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         maxval = int(max(list(data.values())))
         my,mx = stdscr.getmaxyx()
         my -= 1 #Strange bug
@@ -2835,7 +2853,7 @@ def bargraph(stdscr,data:dict[str,int],message:str):
         for pset in list(data.items())[xoffset:xoffset+mx-5]:
             ti += 1
             pval = pset[1]
-            trueoffset = round((pval/maxval)*graphspace)
+            trueoffset = round((pval/maxval)*graphspace)+1
             
             for i in range(trueoffset):
                 if ti-5+xoffset == selected:
@@ -2843,14 +2861,22 @@ def bargraph(stdscr,data:dict[str,int],message:str):
                 else:
                     stdscr.addstr(my-(i+footerl),ti,"█")
         dnsel = list(data.keys())[selected]
-        stdscr.addstr(my,0,f"{dnsel} ({list(data.values())[selected]} unique IPs) - {friendly_positions(sorted(list(data.values()),reverse=True).index(list(data.values())[selected])+1)} place")
+        stdscr.addstr(my,0,f"{dnsel} ({list(data.values())[selected]} {unit}) - {friendly_positions(sorted(list(data.values()),reverse=True).index(list(data.values())[selected])+1)} place")
         stdscr.refresh()
         ch = stdscr.getch()
         if ch == curses.KEY_LEFT:
             if selected > 0:
                 selected -= 1
         elif ch == curses.KEY_RIGHT:
-            selected += 1
+            if selected < len(data)-1:
+                selected += 1
+        elif ch == curses.KEY_SRIGHT:
+            xoffset += 1
+        elif ch == curses.KEY_SLEFT:
+            if xoffset > 0:
+                xoffset -= 1
+        elif ch == 113:
+            return
             
 
 class JLLogFrame:
@@ -3217,12 +3243,14 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
         elif w == 14:
-            w2 = crss_custom_ad_menu(stdscr,["Back","Who Said What?","IP Lookups","Server Analytics"],"Additional Utilities")
+            w2 = crss_custom_ad_menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
                 ip_lookup(stdscr,SERVER_DIR)
             elif w2 == 3:
+                cursesplus.messagebox.showerror(stdscr,["This feature is coming soon.","Sorry"])
+                continue
                 sanalytics(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
