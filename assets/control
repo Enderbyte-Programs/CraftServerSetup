@@ -1,10 +1,10 @@
 Package: craftserversetup
-Version: 1.44.1
+Version: 1.44.2
 Maintainer: Enderbyte Programs <enderbyte09@gmail.com>
 Homepage: https://github.com/Enderbyte-Programs/CraftServerSetup
 Architecture: all
 Depends: python3
-Installed-Size: 4240
+Installed-Size: 4180
 Description: A TUI Minecraft Server Maker
  CraftServerSetup is a computer program to make and manage many different types of Minecraft server. CraftServerSetup supports vanilla, spigot, purpur, and paper formats. It is a user-friendly command line app so it can be installed on servers and used over SSH.
  

@@ -235,6 +235,7 @@
     git commit -m "$message"
     git push --force
 !def sumsize:private
+    !execute install
     set -e
     mkdir -p ~/.local/bin/crsssum
     cp ~/.local/bin/crss ~/.local/bin/crsssum
