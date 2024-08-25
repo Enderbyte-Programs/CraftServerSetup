@@ -1,3 +1,7 @@
+1.44.2:
+- Performance improvements to file manager
+- Performance improvements to log loads
+- Fix bug in Chat Utils cross link
 1.44.1:
 - Fix bugs on bar graph
 - Add xoffset on bar graph

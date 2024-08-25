@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.44.1"
+APP_UF_VERSION = "1.44.2"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -1142,20 +1142,37 @@ def get_by_list_contains(lst: list,item:str):
     return lst[list_recursive_contains(lst,item)]
 
 class LogEntry:
-    def __init__(self,file:str,date:datetime.date,data:str):
-        self.data = data
-        self.file = file
-        self.logdate = date
-        if is_log_line_a_chat_line(data):
-            if "[Server]" in data:
-                self.playername = "[Server]"
-            else:
-                self.playername = data.split("<")[1].split(">")[0]
+    def __init__(self,file:str,date:datetime.date,data:str,indict=None):
+        if indict is not None:
+            self.data = indict["rawdata"]
+            self.file = indict["fromfile"]
+            self.logdate = datetime.datetime.strptime(indict["date"],"%Y-%m-%d").date()
+            self.playername = indict["player"]
         else:
-            self.playername = ""
+            self.data = data
+            self.file = file
+            self.logdate = date
+            if is_log_line_a_chat_line(data):
+                if "[Server]" in data:
+                    self.playername = "[Server]"
+                else:
+                    self.playername = data.split("<")[1].split(">")[0]
+            else:
+                self.playername = ""
             
     def __str__(self):
         return f"{self.logdate} {self.data}"
+    
+    def todict(self):
+        return {
+            "rawdata" : self.data,
+            "date" : str(self.logdate),
+            "fromfile" : self.file,
+            "player" : self.playername
+        }
+        
+    def fromdict(indict:dict):
+        return LogEntry(None,None,None,indict)
 
 def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
     if "latest" in fromfilename:
@@ -2401,7 +2418,7 @@ def view_server_logs(stdscr,server_dir:str):
             wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only","Chat Utilities"])
             if wtd == 1:
                 cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
-            elif wtd == 2:
+            elif wtd == 3:
                 who_said_what(stdscr,server_dir)
             else:
                 cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
@@ -2613,18 +2630,29 @@ def strict_word_search(haystack:str,needle:str) -> bool:
     words = haystack.split(" ")
     return needle in words
 
-def who_said_what(stdscr,serverdir):
-    cursesplus.displaymsg(stdscr,["Please wait..."],False)
+def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
+    cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
     logfile = serverdir + "/logs"
+    cachefile = serverdir + "/.logindex.json.gz"
+    cachedata = {
+            "entries" : [
+                
+            ],
+            "files" : [
+                
+            ]
+        }
+        
     if not os.path.isdir(logfile):
         cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
-        return
+        return []
     pushd(logfile)
-    logs = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    allentries:list[LogEntry] = []
-
+    allentries:list[LogEntry] = [LogEntry.fromdict(a) for a in cachedata["entries"]]
     for lf in logs:
+        if lf.replace("\\","/").split("/")[-1] in cachedata["files"]:
+            continue
         p.step(lf)
         if lf.endswith(".gz"):
             with open(lf,'rb') as f:
@@ -2632,10 +2660,17 @@ def who_said_what(stdscr,serverdir):
         else:
             with open(lf) as f:
                 allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
+    
+    #allentries.reverse()
+    
+    p.done()
+    return allentries
+
+def who_said_what(stdscr,serverdir):
+    allentries = load_server_logs(stdscr,serverdir)
     allentries:list[LogEntry] = [a for a in allentries if is_log_entry_a_chat_line(a)]
     allentries.sort(key=lambda x: x.logdate,reverse=False)
     #allentries.reverse()
-    p.done()
     while True:
         wtd = crss_custom_ad_menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server","View Chat Bar Graph"])
         if wtd == 0:
@@ -2703,24 +2738,7 @@ def formattediplist_getindexbyip(search:str,haystack:list[FormattedIP]):
 
 def ip_lookup(stdscr,serverdir):
     ipdir = serverdir+"/.ipindex.json.gz"
-    cursesplus.displaymsg(stdscr,["Please wait..."],False)
-    logfile = serverdir + "/logs"
-    if not os.path.isdir(logfile):
-        cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
-        return
-    pushd(logfile)
-    logs = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
-    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    allentries:list[LogEntry] = []
-
-    for lf in logs:
-        p.step(lf)
-        if lf.endswith(".gz"):
-            with open(lf,'rb') as f:
-                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
-        else:
-            with open(lf) as f:
-                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
+    allentries = load_server_logs(stdscr,serverdir)
                 
     IPS:dict[str,list] = {}
     formattedips:list[FormattedIP] = []
@@ -2899,24 +2917,7 @@ class ServerMinuteFrame:
         return name in self.onlineplayers
 
 def sanalytics(stdscr,serverdir):
-    cursesplus.displaymsg(stdscr,["Please wait..."],False)
-    logfile = serverdir + "/logs"
-    if not os.path.isdir(logfile):
-        cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
-        return
-    pushd(logfile)
-    logs = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
-    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    allentries:list[LogEntry] = []
-
-    for lf in logs:
-        p.step(lf)
-        if lf.endswith(".gz"):
-            with open(lf,'rb') as f:
-                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
-        else:
-            with open(lf) as f:
-                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
+    allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
     p2 = cursesplus.ProgressBar(stdscr,len(allentries),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Parsing")
     eventslist:list[JLLogFrame] = []
     joins = {}
@@ -3307,7 +3308,6 @@ def file_manager(stdscr,directory:str,header:str):
     yoffset = 0
     xoffset = 0
     selected = 0
-    bigsz = parse_size(get_tree_size(adir))
     os.chdir(directory)
     cursesplus.displaymsg(stdscr,["Please wait while","files are indexed"],False)
     #Load allfile into activefile
@@ -3330,7 +3330,7 @@ def file_manager(stdscr,directory:str,header:str):
         stdscr.vline(1, sidebarboundary, curses.ACS_VLINE, my-1)
         cursesplus.utils.fill_line(stdscr,my,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         stdscr.addstr(0,mx-17,"Keybinds: ",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(my,0,f"{len(activefile)} files ({bigsz})",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(my,0,f"{len(activefile)} files ",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         cursesplus.utils.fill_line(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         stdscr.addstr(1,0,"Name".ljust(sidebarboundary-30)+"Size".ljust(15)+"Last Modified".ljust(15),cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         stdscr.addstr(2,sidebarboundary+1,"[ALT-Q] Quit")
