@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.44.2/CraftServerSetup-1.44.2-installer.exe|1.44.2|Performance improvements
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.44.1/CraftServerSetup-1.44.1-installer.exe|1.44.1|Analytics
