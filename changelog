@@ -1,3 +1,9 @@
+1.44.3:
+- Fix nasty bug in IP Lookups
+- Fix UI bug in log load
+- Add reset to red colour list
+- Add option to reset IP cache
+- Remove the last references to capitalism
 1.44.2:
 - Performance improvements to file manager
 - Performance improvements to log loads

@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.44.2"
+APP_UF_VERSION = "1.44.3"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2151,7 +2151,7 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
             cursesplus.displaymsg(stdscr,["Fetching plugin info"],False)
             pldat = requests.get(f"https://api.spiget.org/v2/resources/{chosenplugin['id']}",headers=headers).json()
             if pldat["premium"]:
-                cursesplus.messagebox.showerror(stdscr,["This is a premium plugin","it can't be downloaded by CRSS.","Please purchase and download","manually."])
+                cursesplus.messagebox.showerror(stdscr,["This is a paid plugin","it can't be downloaded by CRSS.","Please purchase and download","manually."])
                 continue
             stdscr.clear()
             cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
@@ -2633,26 +2633,14 @@ def strict_word_search(haystack:str,needle:str) -> bool:
 def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
     logfile = serverdir + "/logs"
-    cachefile = serverdir + "/.logindex.json.gz"
-    cachedata = {
-            "entries" : [
-                
-            ],
-            "files" : [
-                
-            ]
-        }
-        
     if not os.path.isdir(logfile):
         cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
         return []
     pushd(logfile)
     logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    allentries:list[LogEntry] = [LogEntry.fromdict(a) for a in cachedata["entries"]]
+    allentries:list[LogEntry] = []
     for lf in logs:
-        if lf.replace("\\","/").split("/")[-1] in cachedata["files"]:
-            continue
         p.step(lf)
         if lf.endswith(".gz"):
             with open(lf,'rb') as f:
@@ -2663,7 +2651,7 @@ def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
     
     #allentries.reverse()
     
-    p.done()
+    #p.done()
     return allentries
 
 def who_said_what(stdscr,serverdir):
@@ -2747,7 +2735,7 @@ def ip_lookup(stdscr,serverdir):
             with open(ipdir,'rb') as f:
                 formattedips = [FormattedIP.fromdict(d) for d in json.loads(gzip.decompress(f.read()).decode())]
         except Exception as e:
-            #cursesplus.messagebox.showerror(stdscr,["Error loading cache",str(e)])
+            +cursesplus.messagebox.showerror(stdscr,["Error loading cache",str(e)])
             os.remove(ipdir)
             
     bigfatstring = "\n".join(l.data for l in allentries)
@@ -2768,15 +2756,22 @@ def ip_lookup(stdscr,serverdir):
         p.step(uniqueip)
         if formattediplist_getindexbyip(uniqueip,formattedips) is not None:
             ind = formattediplist_getindexbyip(uniqueip,formattedips)
-            if (datetime.datetime.now() - formattedips[ind].dateupdated).days >= 40:
+            if (datetime.datetime.now() - formattedips[ind].dateupdated).days >= 40 or (formattedips[ind].country == "Unknown Country" and not formattedips[ind].address.startswith("192.168")):
                 #Do it again
+                
+                sleep(0.5)
                 try:
                     r = requests.get(f"https://reallyfreegeoip.org/json/{uniqueip}").json()
                     country = r["country_name"]
+                    if country.strip() == "":
+                        raise Exception()#On local network
                 except:
                     
                     country = "Unknown Country"
-                formattedips.append(FormattedIP(uniqueip,country,IPS[uniqueip]))
+                #formattedips.append(FormattedIP(uniqueip,country,IPS[uniqueip]))
+                formattedips[ind].dateupdated = datetime.datetime.now()
+                if country != "Unknown Country":
+                    formattedips[ind].country = country
             for pname in IPS[uniqueip]:
                 if not pname in formattedips[ind].players:
                     formattedips[ind].players.append(pname)#If the IP has been looked at already
@@ -2784,6 +2779,7 @@ def ip_lookup(stdscr,serverdir):
             time.sleep(0.5)#Am I getting blocked??
             try:
                 r = requests.get(f"https://reallyfreegeoip.org/json/{uniqueip}").json()
+                
                 country = r["country_name"]
                 if country.strip() == "":
                     raise Exception()#On local network
@@ -2795,15 +2791,33 @@ def ip_lookup(stdscr,serverdir):
         f.write(gzip.compress(json.dumps([f.todict() for f in formattedips]).encode()))
     p.done()
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country","Show bar graph"])
+        wtd = crss_custom_ad_menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country","Show bar graph","Reset Cache"])
         if wtd == 0:
             break
         elif wtd == 1:
+            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            if sorting == 1 or sorting == 2:
+                formattedips.sort(key= lambda x:x.address)
+            elif sorting == 3 or sorting == 4:
+                formattedips.sort(key=lambda x:x.country)
+            elif sorting == 5 or sorting == 6:
+                formattedips.sort(key=lambda x: [l.lower() for l in x.players])
+            if sorting == 2 or sorting == 4 or sorting == 6:
+                formattedips.reverse()#You have selected Z->A, which reverses sorting
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
                 final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
             cursesplus.textview(stdscr,text=final,message="All IPs")
         elif wtd == 2:
+            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            if sorting == 1 or sorting == 2:
+                formattedips.sort(key= lambda x:x.address)
+            elif sorting == 3 or sorting == 4:
+                formattedips.sort(key=lambda x:x.country)
+            elif sorting == 5 or sorting == 6:
+                formattedips.sort(key=lambda x: [l.lower() for l in x.players])
+            if sorting == 2 or sorting == 4 or sorting == 6:
+                formattedips.reverse()#You have selected Z->A, which reverses sorting
             psearch = crssinput(stdscr,"What player do you want to search for?")
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
@@ -2812,6 +2826,15 @@ def ip_lookup(stdscr,serverdir):
             cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
     
         elif wtd == 3:
+            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            if sorting == 1 or sorting == 2:
+                formattedips.sort(key= lambda x:x.address)
+            elif sorting == 3 or sorting == 4:
+                formattedips.sort(key=lambda x:x.country)
+            elif sorting == 5 or sorting == 6:
+                formattedips.sort(key=lambda x: [l.lower() for l in x.players])
+            if sorting == 2 or sorting == 4 or sorting == 6:
+                formattedips.reverse()#You have selected Z->A, which reverses sorting
             psearch = crssinput(stdscr,"What IP do you want to look for?")
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
@@ -2820,6 +2843,15 @@ def ip_lookup(stdscr,serverdir):
             cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
             
         elif wtd == 4:
+            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            if sorting == 1 or sorting == 2:
+                formattedips.sort(key= lambda x:x.address)
+            elif sorting == 3 or sorting == 4:
+                formattedips.sort(key=lambda x:x.country)
+            elif sorting == 5 or sorting == 6:
+                formattedips.sort(key=lambda x: [l.lower() for l in x.players])
+            if sorting == 2 or sorting == 4 or sorting == 6:
+                formattedips.reverse()#You have selected Z->A, which reverses sorting
             psearch = crssinput(stdscr,"What country do you want to look for?")
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
@@ -2835,6 +2867,10 @@ def ip_lookup(stdscr,serverdir):
                 else:
                     fdata[fip.country] = 1
             bargraph(stdscr,fdata,"Player Country Statistics","unique IPs")
+        elif wtd == 6:
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to delete the cache?","This will result in slow loading times."],default=cursesplus.messagebox.MessageBoxStates.NO):
+                os.remove(ipdir)
+                return
 
 def friendly_positions(ins:int) -> str:
     conv = str(ins)
@@ -3940,7 +3976,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         oi = 0
         for op in options[offset:offset+my-7]:
-            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable"):
+            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable") or str_contains_word(op,"reset"):
                 col = cursesplus.RED
             elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable"):
                 col = cursesplus.GREEN
@@ -3964,7 +4000,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
             stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+7} options below")
         if ads_available() and show_ad:
             adx = oi + 5
-            stdscr.addstr(adx-1,0,"ADVERTISEMENT (Upgrade to premium to remove)")
+            stdscr.addstr(adx-1,0,"ADVERTISEMENT (Insert product key to remove)")
             adl = textwrap.wrap(chosenad.message,mx-1)
             li = 0
             for l in adl:
@@ -4376,7 +4412,7 @@ def main(stdscr):
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
         #cursesplus.messagebox.showerror(stdscr,[str(_transndt)])
-        ADS.append(Advertisement("https://ko-fi.com/s/f44efdb343","Support Enderbyte Programs by Buying CraftServerSetup Premium"))#Ads are now empty
+        ADS.append(Advertisement("https://ko-fi.com/s/f44efdb343","Support Enderbyte Programs by Buying A CraftServerSetup Product Key"))#Ads are now empty
         if _transndt:
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/src/translations.toml",APPDATADIR+"/translations.toml")
             eptranslate.load(APPDATADIR+"/translations.toml")
@@ -4429,7 +4465,7 @@ def main(stdscr):
                 import_amc_server(stdscr,sys.argv[1])        
         
         if not APPDATA["pkd"]:
-            if cursesplus.messagebox.askyesno(stdscr,["Have you purchased a product key?","If so, press yes and you will be prompted to enter it."]):
+            if cursesplus.messagebox.askyesno(stdscr,["Have you purchased a product key?","If so, press yes and you will be prompted to enter it."],default=cursesplus.messagebox.MessageBoxStates.NO):
                 
                 product_key_page(stdscr,True)
         APPDATA["pkd"] = True
@@ -4461,7 +4497,7 @@ def main(stdscr):
                 #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
                 lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
                 if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
-                    lz += ["Upgrade to Premium"]
+                    lz += ["Buy/Insert a Product Key"]
                 if DEVELOPER:
                     lz += ["Debug Tools"]
                 m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}",True)
