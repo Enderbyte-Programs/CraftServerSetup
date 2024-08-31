@@ -1,5 +1,5 @@
 # Craft Server Setup
-## The best way to set up a Minecraft Server on your computer
+## A CLI Minecraft Server Manager
 
 ## Setup and Installation
 
@@ -7,7 +7,7 @@
 
 The Windows edition uses an installer. Follow the steps in the installer. All dependencies are included.
 
-You may have to dismiss warnings of uncommon programs or even malware from Windows. Please dismiss them as they are false alarms. If this program contains a virus that I have willingly included, you may sue me for a million dollars.
+You may have to dismiss warnings of uncommon programs or even malware from Windows. Please dismiss them as they are false alarms. 
 
 ## Linux
 
