@@ -34,7 +34,7 @@ You may have to dismiss warnings of uncommon programs or even malware from Windo
 
 - Install sbuild-dofile from https://github.com/Enderbyte-Programs/sbuild-dofile
 
-- In the repo directory, run `sbuild einstall`
+- In the repo directory, run `sbuild install`
 
 - This will install it
 
