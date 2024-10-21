@@ -2,9 +2,9 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Craft Server Setup"
-#define MyAppVersion "1.40.5"
+#define MyAppVersion "1.44.5"
 #define MyAppPublisher "Enderbyte Programs"
-#define MyAppURL "https://enderbyteprograms.weebly.com"
+#define MyAppURL "https://enderbyteprograms.net"
 #define MyAppExeName "craftserversetup.exe"
 #define MyAppAssocName "Minecraft Server"
 #define MyAppAssocExt ".amc"
@@ -29,7 +29,7 @@ LicenseFile=C:\Python\Scripts\LICENSE
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=C:\Users\Enderbyte09\Desktop
-OutputBaseFilename=CraftServerSetup-1.40.5-installer
+OutputBaseFilename=CraftServerSetup-1.44.5-installer
 SetupIconFile=C:\Python\Scripts\mc.ico
 Compression=lzma
 SolidCompression=yes
