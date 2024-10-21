@@ -1,3 +1,9 @@
+1.44.5:
+- Fix long time duplicate name bug
+- Fix reset6 all settings crash
+- Update analytics domain
+1.44.4:
+- Windows emergency bug fix
 1.44.3:
 - Fix nasty bug in IP Lookups
 - Fix UI bug in log load

@@ -2,7 +2,7 @@
 #Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.44.3"
+APP_UF_VERSION = "1.44.5"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -624,7 +624,7 @@ def send_telemetry():
         "ApplicationVersion" : APP_UF_VERSION
         }
     #cursesplus.textview(_SCREEN,text=str(rdx))
-    r = requests.post("http://enderbyteprograms.ddnsfree.com:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
+    r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
 def parse_size(data: int) -> str:
     if data < 0:
         neg = True
@@ -1690,7 +1690,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
     updateappdata()
     bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
-    with open("exdat.json","w+") as f:
+    with open("exdata.json","w+") as f:
         f.write(json.dumps(sd)) #Create backup
     advancedsetup = cursesplus.messagebox.askyesno(stdscr,["Would you like to set up your server configuration now?"])
     if not advancedsetup:
@@ -1909,8 +1909,16 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 
 def prune_servers():
     global APPDATA
-    
+    pushd(SERVERSDIR)
     APPDATA["servers"] = [a for a in APPDATA["servers"] if os.path.isdir(a["dir"])]
+    #Look for unregistered directories
+    serverdirs = [f for f in os.listdir(SERVERSDIR) if os.path.isdir(f)]
+    registereddirs = [a["dir"] for a in APPDATA["servers"]]
+    for serverdir in serverdirs:
+        if not serverdir in registereddirs:
+            if not os.path.isfile(serverdir+"/exdata.json") and not os.path.isfile(serverdir+"/server.properties"):
+                shutil.rmtree(serverdir)
+    popd()
     updateappdata()
 
 def servermgrmenu(stdscr):
@@ -4113,8 +4121,11 @@ def import_server(stdscr):
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?","That is, Can it be changed with plugins/mods"])
             xdat["software"] = crss_custom_ad_menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
             xdat["script"] = generate_script(xdat)
+            
             APPDATA["servers"].append(xdat)
             pushd(xdat["dir"])
+            with open("exdata.json","w+") as f:
+                f.write(json.dumps(xdat))
             os.rename(fpl,"server.jar")#Fix problem if someone is not using server.jar as their executable jar file
             cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
         except:
@@ -4141,7 +4152,7 @@ def settings_mgr(stdscr):
                     break
                 elif n == 1:
                     del APPDATA["settings"]
-                    compatibilize_appdata()
+                    APPDATA = compatibilize_appdata(APPDATA)
                     updateappdata()
                 elif n == 2:
                     if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
