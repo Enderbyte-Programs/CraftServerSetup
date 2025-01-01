@@ -1,8 +1,9 @@
 #!/usr/bin/python3
-#Early load variables#TODO - Preserve setttings on export and import, server individual settings manager, server startup and shutdown commands, compatibilize on import, IP getter
+#Early load variables
+#TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.44.5"
+APP_UF_VERSION = "1.45"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -251,6 +252,7 @@ def prodkeycheck(a):
     return not SHOW_ADVERT
 
 def compatibilize_appdata(data:dict) -> dict:
+    """This function ensures that appdata is brought up to the latest version"""
     try:
         cver = data["version"]
     except:
@@ -338,6 +340,8 @@ def compatibilize_appdata(data:dict) -> dict:
             data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[]}
         if not "legacy" in data["servers"][svri]["settings"]:
             data['servers'][svri]["settings"]["legacy"] = True
+        if not "backupdir" in svr:
+            data['servers'][svri]["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(data['servers'][svri]["id"])
         svri += 1
 
     svk = 0
@@ -347,6 +351,19 @@ def compatibilize_appdata(data:dict) -> dict:
         svk += 1
     if not "license" in data:
         data["license"] = False
+        
+    if not "backupprofiles" in data:
+        #Works with glob
+        data["backupprofiles"] = {
+            "everything" : {
+                "include" : [
+                    "#SD/**"
+                ],
+                "exclude" : [
+                    
+                ]
+            }
+        }
 
     return data
 
@@ -1097,10 +1114,10 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
     return PACKAGEDATA
 
 def download_paper_software(stdscr,serverdir) -> dict:
-    VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
+    VMAN = requests.get("https://api.papermc.io/v2/projects/paper").json()
     stdscr.erase()
     pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
-    BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
+    BMAN = requests.get(f"https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds").json()
     buildslist = list(reversed(BMAN["builds"]))
     
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to install the latest build of Paper","It is highly recommended to do so"]):
@@ -1108,8 +1125,8 @@ def download_paper_software(stdscr,serverdir) -> dict:
     else:
         stdscr.erase()
         builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
-    bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
-    #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+    bdownload = f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+    #cursesplus.displaymsg(stdscr,[f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     cursesplus.displaymsg(stdscr,["Downloading server file"],False)
     
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
@@ -2363,10 +2380,10 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
 def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     stdscr.erase()
-    VMAN = requests.get("https://papermc.io/api/v2/projects/paper").json()
+    VMAN = requests.get("https://api.papermc.io/v2/projects/paper").json()
     stdscr.erase()
     pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
-    BMAN = requests.get(f"https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds").json()
+    BMAN = requests.get(f"https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds").json()
     buildslist = list(reversed(BMAN["builds"]))
     
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to update to the latest build of Paper","It is highly recommended to do so"]):
@@ -2374,8 +2391,8 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     else:
         stdscr.erase()
         builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
-    bdownload = f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
-    #cursesplus.displaymsg(stdscr,[f'https://papermc.io/api/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+    bdownload = f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+    #cursesplus.displaymsg(stdscr,[f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     stdscr.clear()
     stdscr.addstr(0,0,"Downloading file...")
     stdscr.refresh()
@@ -3717,25 +3734,53 @@ def manage_bans(stdscr,serverdir):
                         data[dz-2] = active
                         
 def server_backups(stdscr,serverdir:str,serverdata:dict):
-    LBKDIR = SERVERS_BACKUP_DIR + "/" + str(serverdata["id"])
-    if not os.path.isdir(LBKDIR):
-        os.mkdir(LBKDIR)
+    LBKDIR = serverdata["backupdir"]
+    #if not os.path.isdir(LBKDIR):
+    #    os.mkdir(LBKDIR)
     while True:
-        z = crss_custom_ad_menu(stdscr,["Back","Create a Backup","Load a Backup"])
+        z = crss_custom_ad_menu(stdscr,["Back","Create a Backup","Load a Backup",f"Choose backup directory ({LBKDIR})","Delete all backups"])
         if z == 0:
             break
         elif z == 1:
-            cursesplus.displaymsg(stdscr,["Calculating size requirements"],False)
-            if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {parse_size(get_tree_size(serverdir))}","of disk space","Do you want to proceed?"]):
-                #os.mkdir(LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
-                w = cursesplus.PleaseWaitScreen(stdscr,["Creating Backup"])
-                w.start()
-                #cursesplus.displaymsg(stdscr,["Creating Backup..."],False)
-                with open(serverdir+"/crss.json","w+") as f:
-                    f.write(json.dumps(serverdata))
-                shutil.copytree(serverdir,LBKDIR+"/"+str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":",""))
-                w.stop()
-                cursesplus.messagebox.showinfo(stdscr,["Backup completed"])
+            with open(serverdir+"/crss.json","w+") as f:
+                f.write(json.dumps(serverdata))
+            useprofile = APPDATA["backupprofiles"][list(APPDATA["backupprofiles"].keys())[crss_custom_ad_menu(stdscr,list(APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
+            cursesplus.displaymsg(stdscr,["Calculating backup size..."],False)
+            totalbackupsize = 0
+            filestoindex = []
+            for irule in useprofile["include"]:
+                filestoindex += glob.glob(irule.replace("#SD",serverdir),recursive=True)
+            for includefile in filestoindex:
+                if os.path.isdir(includefile):
+                    continue
+                totalbackupsize += os.path.getsize(includefile)
+                
+            filetoremove = []
+            for erule in useprofile["exclude"]:
+                filetoremove += glob.glob(erule.replace("#SD",serverdir),recursive=True)
+            for excludefile in filetoremove:
+                
+                try:
+                    filestoindex.remove(excludefile)
+                    totalbackupsize -= os.path.getsize(excludefile)
+                except:
+                    pass
+            
+            
+            if cursesplus.messagebox.askyesno(stdscr,["The backup will take up",parse_size(totalbackupsize),"Do you want to continue?"]):
+                p = cursesplus.ProgressBar(stdscr,totalbackupsize+1,bar_location=cursesplus.ProgressBarLocations.CENTER,message="Creating backup")
+                for file in filestoindex:
+                    if os.path.isdir(file):
+                        continue
+                    p.value += os.path.getsize(file) - 1
+                    p.step(file)
+                    
+                    dst = LBKDIR + f'/{str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")}/' + file.replace(serverdir,"")
+                    os.makedirs(os.path.dirname(dst),exist_ok=True)
+                    shutil.copyfile(file,dst)
+                p.done()
+                cursesplus.messagebox.showinfo(stdscr,["Completed backup"])
+                
         elif z == 2:
             if len(os.listdir(LBKDIR)) == 0:
                 cursesplus.messagebox.showwarning(stdscr,["You do not have any backups"])
@@ -3758,7 +3803,15 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                     pass
                 w.stop()
                 cursesplus.messagebox.showinfo(stdscr,["Restore completed"])
-                os.chdir(serverdir)              
+                os.chdir(serverdir)       
+        elif z == 3:
+            serverdata["backupdir"] = cursesplus.filedialog.openfolderdialog(stdscr,"Choose a new backup directory")
+            LBKDIR = serverdata["backupdir"]
+            updateappdata()       
+        elif z == 4:
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete all backups?"]):
+                shutil.rmtree(LBKDIR,True)
+                os.mkdir(LBKDIR)
 
 def get_tree_size(start_path = '.'):
     total_size = 0
@@ -3984,9 +4037,9 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         oi = 0
         for op in options[offset:offset+my-7]:
-            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable") or str_contains_word(op,"reset"):
+            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable") or str_contains_word(op,"reset") or str_contains_word(op,"-"):
                 col = cursesplus.RED
-            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable"):
+            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable") or str_contains_word(op,"create") or str_contains_word(op,"-"):
                 col = cursesplus.GREEN
             elif op.upper() == op:
                 col = cursesplus.CYAN
@@ -4137,11 +4190,107 @@ def ads_available() -> bool:
         return False
     else:
         return SHOW_ADVERT
+
+def parse_bp_ielist(data:dict) -> list[str]:
+    final = []
+    for include in data["include"]:
+        final.append("+ include "+include)
+    for exclude in data["exclude"]:
+        final.append("- exclude "+exclude)
+    return final
+
+def edit_backup_profile(stdscr,backupname: str) :
+    bdata = APPDATA["backupprofiles"][backupname]
+    bname = backupname
+    while True:
+        lditems = parse_bp_ielist(bdata)
+        m = crss_custom_ad_menu(stdscr,["FINISH","CHANGE PROFILE NAME","Delete Profile","Create Rule"]+lditems,f"Editing backup profile {bname}")
+        if m == 0:
+            del APPDATA["backupprofiles"][backupname]
+            APPDATA["backupprofiles"][bname] = bdata
+            return
+        elif m == 1:
+            while True:
+                bname = crssinput(stdscr,"Name the backup profile")
+                if bname in APPDATA["backupprofiles"] and bname != backupname:
+                    #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
+                    if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Do you want to over-write it?"]):
+                        break
+                else:
+                    break
+        elif m == 2:
+            if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this","backup profile?"]):
+                del APPDATA["backupprofiles"][bname]
+                return
+        elif m == 3:
+            wtype = crss_custom_ad_menu(stdscr,["Cancel","Include (files to include)","Exclude (files to not include)"],"What type of rule should this be?")
+            if wtype == 0:
+                continue
+            isexclude = wtype == 2
+            imethod = crss_custom_ad_menu(stdscr,["Handwrite a Glob pattern","Select Files/Folders"],"How would you like to input this rule?")
+            pattern = [""]
+            if imethod == 0:
+                cursesplus.displaymsg(stdscr,[
+                    "Notes for writing Glob statements",
+                    "Use * for wildcard, ** for recursive wildcard",
+                    "Do not end with a / for a folder, use /* or /** instead."
+                ])
+                pattern[0] = crssinput(stdscr,"Write the GLOB pattern to match. Use #SD/ for the server directory.")
+            else:
+                itype = crss_custom_ad_menu(stdscr,["Choose a directory","Choose file(s)"])
+                if itype == 0:
+                    idir = cursesplus.filedialog.openfolderdialog(stdscr,"Choose a directory to match.")
+                    pattern[0] = idir + "/**"
+                else:
+                    ifiles = cursesplus.filedialog.openfilesdialog(stdscr,"Choose files to match")
+                    pattern = ifiles
+                    
+            if isexclude:
+                bdata["exclude"] += pattern
+            else:
+                bdata["include"] += pattern
+            
+        else:
+            isexclude = lditems[m-4].startswith("-")
+            if cursesplus.messagebox.askyesno(stdscr,["Do you want to delete this rule?"]):
+                relname = lditems[m-4].replace("+ include ","").replace("- exclude ","")
+                if isexclude:
+                    bdata["exclude"].remove(relname)
+                else:
+                    bdata["include"].remove(relname)
+            
+
+def new_backup_profile(stdscr) -> str:
+    while True:
+        name = crssinput(stdscr,"Name the backup profile")
+        if name in APPDATA["backupprofiles"]:
+            if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Would you like to over-write it?"],default=cursesplus.messagebox.MessageBoxStates.NO):
+                return name
+            #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
+        else:
+            #Add to dict
+            APPDATA["backupprofiles"][name] = {
+                "include" : ["#SD/*"],
+                "exclude" : []
+            }
+            return name
+    
+def backup_manager(stdscr):
+    while True:
+        co = crss_custom_ad_menu(stdscr,["Quit","Create backup profile"]+list(APPDATA["backupprofiles"].keys()),"Backup Profile Manager")
+        if co == 0:
+            updateappdata()
+            return
+        elif co == 1:
+            edit_backup_profile(stdscr,new_backup_profile(stdscr))
+        else:
+            edit_backup_profile(stdscr,list(APPDATA["backupprofiles"].keys())[co-2])
+
 def settings_mgr(stdscr):
     global COLOURS_ACTIVE
     global APPDATA
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
             updateappdata()
             return
@@ -4175,9 +4324,11 @@ def settings_mgr(stdscr):
             eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
             APPDATA["language"] = eptranslate.Config.choice
             cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
+        elif m == 4:
+            backup_manager(stdscr)
         else:
-            selm = list(APPDATA["settings"].values())[m-4]
-            selk = list(APPDATA["settings"].keys())[m-4]
+            selm = list(APPDATA["settings"].values())[m-5]
+            selk = list(APPDATA["settings"].keys())[m-5]
             if selm["type"] == "bool":
                 selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
@@ -4506,13 +4657,13 @@ def main(stdscr):
             try:
                 stdscr.erase()
                 #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
-                lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Manage global Backups","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
+                lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
                 if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
                     lz += ["Buy/Insert a Product Key"]
                 if DEVELOPER:
                     lz += ["Debug Tools"]
                 m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}",True)
-                if m == 8:
+                if m == 7:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                     if len(SERVER_INITS.items()):
                         if not cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to quit?",f"{len(SERVER_INITS.items())} servers are still running!","They will be stopped."]):
@@ -4537,9 +4688,6 @@ def main(stdscr):
                     if do_linux_update(stdscr):
                         UPDATEINSTALLED = True
                         return
-
-                elif m == 7:
-                    global_backup_mgr(stdscr)
                 elif m == 4:
                     webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
                     cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
@@ -4551,9 +4699,9 @@ def main(stdscr):
                     stats_and_credits(stdscr)
                 elif DEVELOPER and lz[m] == "Debug Tools":
                     devtools(stdscr)
+                elif m == 8:
+                    webbrowser.open("https://enderbyteprograms.net")
                 elif m == 9:
-                    webbrowser.open("https://enderbyteprograms.weebly.com")
-                elif m == 10:
                     product_key_page(stdscr)
             except Exception as e2:
                 safe_error_handling(e2)
