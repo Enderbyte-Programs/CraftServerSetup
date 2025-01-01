@@ -3735,11 +3735,13 @@ def manage_bans(stdscr,serverdir):
                         
 def server_backups(stdscr,serverdir:str,serverdata:dict):
     LBKDIR = serverdata["backupdir"]
+    pushd(serverdir)#Just in case some super weird bug
     #if not os.path.isdir(LBKDIR):
     #    os.mkdir(LBKDIR)
     while True:
         z = crss_custom_ad_menu(stdscr,["Back","Create a Backup","Load a Backup",f"Choose backup directory ({LBKDIR})","Delete all backups"])
         if z == 0:
+            popd()
             break
         elif z == 1:
             with open(serverdir+"/crss.json","w+") as f:
