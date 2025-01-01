@@ -3770,6 +3770,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
             
             
             if cursesplus.messagebox.askyesno(stdscr,["The backup will take up",parse_size(totalbackupsize),"Do you want to continue?"]):
+                dstsname = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
                 p = cursesplus.ProgressBar(stdscr,totalbackupsize+1,bar_location=cursesplus.ProgressBarLocations.CENTER,message="Creating backup")
                 for file in filestoindex:
                     if os.path.isdir(file):
@@ -3777,7 +3778,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                     p.value += os.path.getsize(file) - 1
                     p.step(file)
                     
-                    dst = LBKDIR + f'/{str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")}/' + file.replace(serverdir,"")
+                    dst = LBKDIR + f'/{dstsname}/' + file.replace(serverdir,"")
                     os.makedirs(os.path.dirname(dst),exist_ok=True)
                     shutil.copyfile(file,dst)
                 p.done()
