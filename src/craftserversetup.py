@@ -3,7 +3,7 @@
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.45"
+APP_UF_VERSION = "1.45.1"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -563,45 +563,6 @@ def product_key_page(stdscr,force=False):
         elif o == 2:
             return
 
-### BEGIN UTILS ###
-
-def create_global_backup(outpath:str) -> int:
-    try:
-        if not os.path.isdir(BACKUPDIR):
-            os.mkdir(BACKUPDIR)
-        pushd(APPDATADIR)
-        with tarfile.open(outpath,"w:xz") as tar:
-            tar.add(".")
-        popd()
-        return 0
-    except:
-        return 1
-
-
-def restore_global_backup(backup_file:str) -> int:
-    try:
-        if not os.path.isdir(BACKUPDIR):
-            os.mkdir(BACKUPDIR)
-        if not os.path.isdir(BACKUPDIR+"/tempbk"):
-            pass
-        else:
-            shutil.rmtree(BACKUPDIR+"/tempbk")
-        shutil.copytree(APPDATADIR,BACKUPDIR+"/tempbk")
-        try:
-            shutil.rmtree(APPDATADIR)
-            os.mkdir(APPDATADIR)
-            with tarfile.open(backup_file,"r:xz") as tar:
-                tar.extractall(path=APPDATADIR)
-        except:
-            os.mkdir(APPDATADIR)
-            shutil.copytree(BACKUPDIR+"/tempbk",APPDATADIR)
-            shutil.rmtree(BACKUPDIR+"/tempbk")
-            return 1
-            
-        return 0
-    except:
-        return 1
-
 def package_server_script(indir:str,outfile:str) -> int:
     try:
         pushd(indir)
@@ -687,12 +648,10 @@ def error_handling(e:Exception,message="A serious error has occured"):
             main(_SCREEN)
         elif erz == 3:
             while True:
-                aerz = cursesplus.optionmenu(_SCREEN,["Back","Restore a backup","Repair CraftServerSetup","Reset CraftServerSetup"],"Please choose an advanced option")
+                aerz = cursesplus.optionmenu(_SCREEN,["Back","Repair CraftServerSetup","Reset CraftServerSetup"],"Please choose an advanced option")
                 if aerz == 0:
                     break
                 elif aerz == 1:
-                    load_backup(_SCREEN)
-                elif aerz == 2:
                     if WINDOWS:
                         cursesplus.messagebox.showerror(_SCREEN,["This feature is not available on Windows"])
                         continue
@@ -705,7 +664,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
                         curses.reset_prog_mode()
                         if z != 0:
                             cursesplus.messagebox.showwarning(_SCREEN,["Error repairing","Please try a manual repair"])
-                elif aerz == 3:
+                elif aerz == 2:
                     if cursesplus.messagebox.askyesno(_SCREEN,["This will delete all servers","Are you sure you wish to proceed?"],default=cursesplus.messagebox.MessageBoxStates.NO):
                         os.chdir(os.path.expanduser("~"))
                         try:
@@ -1015,21 +974,6 @@ def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
                     else:
                         mydata = mydata[i]
                 mydata[epath] = newval      
-
-def is_int(val) -> bool:
-    try:
-        int(val)
-    except:
-        return False
-    else:
-        return True
-
-class MinecraftVersionTypes(enum.Enum):
-    NORMAL = 0
-    SNAPSHOT = 1
-    PRERELEASE = 2
-    RELEASECANDIDATE = 3
-
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
     sdata = APPDATA["servers"][chosenserver]
@@ -2447,30 +2391,7 @@ def view_server_logs(stdscr,server_dir:str):
                 who_said_what(stdscr,server_dir)
             else:
                 cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
-
-def load_backup(stdscr):
-    backup = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a backup file",[["*.xz","XZ Backup Files"],["*","All Files"]],BACKUPDIR)
-    pw = cursesplus.PleaseWaitScreen(stdscr,["Restoring"])
-    pw.start()
-    p = restore_global_backup(backup)
-    pw.stop()
-    pw.destroy()
-    if p != 0:
-        cursesplus.messagebox.showerror(stdscr,["There was an error installing your backup","Your installation has not been modified"])
-    if not os.path.isfile(APPDATAFILE):
-        with open(APPDATAFILE,"w+") as f:
-            f.write(json.dumps(__DEFAULTAPPDATA__))
-        APPDATA = __DEFAULTAPPDATA__
-    else:
-        try:
-            with open(APPDATAFILE) as f:
-                APPDATA = json.load(f)
-        except:
-            with open(APPDATAFILE,"w+") as f:
-                f.write(json.dumps(__DEFAULTAPPDATA__))
-            APPDATA = __DEFAULTAPPDATA__
-    APPDATA = compatibilize_appdata(APPDATA)
-
+                
 def init_idata(stdscr):
     global APPDATA
     idata = requests.get("https://pastebin.com/raw/GLSGkysJ").json()
@@ -2999,7 +2920,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
-    os.chdir(APPDATA["servers"][chosenserver-1]["dir"])
+    
     if APPDATA["settings"]["transitions"]["value"]:
         cursesplus.transitions.vertical_bars(stdscr)
     if APPDATA["servers"][chosenserver-1]["software"] == 0:
@@ -3007,7 +2928,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         return
     #Manager server
     while True:
-
+        os.chdir(APPDATA["servers"][chosenserver-1]["dir"])#Fix bug where running a sub-option that changes dir would screw with future operations
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
         x__ops += ["View logs","Export server","View server info","Administration and Backups >>","Manage server icon"]
         x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
@@ -3780,7 +3701,10 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                     
                     dst = LBKDIR + f'/{dstsname}/' + file.replace(serverdir,"")
                     os.makedirs(os.path.dirname(dst),exist_ok=True)
-                    shutil.copyfile(file,dst)
+                    try:
+                        shutil.copyfile(file,dst)
+                    except:
+                        pass#Fix bug - temp files crash
                 p.done()
                 cursesplus.messagebox.showinfo(stdscr,["Completed backup"])
                 
@@ -4489,24 +4413,6 @@ def do_linux_update(stdscr,interactive=True) -> bool:
     except:
         cursesplus.messagebox.showerror(stdscr,["There was an error applying an update"])
         return False#Quit because errpr
-
-def global_backup_mgr(stdscr):
-    while True:
-        bkm = crss_custom_ad_menu(stdscr,["Back","Create backup","Load backup"])
-        if bkm == 1:
-            if cursesplus.messagebox.askyesno(stdscr,["This will create a backup of your entire crss installation including configuration","To create a backup of each server","Go to its management page"]):
-                cursesplus.displaymsg(stdscr,["Calculating..."],False)
-                mb = round(get_tree_size(APPDATADIR)/1000000,3)
-                if cursesplus.messagebox.askyesno(stdscr,[f"This will take up {mb} MB of space.","Are you sure you want to proceed?"]):
-                    foln = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
-                    cursesplus.displaymsg(stdscr,["Creating..."],False)
-                    p = create_global_backup(foln)
-                    if p != 0:
-                        cursesplus.messagebox.showerror(stdscr,["There was an error creating your backup"])
-        elif bkm == 0:
-            break
-        elif bkm == 2:
-            load_backup(stdscr)   
 
 def devtools(stdscr):
     global APPDATA
