@@ -241,3 +241,13 @@
     cp ~/.local/bin/crss ~/.local/bin/crsssum
     du -cs --exclude=~/.local/share/mcserver/temp --exclude=~/.local/share/mcserver/servers ~/.local/bin/crsssum ~/.local/lib/craftserversetup ~/.local/share/mcserver/assets 
     rm -rf ~/.local/bin/crsssum
+!def wbuild
+    #This script builds for windows
+    #Before, you must install Python 3.12 into wine
+    if ! command -v wine &> /dev/null
+    then
+        echo "ERROR: You must have wine installed to execute a Windows build."
+        exit 1
+    fi
+
+    
