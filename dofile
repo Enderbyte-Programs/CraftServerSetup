@@ -224,6 +224,7 @@
     mv craftserversetup.tar.xz output
     mv craftserversetup.deb output
     cp universalwindowsinstaller/bin/Debug/CraftServerSetup-Universal-Installer.exe.exe output/WindowsUniversalInstaller.exe
+    !execute wbuild
 !def run:private
     !execute install nominify
     crss -d
@@ -241,13 +242,81 @@
     cp ~/.local/bin/crss ~/.local/bin/crsssum
     du -cs --exclude=~/.local/share/mcserver/temp --exclude=~/.local/share/mcserver/servers ~/.local/bin/crsssum ~/.local/lib/craftserversetup ~/.local/share/mcserver/assets 
     rm -rf ~/.local/bin/crsssum
-!def wbuild
+!def wbuild:private
     #This script builds for windows
-    #Before, you must install Python 3.12 into wine
+    #Before, you must install Python 3.12 and Inno Setup into wine
+    set -e
     if ! command -v wine &> /dev/null
     then
         echo "ERROR: You must have wine installed to execute a Windows build."
         exit 1
     fi
 
+    WINEDIR="$HOME/.wine/drive_c"
+    ISSPATH="C:\\Program Files (x86)\\Inno Setup 6\\Compil32.exe"
+    PIPPATH="$WINEDIR/python/Scripts/pip.exe"
+    FDIR="$WINEDIR/python/crss"
+    PYINSTALLER="$WINEDIR/python/Scripts/pyinstaller.exe"
+    OUTPUTDIR="$PWD/output"
+
+    echo "Installing Dependencies"
+    wine $PIPPATH install --upgrade pyinstaller windows-curses cursesplus requests pyyaml
+    #Install deps
+
+    if [ -d $FDIR ]; then
+        rm -rf $FDIR
+    fi
+
+    echo "Copying Files"
+    mkdir -p $FDIR
+    mkdir $FDIR/installer
+    cp lib/*.py $FDIR
+    cp src/*.py $FDIR
+    cp assets/mc.ico $FDIR
+    cp assets/*.bmp $FDIR
+    cp src/translations.toml $FDIR
+    cp assets/defaulticon.png $FDIR
+    cp LICENSE $FDIR
     
+    read -p "Write app version: " version
+
+    cd src
+    #PARANV="${version//./,}"
+    PARANV="$(python3 version_fixer.py $version)"
+    #echo "--> SAFE V IS $PARANV"
+    #Replace x.y.z to x,y,z
+    sed -i -e '10d' vf.txt;sed -i "10i\ \ \ \ filevers=($PARANV)," vf.txt
+    sed -i -e '11d' vf.txt;sed -i "11i\ \ \ \ prodvers=($PARANV)," vf.txt
+    sed -i -e '35d' vf.txt;sed -i "35i\ \ \ \ \ \ \ \ StringStruct(u'FileVersion', u'$version')," vf.txt
+    sed -i -e '40d' vf.txt;sed -i "40i\ \ \ \ \ \ \ \ StringStruct(u'ProductVersion', u'$version')])" vf.txt
+    #Parse version file
+    
+
+    #Parse ISS file
+    sed -i -e '5d' crss-wine.iss
+    sed -i "5i#define MyAppVersion \"$version\"" crss-wine.iss
+    sed -i -e '42d' crss-wine.iss
+    sed -i "42iOutputBaseFilename=CraftServerSetup-$version-installer" crss-wine.iss
+
+    cd ..
+    cp src/vf.txt $FDIR
+    cp src/crss-wine.iss $FDIR
+
+    echo "Compiling stage 1"
+    pushd $FDIR
+    wine $PYINSTALLER --icon=mc.ico --version-file=vf.txt -y craftserversetup.py
+    echo "Waiting 5 seconds..."
+    sleep 5
+
+    echo "Compiling stage 2"
+    wine "$ISSPATH" /cc C:\\python\\crss\\crss-wine.iss
+
+    popd
+
+    echo "Packaging and moving"
+    cp $FDIR/installer/* $OUTPUTDIR
+    pushd $FDIR/dist
+    echo "PORTABLE" >startupflags.txt
+    zip -9 -r $OUTPUTDIR/craftserversetup-portable.zip .
+
+    echo "COMPLETED"

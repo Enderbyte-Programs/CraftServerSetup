@@ -10,7 +10,7 @@ DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/c
 DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
 MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
 SHOW_ADVERT = False
-print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2024")
+print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025")
 
 ### Standard Library Imports ###
 
