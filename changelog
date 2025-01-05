@@ -1,7 +1,8 @@
 1.45.1:
 - Removed unused code (from global backups)
 - Fix bug with misplaced directories
-- Improve Windows build system (maybe later... :( )
+- Improve Windows build system
+- Update copyright to 2025
 1.45:
 - Add backup profiles
 - Replacement to old backup system
