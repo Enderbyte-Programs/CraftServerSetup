@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.44.5/CraftServerSetup-1.44.5-installer.exe|1.44.5|Additional bug fixes
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.45.1/CraftServerSetup-1.45.1-installer.exe|1.45.1|Overhaul Backups system
