@@ -1,3 +1,7 @@
+1.45.2:
+- Versions in mods list will now be prefixed with v
+- Windows update no longer shows changelog string
+- IP Lookup timeout is now 100 days
 1.45.1:
 - Removed unused code (from global backups)
 - Fix bug with misplaced directories
