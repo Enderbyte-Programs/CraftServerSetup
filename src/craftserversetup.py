@@ -3,7 +3,7 @@
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.45.1"
+APP_UF_VERSION = "1.45.2"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2150,7 +2150,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" ("+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
+        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" (v"+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
         if spldi == 0:
             return
         elif spldi == 1:
@@ -2702,9 +2702,11 @@ def ip_lookup(stdscr,serverdir):
         p.step(uniqueip)
         if formattediplist_getindexbyip(uniqueip,formattedips) is not None:
             ind = formattediplist_getindexbyip(uniqueip,formattedips)
-            if (datetime.datetime.now() - formattedips[ind].dateupdated).days >= 40 or (formattedips[ind].country == "Unknown Country" and not formattedips[ind].address.startswith("192.168")):
+            if (datetime.datetime.now() - formattedips[ind].dateupdated).days >= 100 or (formattedips[ind].country == "Unknown Country" and not formattedips[ind].address.startswith("192.168")):
                 #Do it again
-                
+                if uniqueip.startswith("192.168"):
+                    formattedips[ind].country = "Local Network"
+                    continue
                 sleep(0.5)
                 try:
                     r = requests.get(f"https://reallyfreegeoip.org/json/{uniqueip}").json()
@@ -2722,6 +2724,8 @@ def ip_lookup(stdscr,serverdir):
                 if not pname in formattedips[ind].players:
                     formattedips[ind].players.append(pname)#If the IP has been looked at already
         else:
+            if uniqueip.startswith("192.168"):
+                    formattedips.append(FormattedIP(uniqueip,"Local Network",IPS[uniqueip]))
             time.sleep(0.5)#Am I getting blocked??
             try:
                 r = requests.get(f"https://reallyfreegeoip.org/json/{uniqueip}").json()
@@ -3845,10 +3849,9 @@ def windows_update_software(stdscr,interactive=True):
     tdz = td.split("|")
     svr = tdz[1]
     url = tdz[0]
-    msg = tdz[2]
     if compare_versions(svr,APP_UF_VERSION) == 1:
         #NUA
-        if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{svr} over {APP_UF_VERSION}",msg,"Would you like to install it?"]):
+        if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{svr} over {APP_UF_VERSION}","Would you like to install it?"]):
             cursesplus.displaymsg(stdscr,["Downloading new update..."],False)
             urllib.request.urlretrieve(url,os.path.expandvars("%TEMP%/crssupdate.exe"))
             os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
@@ -3856,6 +3859,22 @@ def windows_update_software(stdscr,interactive=True):
     else:
         if interactive:
             cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
+
+def show_changelog_info(stdscr):
+    """Display the latest changelog info"""
+    cursesplus.displaymsg(stdscr,["Getting Info"],wait_for_keypress=False)
+    changeloginfo = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/refs/heads/main/changelog").text
+    final = []
+    for ln in changeloginfo.splitlines():
+        if ln.replace(" ","") == "":
+            continue
+        if ln.startswith("-") or ln.startswith(" "):
+            #Info
+            final.append(ln)
+        else:
+            final.append(f"Added in {ln}")
+            
+    cursesplus.textview(stdscr,text="\n".join(final),message="Changelog Info")
 
 def import_amc_server(stdscr,chlx):
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
@@ -4460,6 +4479,23 @@ def internet_thread(stdscr):
     epprodkey.load_data("https://pastebin.com/raw/8CejUxsY")
     SHOW_ADVERT = not verifykey(APPDATA["productKey"])
 
+def update_menu(stdscr):
+    global UPDATEINSTALLED
+    while True:
+        m = crss_custom_ad_menu(stdscr,["Back","Check for Updates","View Changelog"])
+        if m == 0:
+            break
+        elif m == 1:
+            if WINDOWS:
+                windows_update_software(stdscr)
+                return
+            #OLD UPDATE MAY BE REMOVED IN 0.18.3
+            if do_linux_update(stdscr):
+                UPDATEINSTALLED = True
+                return
+        elif m == 2:
+            show_changelog_info(stdscr)
+
 def main(stdscr):
     global VERSION_MANIFEST
     global VERSION_MANIFEST_DATA
@@ -4590,13 +4626,8 @@ def main(stdscr):
                     if PORTABLE:
                         cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
                         continue
-                    if WINDOWS:
-                        windows_update_software(stdscr)
-                        continue
-                    #OLD UPDATE MAY BE REMOVED IN 0.18.3
-                    if do_linux_update(stdscr):
-                        UPDATEINSTALLED = True
-                        return
+                    else:
+                        update_menu(stdscr)
                 elif m == 4:
                     webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
                     cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
