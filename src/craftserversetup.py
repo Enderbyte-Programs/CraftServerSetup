@@ -3,7 +3,7 @@
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.45.2"
+APP_UF_VERSION = "1.45.3"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -1375,7 +1375,7 @@ def setup_bedrock_server(stdscr):
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
     p = cursesplus.ProgressBar(stdscr,10,cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Setting up bedrock server")
     p.step("Getting download information")
-    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
+    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "bedrock" in g]
     link_win_normal = get_by_list_contains(availablelinks,"win/")
     link_lx_normal = get_by_list_contains(availablelinks,"linux/")
     link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
@@ -1478,7 +1478,7 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
 def bedrock_manage_server(stdscr,servername,chosenserver):
     curver = APPDATA["servers"][chosenserver-1]["linkused"]
     cursesplus.displaymsg(stdscr,["Checking for Bedrock updates"],False)
-    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
+    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "bedrock" in g]
     link_win_normal = get_by_list_contains(availablelinks,"win/")
     link_lx_normal = get_by_list_contains(availablelinks,"linux/")
     link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
@@ -3872,6 +3872,8 @@ def show_changelog_info(stdscr):
             #Info
             final.append(ln)
         else:
+            final.append("")
+            final.append("")
             final.append(f"Added in {ln}")
             
     cursesplus.textview(stdscr,text="\n".join(final),message="Changelog Info")
