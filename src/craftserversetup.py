@@ -2882,6 +2882,8 @@ def bargraph(stdscr,data:dict[str,int],message:str,unit=""):
         elif ch == 113:
             return
             
+def get_minute_id_from_datetime(d:datetime.datetime) -> int:
+    return int(d.timestamp()/60//1)
 
 class JLLogFrame:
     data:str
@@ -2890,33 +2892,98 @@ class JLLogFrame:
         rtime = lowerdata.data.split(" ")[0].strip()
         rdate = lowerdata.logdate
         
-        self.ext = datetime.datetime.strptime(f"{rdate.year}-{rdate.month}-{rdate.day} {rtime}","%Y-%m-%d %H:%M:%S")
+        self.ext = datetime.datetime.strptime(f"{rdate.year}-{rdate.month}-{rdate.day} {rtime[1:-1]}","%Y-%m-%d %H:%M:%S")
         self.data = lowerdata.data
 
 class ServerMinuteFrame:
     minuteid:int
-    onlineplayers:list[str]
+    onlineplayers:list[str] = []
     
     def __init__(self,minuteid):
         self.minuteid = minuteid
-    def wasonline(self,name):
+    def wasonline(self,name) -> bool:
         return name in self.onlineplayers
+    def todatetime(self) -> datetime:
+        return datetime.datetime.fromtimestamp(self.minuteid*60)
+    def howmanyonline(self) -> int:
+        return len(self.onlineplayers)
+
+def serverminuteframe_uf(smf:ServerMinuteFrame):
+    return f"{smf.minuteid} ({smf.todatetime()}) - {smf.onlineplayers}"
 
 def sanalytics(stdscr,serverdir):
     allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
-    p2 = cursesplus.ProgressBar(stdscr,len(allentries),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Parsing")
+    cursesplus.displaymsg(stdscr,["Parsing (1)"],wait_for_keypress=False)
     eventslist:list[JLLogFrame] = []
-    joins = {}
-    leavs = {}
+    joins:dict[int,list[str]] = {}
+    leavs:dict[int,list[str]] = {}
+    #Both of these lists will be [minuteid] -> [list of players].
+    if len(allentries) == 0:
+        cursesplus.messagebox.showwarning(stdscr,["No logs, so no info!"])
+        return
+    firstentrymid = get_minute_id_from_datetime(JLLogFrame(allentries[0]).ext)
     for entry in allentries:
-        lz = re.match(r' \S* (joined the game|left the game)')
-        if lz is not None:
+        
+        lz = re.findall(r' \S* joined the game| \S* left the game',entry.data)
+        #print(entry.data)
+        if len(lz) > 0:
+            #print(lz)
             eventslist.append(JLLogFrame(entry))
-            rs:str = lz.group(0).strip()
+            rs:str = lz[0].strip()
             plname = rs.split(" ")[0]
             action = rs.split(" ")[1]
+            
+            mid = get_minute_id_from_datetime(eventslist[-1].ext)
+            if "joined" in action:
+                if not mid in joins:
+                    joins[mid] = [plname]
+                else:
+                    joins[mid].append(plname)
+            if "left" in action:
+                if not mid in leavs:
+                    leavs[mid] = [plname]
+                else:
+                    leavs[mid].append(plname)
+            
+    cursesplus.displaymsg(stdscr,["Parsing (2)"],wait_for_keypress=False)
+    currentmid = get_minute_id_from_datetime(datetime.datetime.now())
+    #Take leavs and joins and assemble minuteframe
+    final:dict[int,ServerMinuteFrame] = {
+        firstentrymid-1:ServerMinuteFrame(firstentrymid-1)#Keep template incase no action in first minute
+    }
+    for m in range(firstentrymid,currentmid+1):
+        #M is minute id
+        if m not in joins and not m in leavs:
+            prev = copy.deepcopy(final[m-1])
+            prev.minuteid = m
+            final[m] = prev
+        else:
+            phj = []
+            phl = []
+            if m in joins:
+                phj = joins[m]
+            if m in leavs:
+                phl = leavs[m]
+            
+            frame = copy.deepcopy(final[m-1])#Deep copy!?!?!? THEN WHY WERENT YOU COPYING !?!??!
+            #frame = ServerMinuteFrame(0)
+            frame.minuteid = m 
+            frame.onlineplayers = frame.onlineplayers.copy()
+            for player in phj:
+                frame.onlineplayers.append(player)
+            for player in phl:
+                try:
+                    frame.onlineplayers.remove(player)
+                except:
+                    pass
+            final[m] = frame
+       
+    with open("/tmp/cwf.txt","w+") as f:
+        f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
+    cursesplus.displaymsg(stdscr,["Done"],False)      
     while True:
-        pass
+        
+       pass
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -3236,8 +3303,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             elif w2 == 2:
                 ip_lookup(stdscr,SERVER_DIR)
             elif w2 == 3:
-                cursesplus.messagebox.showerror(stdscr,["This feature is coming soon.","Sorry"])
-                continue
+                #cursesplus.messagebox.showerror(stdscr,["This feature is coming soon.","Sorry"])
+                #continue
                 sanalytics(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
