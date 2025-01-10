@@ -1,3 +1,7 @@
+1.46:
+- Big analytics update!
+- View assorted insights about your server and its playerbase
+- Bar graphs can now be sorted/unsorted and have y adjusted
 1.45.3:
 - Add \n\n before each version header
 - Fix critical bedrock issue
