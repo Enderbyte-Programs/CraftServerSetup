@@ -2834,32 +2834,37 @@ def friendly_positions(ins:int) -> str:
         conv += "th"
     return conv
 
-def bargraph(stdscr,data:dict[str,int],message:str,unit=""):
+def bargraph(stdscr,data:dict[str,int],message:str,unit="",sort=True,adjusty=False):
     if len(data) == 0:
         cursesplus.messagebox.showerror(stdscr,["No data"])
         return
     xoffset = 0
     footerl = 1
     selected = 0
-    data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
+    if sort:
+        data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
     while True:
         stdscr.clear()
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         stdscr.addstr(0,0,message+" | Press Q to quit",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         maxval = int(max(list(data.values())))
+        if adjusty:
+            minval = int(min(list(data.values())))
+        else:
+            minval = 0
         my,mx = stdscr.getmaxyx()
         my -= 1 #Strange bug
         graphspace = my - 1 - footerl #Remove head and foot
         ti = 4
         #Add numbers]
         for i in range(graphspace):
-            stdscr.addstr(my-(i+footerl),0,str(round(i/graphspace*maxval)))
+            stdscr.addstr(my-(i+footerl),0,str(round(i/graphspace*(maxval-minval))+minval))
         for pset in list(data.items())[xoffset:xoffset+mx-5]:
             ti += 1
             pval = pset[1]
-            trueoffset = round((pval/maxval)*graphspace)+1
+            trueoffset = round(((pval-minval)/(maxval-minval))*graphspace)+1
             
-            for i in range(trueoffset):
+            for i in range(trueoffset):             
                 if ti-5+xoffset == selected:
                     stdscr.addstr(my-(i+footerl),ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
                 else:
@@ -2884,6 +2889,9 @@ def bargraph(stdscr,data:dict[str,int],message:str,unit=""):
             
 def get_minute_id_from_datetime(d:datetime.datetime) -> int:
     return int(d.timestamp()/60//1)
+
+def get_datetime_from_minute_id(t:int) -> datetime.datetime:
+    return datetime.datetime.fromtimestamp(t*60)
 
 class JLLogFrame:
     data:str
@@ -2911,9 +2919,18 @@ class ServerMinuteFrame:
 def serverminuteframe_uf(smf:ServerMinuteFrame):
     return f"{smf.minuteid} ({smf.todatetime()}) - {smf.onlineplayers}"
 
+def strip_datetime(d:datetime.datetime) -> str:
+    return d.strftime("%Y-%m-%d %H:%M:%S")
+
+def count_unique_values(l:list) -> int:
+    return len(set(l))
+
+def remove_values_from_list(the_list, val):
+   return [value for value in the_list if value != val]
+
 def sanalytics(stdscr,serverdir):
     allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
-    cursesplus.displaymsg(stdscr,["Parsing (1)"],wait_for_keypress=False)
+    cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
     eventslist:list[JLLogFrame] = []
     joins:dict[int,list[str]] = {}
     leavs:dict[int,list[str]] = {}
@@ -2945,12 +2962,13 @@ def sanalytics(stdscr,serverdir):
                 else:
                     leavs[mid].append(plname)
             
-    cursesplus.displaymsg(stdscr,["Parsing (2)"],wait_for_keypress=False)
+    cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],wait_for_keypress=False)
     currentmid = get_minute_id_from_datetime(datetime.datetime.now())
     #Take leavs and joins and assemble minuteframe
     final:dict[int,ServerMinuteFrame] = {
         firstentrymid-1:ServerMinuteFrame(firstentrymid-1)#Keep template incase no action in first minute
     }
+    lastrealjoin:dict[str,int] = {}#keep track of the last registered join of a player. If they stay on for longer than 6 hours without a real join, they get removed.
     for m in range(firstentrymid,currentmid+1):
         #M is minute id
         if m not in joins and not m in leavs:
@@ -2970,20 +2988,89 @@ def sanalytics(stdscr,serverdir):
             frame.minuteid = m 
             frame.onlineplayers = frame.onlineplayers.copy()
             for player in phj:
+                lastrealjoin[player] = m
+                if player in phl:
+                    phl.remove(player)
+                    continue#This should solve the quick joinleave problem
                 frame.onlineplayers.append(player)
             for player in phl:
                 try:
-                    frame.onlineplayers.remove(player)
+                    frame.onlineplayers = remove_values_from_list(frame.onlineplayers,player)
                 except:
                     pass
+            for op in frame.onlineplayers:
+                try:
+                    if (m - lastrealjoin[op]) > 360:
+                        #print("REM")
+                        frame.onlineplayers = remove_values_from_list(frame.onlineplayers,op)
+                except:
+                    pass#If player inspects analytics starting from when players were online, this could crash
             final[m] = frame
        
-    with open("/tmp/cwf.txt","w+") as f:
-        f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
-    cursesplus.displaymsg(stdscr,["Done"],False)      
+    #with open("/tmp/cwf.txt","w+") as f:
+    #    f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
+    cursesplus.displaymsg(stdscr,["Done"],False)
+    minminid = firstentrymid      
+    maxminid = get_minute_id_from_datetime(datetime.datetime.now())
     while True:
-        
-       pass
+        cursesplus.displaymsg(stdscr,["Applying filters..."],False)
+        workingdata:dict[str,ServerMinuteFrame] = {}
+        for k in list(final.keys()):
+            if k >= minminid and k <= maxminid:
+                workingdata[k] = final[k]
+        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS"],"Server Analytics Manager")
+        if wtd == 0:
+            return
+        elif  wtd == 1:
+            pass
+        elif wtd == 2:
+            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
+            playminutes:dict[str,int] = {}
+            for entry in list(workingdata.values()):
+                for p in entry.onlineplayers:
+                    if not p in playminutes:
+                        playminutes[p] = 0
+                    playminutes[p] += 1
+            while True:
+                swtd = crss_custom_ad_menu(stdscr,["Back","VIEW GRAPH"]+list(playminutes.keys()),"Choose a player to view their playtime information")
+                if swtd == 0:
+                    break
+                elif swtd == 1:
+                    bargraph(stdscr,playminutes,"Player Minute Information","minutes")
+                else:
+                    cursesplus.messagebox.showinfo(stdscr,["Playtime Minutes: "+str(playminutes[list(playminutes.keys())[swtd-2]])])
+            
+        elif wtd == 3:
+            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
+            allplayers = []
+            for entry in list(workingdata.values()):
+                allplayers += entry.onlineplayers
+            cursesplus.messagebox.showinfo(stdscr,["During the time selected,",str(count_unique_values(allplayers)),"unique players have joined this server"])
+            cursesplus.messagebox.showinfo(stdscr,["The maximum number of players at once was ",str(max([s.howmanyonline() for s in list(workingdata.values())]))])
+        elif wtd == 4:
+            cursesplus.messagebox.showinfo(stdscr,["This graph is shown in player-minutes","It is one for each minute a player spends"])
+            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
+            dataset:list[int] = [0 for _ in range(24)]#0:00 to 23:00
+
+            for entry in list(workingdata.values()):
+                hr = get_datetime_from_minute_id(entry.minuteid).hour
+                dataset[hr] += entry.howmanyonline()
+                
+            dataset_ps = {}
+            i = 0
+            for ex in dataset:
+                dataset_ps[f"{i}:00 - {i}:59"] = ex
+                i += 1
+                
+            bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
+            
+        elif wtd == 5:
+            minminid = get_minute_id_from_datetime(cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a new minimum filter time",True,False,get_datetime_from_minute_id(minminid)))
+        elif wtd == 6:
+            maxminid = get_minute_id_from_datetime(cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a new minimum filter time",True,False,get_datetime_from_minute_id(maxminid)))
+        elif wtd == 7:
+            minminid = firstentrymid      
+            maxminid = get_minute_id_from_datetime(datetime.datetime.now())
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
