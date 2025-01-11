@@ -3,7 +3,7 @@
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.45.3"
+APP_UF_VERSION = "1.46"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2584,6 +2584,7 @@ def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
         return []
     pushd(logfile)
     logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    #cursesplus.messagebox.showinfo(stdscr,[f"F {len(logs)}"])
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
     allentries:list[LogEntry] = []
     for lf in logs:
@@ -2925,6 +2926,9 @@ def strip_datetime(d:datetime.datetime) -> str:
 def count_unique_values(l:list) -> int:
     return len(set(l))
 
+def remove_duplicates_from_list(l:list) -> list:
+    return list(set(l))
+
 def remove_values_from_list(the_list, val):
    return [value for value in the_list if value != val]
 
@@ -2945,6 +2949,9 @@ class AnalyticsExplorerDataTypes(enum.Enum):
     TOTALPLAYERMINUTES = 0
     MAXPLAYERCOUNT = 1
     AVERAGEPLAYERCOUNT = 2
+
+def sort_dict_by_key(d:dict) -> dict:
+    return dict(sorted(list(d.items())))
 
 def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
     
@@ -3020,9 +3027,9 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
             else:
                 offset = 0
         elif ch == "KEY_END":
-            comingsoon(stdscr)
+            offset = datasize - 1
         elif ch == "KEY_HOME":
-            comingsoon(stdscr)
+            offset = 0
         elif ch == "j":
             ndate = cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a date and time to jump to",True,False,get_datetime_from_minute_id(ldata[offset].minuteid))
             nmid = get_minute_id_from_datetime(ndate)
@@ -3030,9 +3037,13 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                 cursesplus.messagebox.showerror(stdscr,["Records do not exist for the selected date."])
             else:
                 offset = list(data.keys()).index(nmid)
+        if offset > datasize:
+            offset = datasize - 1
 
 def sanalytics(stdscr,serverdir):
+    
     allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
+    earliestentrydt:datetime.date = allentries[0].logdate
     cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
     eventslist:list[JLLogFrame] = []
     joins:dict[int,list[str]] = {}
@@ -3041,12 +3052,15 @@ def sanalytics(stdscr,serverdir):
     if len(allentries) == 0:
         cursesplus.messagebox.showwarning(stdscr,["No logs, so no info!"])
         return
-    firstentrymid = get_minute_id_from_datetime(JLLogFrame(allentries[0]).ext)
+    
     for entry in allentries:
         
         lz = re.findall(r' \S* joined the game| \S* left the game',entry.data)
+        
         #print(entry.data)
         if len(lz) > 0:
+            if entry.logdate < earliestentrydt:
+                earliestentrydt = entry.logdate
             #print(lz)
             eventslist.append(JLLogFrame(entry))
             rs:str = lz[0].strip()
@@ -3064,7 +3078,10 @@ def sanalytics(stdscr,serverdir):
                     leavs[mid] = [plname]
                 else:
                     leavs[mid].append(plname)
-            
+    cursesplus.displaymsg(stdscr,["Sorting Data","Please Wait"],wait_for_keypress=False)
+    joins = sort_dict_by_key(joins)
+    leavs = sort_dict_by_key(leavs)
+    firstentrymid = get_minute_id_from_datetime(datetime.datetime.combine(earliestentrydt,datetime.time(0,0,0)))
     cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],wait_for_keypress=False)
     currentmid = get_minute_id_from_datetime(datetime.datetime.now())
     #Take leavs and joins and assemble minuteframe
@@ -3109,10 +3126,16 @@ def sanalytics(stdscr,serverdir):
                 except:
                     pass#If player inspects analytics starting from when players were online, this could crash
             final[m] = frame
+            
+    cursesplus.displaymsg(stdscr,["Cleaning Data","Please Wait"],wait_for_keypress=False)
+    
+    for k in final:
+        final[k].onlineplayers = remove_duplicates_from_list(final[k].onlineplayers)
        
-    #with open("/tmp/cwf.txt","w+") as f:
-    #    f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
+    with open("/tmp/cwf.txt","w+") as f:
+        f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
     cursesplus.displaymsg(stdscr,["Done"],False)
+    
     minminid = firstentrymid      
     maxminid = get_minute_id_from_datetime(datetime.datetime.now())
     while True:
