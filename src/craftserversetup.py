@@ -2928,6 +2928,109 @@ def count_unique_values(l:list) -> int:
 def remove_values_from_list(the_list, val):
    return [value for value in the_list if value != val]
 
+def comingsoon(stdscr):
+    cursesplus.messagebox.showerror(stdscr,["Sorry, this feature is coming soon"])
+
+def split_list_into_chunks(l, n):
+    for i in range(0, len(l), n): 
+        yield l[i:i + n]
+
+class AnalyticsExplorerZoomLevels(enum.Enum):
+    MINUTE = 0
+    HOUR = 60
+    DAY = 1440
+    MONTH = 43200
+    
+class AnalyticsExplorerDataTypes(enum.Enum):
+    TOTALPLAYERMINUTES = 0
+    MAXPLAYERCOUNT = 1
+    AVERAGEPLAYERCOUNT = 2
+
+def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
+    
+    #This function allows users to explore their analytics
+    offset = 0
+    datasize = len(data)-1
+    currentzoomlevel = AnalyticsExplorerZoomLevels.MINUTE#Also passively the list chunk size
+    currentdatatype = AnalyticsExplorerDataTypes.MAXPLAYERCOUNT
+    ldata = list(data.values())#List representation of data to prevent performance issues?
+    maxval = max([len(p.onlineplayers) for p in list(data.values())])
+    while True:
+        my,mx = stdscr.getmaxyx()
+        xspace = mx-1
+        yspace = my-4#Top Bottom, and weird bug
+        stdscr.erase()
+        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.BLUE))
+        stdscr.addstr(0,0,"Analytics Explorer - Press Q to quit and H for help",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        
+        if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
+            maxval = maxval*currentzoomlevel
+        
+        ti = 0
+        for i in range(offset-xspace//2,offset+xspace//2):
+            if i < 0 or i > datasize:
+                #Write red bar
+                #print("w")
+                for dy in range(1,yspace+1):
+                    stdscr.addstr(dy,ti,"█",cursesplus.set_colour(cursesplus.RED,cursesplus.RED))
+            else:
+                seldata = ldata[i]
+                scale = int(seldata.howmanyonline()/maxval*yspace)
+                
+                if i == offset:
+                    for p in range(1,yspace+2):
+                        stdscr.addstr(p,ti,"█",cursesplus.set_colour(cursesplus.GREEN,cursesplus.GREEN))#Central marker
+                    for p in range(yspace+1,yspace+1-scale,-1):
+                        stdscr.addstr(p,ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
+                else:
+                    for p in range(yspace+1,yspace+1-scale,-1):
+                        stdscr.addstr(p,ti,"█",cursesplus.set_colour(cursesplus.WHITE,cursesplus.WHITE))
+            
+            ti += 1
+            
+        seldata = ldata[offset]
+        stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.howmanyonline()} players online - {seldata.onlineplayers}")
+        
+        ch = curses.keyname(stdscr.getch()).decode()
+        if ch == "q":
+            break
+        elif ch == "h":
+            cursesplus.displaymsg(stdscr,["KEYBINDS","q - Quit","h - Help","z - Change Zoom","d - Change data type","<- -> Scroll","END - Go to end","HOME - Go to beginning","j - Jump to time","SHIFT <-- --> - Jump hour","Ctrl <-- --> - Jump day"])
+        elif ch == "z":
+            comingsoon(stdscr)
+        elif ch == "d":
+            comingsoon(stdscr)
+        elif ch == "KEY_LEFT":
+            if offset > 0:
+                offset -= 1
+        elif ch == "KEY_RIGHT":
+            offset += 1
+        elif ch == "KEY_SLEFT":
+            if offset > 60:
+                offset -= 60
+            else:
+                offset = 0
+        elif ch == "KEY_SRIGHT":#Jump around by an hour
+            offset += 60 
+        elif ch == "kRIT5":
+            offset += 1440
+        elif ch == "kLFT5":
+            if offset > 1440:
+                offset -= 1440
+            else:
+                offset = 0
+        elif ch == "KEY_END":
+            comingsoon(stdscr)
+        elif ch == "KEY_HOME":
+            comingsoon(stdscr)
+        elif ch == "j":
+            ndate = cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a date and time to jump to",True,False,get_datetime_from_minute_id(ldata[offset].minuteid))
+            nmid = get_minute_id_from_datetime(ndate)
+            if not nmid in data:
+                cursesplus.messagebox.showerror(stdscr,["Records do not exist for the selected date."])
+            else:
+                offset = list(data.keys()).index(nmid)
+
 def sanalytics(stdscr,serverdir):
     allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
     cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
@@ -3022,7 +3125,7 @@ def sanalytics(stdscr,serverdir):
         if wtd == 0:
             return
         elif  wtd == 1:
-            pass
+            server_analytics_explorer(stdscr,workingdata)
         elif wtd == 2:
             cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
             playminutes:dict[str,int] = {}
