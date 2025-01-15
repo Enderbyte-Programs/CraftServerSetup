@@ -3,7 +3,7 @@
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.46"
+APP_UF_VERSION = "1.47"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -44,7 +44,7 @@ import re                       #Pattern matching
 
 WINDOWS = platform.system() == "Windows"
 
-if sys.version_info < (3,7):
+if sys.version_info < (3,10):
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     print("!!!!!! Serious  Error !!!!!!")
     print("!! Python version too old !!")
@@ -2848,11 +2848,13 @@ def bargraph(stdscr,data:dict[str,int],message:str,unit="",sort=True,adjusty=Fal
         stdscr.clear()
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         stdscr.addstr(0,0,message+" | Press Q to quit",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        maxval = int(max(list(data.values())))
+        maxval = max(list(data.values()))
         if adjusty:
-            minval = int(min(list(data.values())))
+            minval = min(list(data.values()))
         else:
             minval = 0
+        if maxval-minval == 0:
+            minval = maxval-1
         my,mx = stdscr.getmaxyx()
         my -= 1 #Strange bug
         graphspace = my - 1 - footerl #Remove head and foot
@@ -2867,9 +2869,15 @@ def bargraph(stdscr,data:dict[str,int],message:str,unit="",sort=True,adjusty=Fal
             
             for i in range(trueoffset):             
                 if ti-5+xoffset == selected:
-                    stdscr.addstr(my-(i+footerl),ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
+                    try:
+                        stdscr.addstr(my-(i+footerl),ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
+                    except:
+                        pass
                 else:
-                    stdscr.addstr(my-(i+footerl),ti,"█")
+                    try:
+                        stdscr.addstr(my-(i+footerl),ti,"█")
+                    except:
+                        pass
         dnsel = list(data.keys())[selected]
         stdscr.addstr(my,0,f"{dnsel} ({list(data.values())[selected]} {unit}) - {friendly_positions(sorted(list(data.values()),reverse=True).index(list(data.values())[selected])+1)} place")
         stdscr.refresh()
@@ -3002,11 +3010,7 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
         if ch == "q":
             break
         elif ch == "h":
-            cursesplus.displaymsg(stdscr,["KEYBINDS","q - Quit","h - Help","z - Change Zoom","d - Change data type","<- -> Scroll","END - Go to end","HOME - Go to beginning","j - Jump to time","SHIFT <-- --> - Jump hour","Ctrl <-- --> - Jump day"])
-        elif ch == "z":
-            comingsoon(stdscr)
-        elif ch == "d":
-            comingsoon(stdscr)
+            cursesplus.displaymsg(stdscr,["KEYBINDS","q - Quit","h - Help","<- -> Scroll","END - Go to end","HOME - Go to beginning","j - Jump to time","SHIFT <-- --> - Jump hour","Ctrl <-- --> - Jump day"])
         elif ch == "KEY_LEFT":
             if offset > 0:
                 offset -= 1
@@ -3039,6 +3043,12 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                 offset = list(data.keys()).index(nmid)
         if offset > datasize:
             offset = datasize - 1
+            
+def average_list(l:list[int|float]) -> float:
+    return sum(l)/len(l)
+            
+def recursive_average(l:list[list[int|float]]) -> list[float]:
+    return [average_list(z) for z in l]
 
 def sanalytics(stdscr,serverdir):
     
@@ -3132,8 +3142,8 @@ def sanalytics(stdscr,serverdir):
     for k in final:
         final[k].onlineplayers = remove_duplicates_from_list(final[k].onlineplayers)
        
-    with open("/tmp/cwf.txt","w+") as f:
-        f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
+    #with open("/tmp/cwf.txt","w+") as f:
+    #    f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
     cursesplus.displaymsg(stdscr,["Done"],False)
     
     minminid = firstentrymid      
@@ -3144,7 +3154,7 @@ def sanalytics(stdscr,serverdir):
         for k in list(final.keys()):
             if k >= minminid and k <= maxminid:
                 workingdata[k] = final[k]
-        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS"],"Server Analytics Manager")
+        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time"],"Server Analytics Manager")
         if wtd == 0:
             return
         elif  wtd == 1:
@@ -3164,8 +3174,41 @@ def sanalytics(stdscr,serverdir):
                 elif swtd == 1:
                     bargraph(stdscr,playminutes,"Player Minute Information","minutes")
                 else:
-                    cursesplus.messagebox.showinfo(stdscr,["Playtime Minutes: "+str(playminutes[list(playminutes.keys())[swtd-2]])])
-            
+                    plstudy = list(playminutes.keys())[swtd-2]
+                    zwtd = crss_custom_ad_menu(stdscr,["Total Playtime Minutes","Playtime History","Time of Day analyzers"])
+                    match zwtd:
+                        case 0:
+                            cursesplus.messagebox.showinfo(stdscr,["Playtime Minutes: "+str(playminutes[list(playminutes.keys())[swtd-2]])])
+                        case 1:
+                            cursesplus.displaymsg(stdscr,["Analyzing Data","Please wait"],False)
+                            dzl = {}#yearmonth:data
+                            for entry in list(workingdata.values()):
+                                if plstudy in entry.onlineplayers:
+                                    nd = get_datetime_from_minute_id(entry.minuteid)
+                                    nk = f"{nd.year}-{str(nd.month).zfill(2)}"
+                                    if not nk in dzl:
+                                        dzl[nk] = 1
+                                    else:
+                                        dzl[nk] += 1
+                                        
+                            bargraph(stdscr,dzl,f"How has {plstudy} played over the months?","minutes spend",False,True)
+                        case 2:
+                            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
+                            dataset:list[int] = [0 for _ in range(24)]#0:00 to 23:00
+
+                            for entry in list(workingdata.values()):
+                                hr = get_datetime_from_minute_id(entry.minuteid).hour
+                                if plstudy in entry.onlineplayers:
+                                    dataset[hr] += 1
+                                
+                            dataset_ps = {}
+                            i = 0
+                            for ex in dataset:
+                                dataset_ps[f"{i}:00 - {i}:59"] = ex
+                                i += 1
+                                
+                            bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
+                            
         elif wtd == 3:
             cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
             allplayers = []
@@ -3197,6 +3240,55 @@ def sanalytics(stdscr,serverdir):
         elif wtd == 7:
             minminid = firstentrymid      
             maxminid = get_minute_id_from_datetime(datetime.datetime.now())
+        elif wtd == 8:
+            od = cursesplus.filedialog.openfolderdialog(stdscr,"Select output folder")
+            if od is not None:
+                cursesplus.displaymsg(stdscr,["Please wait..."],False)
+                finalstr = "Minute ID,Local Time,Player Count,Online Players\n"
+                for entry in list(workingdata.values()):
+                    finalstr += f"{entry.minuteid},{get_datetime_from_minute_id(entry.minuteid)},{entry.howmanyonline()},{', '.join(entry.onlineplayers)}\n"
+                with open(od+"/serverplayers.csv","w+") as f:
+                    f.write(finalstr)
+                cursesplus.messagebox.showinfo(stdscr,["Exported successfully"])
+        elif wtd == 9:
+            tan = crss_custom_ad_menu(stdscr,["Total Player-minutes","Unique Players","Average Online Players","Average Online Players (active time)"],"Select Data to examine",footer="(active time) shows only data that is not zero")
+            gd:dict[str,object] = {}
+            unit = "player-minutes"
+            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
+            match tan:
+                case 0:
+                    for entry in list(workingdata.values()):
+                        gkey = f"{get_datetime_from_minute_id(entry.minuteid).year}-{get_datetime_from_minute_id(entry.minuteid).month.__str__().zfill(2)}"
+                        if gkey in gd:
+                            gd[gkey] += entry.howmanyonline()
+                        else:
+                            gd[gkey] = entry.howmanyonline()
+                case 1:
+                    for entry in list(workingdata.values()):
+                        gkey = f"{get_datetime_from_minute_id(entry.minuteid).year}-{get_datetime_from_minute_id(entry.minuteid).month.__str__().zfill(2)}"
+                        if gkey in gd:
+                            for pl in entry.onlineplayers:
+                                if pl not in gd[gkey]:
+                                    gd[gkey].append(pl)
+                        else:
+                            gd[gkey] = entry.onlineplayers
+                    for dkey in gd:
+                        gd[dkey] = len(gd[dkey])#Convert lists of players into lens
+                    unit = "unique players"
+                case 2 | 3:
+                    for entry in list(workingdata.values()):
+                        gkey = f"{get_datetime_from_minute_id(entry.minuteid).year}-{get_datetime_from_minute_id(entry.minuteid).month.__str__().zfill(2)}"
+                        if gkey in gd:
+                            if entry.howmanyonline() > 0 or tan == 2:
+                                gd[gkey].append(entry.howmanyonline())
+                            
+                        else:
+                            gd[gkey] = [entry.howmanyonline()]
+                    for dkey in gd:
+                        gd[dkey] = average_list(gd[dkey])
+                    unit = "online players"
+                
+            bargraph(stdscr,gd,"Popularity Results",unit,False,False)
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA

@@ -1,3 +1,8 @@
+1.47:
+- Analytics major improvements
+- Now requires Python 3.10.
+- Patch 0 division bug in bar graph
+- Add Server performance lookup
 1.46:
 - Big analytics update!
 - View assorted insights about your server and its playerbase

@@ -1,6 +1,10 @@
 - Minor fixes:
     - Releases, Snapshots, and Experiments are sorted into groups in vanilla version selection menu
-- Add player tracker (analytics)
+- Analysis improvement:
+    - AE data and zoom
+    - Player:
+        - View minutes over months
+        - View minutes over day
 - Add bungeecord and Velocity support
 - Add inventory viewer or player data editor
     - Or to be basic, playtime tracker
