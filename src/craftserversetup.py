@@ -2,8 +2,9 @@
 #Early load variables
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.47"
+APP_UF_VERSION = "1.47.1"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -252,7 +253,7 @@ def prodkeycheck(a):
     return not SHOW_ADVERT
 
 def compatibilize_appdata(data:dict) -> dict:
-    """This function ensures that appdata is brought up to the latest version"""
+    """This function ensures that appdata is brought up to the latest version. It is compatible to the beginning."""
     try:
         cver = data["version"]
     except:
@@ -342,6 +343,8 @@ def compatibilize_appdata(data:dict) -> dict:
             data['servers'][svri]["settings"]["legacy"] = True
         if not "backupdir" in svr:
             data['servers'][svri]["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(data['servers'][svri]["id"])
+        if data["servers"][svri]["software"] == 0:
+            data["servers"][svri]["software"] = 5#v1.48
         svri += 1
 
     svk = 0
@@ -1407,7 +1410,7 @@ def setup_bedrock_server(stdscr):
         "dir" : S_INSTALL_DIR,
         "version" : l2d.split("-")[-1].replace(".zip",""),
         "moddable" : False,
-        "software" : 0,
+        "software" : 5,
         "id" : random.randint(1111,9999),
         "settings": {
             "launchcommands": [],
@@ -1562,6 +1565,42 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             stdscr.clear()
             stdscr.refresh()
 
+def choose_server_name(stdscr) -> str:
+    """Prompt the user to create new name, not allowing duplicates found in SERVERSDIR"""
+    while True:
+        curses.curs_set(1)
+        servername = crssinput(stdscr,"Please choose a name for your server").strip()
+        curses.curs_set(0)
+        if not os.path.isdir(SERVERSDIR):
+            os.mkdir(SERVERSDIR)
+        if os.path.isdir(SERVERSDIR+"/"+servername):
+            cursesplus.displaymsg(stdscr,["Name already exists."])
+            continue
+        else:
+            try:
+                os.mkdir(SERVERSDIR+"/"+servername)
+            except:
+                cursesplus.displaymsg(stdscr,["Error","Server path is illegal"])
+            else:
+                break
+    return servername
+
+def setup_proxy_server(stdscr):
+    cursesplus.messagebox.showerror(stdscr,["Not Yet Implemented"])
+    if not cursesplus.messagebox.askokcancel(stdscr,["Proxy servers are DIFFERENT from normal servers!","A proxy server connects to existing normal servers to distribute them.","Proxy servers are more difficult to configure.","Be sure you know what server type you are making"]):
+        return
+    
+    proxytype = crss_custom_ad_menu(stdscr,["Cancel","Bungeecord (by spigot)"])
+    if proxytype == 0:
+        return
+    else:
+        servername = choose_server_name(stdscr)
+        S_INSTALL_DIR = SERVERSDIR+"/"+servername
+        cursesplus.displaymsg(stdscr,["Please wait while your server is set up"],False)
+        urllib.request.urlretrieve(BUNGEECORD_DOWNLOAD_URL,S_INSTALL_DIR+"/server.jar")
+        njavapath = choose_java_install(stdscr)
+        
+
 def setupnewserver(stdscr):
     stdscr.erase()
     
@@ -1571,11 +1610,14 @@ def setupnewserver(stdscr):
     elif wtd == 2:
         import_server(stdscr)
         return
-    bigserverblock = crss_custom_ad_menu(stdscr,["Cancel","Java (Computer, PC)","Bedrock (Console, Tablet, etc)"],"Choose Minecraft kind to install")
+    bigserverblock = crss_custom_ad_menu(stdscr,["Cancel","Java (Computer, PC)","Bedrock (Console, Tablet, etc)","Java Proxy"],"Choose Minecraft kind to install")
     if bigserverblock == 0:
         return
     elif bigserverblock == 2:
         setup_bedrock_server(stdscr)
+        return
+    elif bigserverblock == 3:
+        setup_proxy_server(stdscr)
         return
         
     while True:
@@ -1603,22 +1645,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
     serversoftware -= 1
     if serversoftware == -1:
         return
-    while True:
-        curses.curs_set(1)
-        servername = crssinput(stdscr,"Please choose a name for your server").strip()
-        curses.curs_set(0)
-        if not os.path.isdir(SERVERSDIR):
-            os.mkdir(SERVERSDIR)
-        if os.path.isdir(SERVERSDIR+"/"+servername):
-            cursesplus.displaymsg(stdscr,["Name already exists."])
-            continue
-        else:
-            try:
-                os.mkdir(SERVERSDIR+"/"+servername)
-            except:
-                cursesplus.displaymsg(stdscr,["Error","Server path is illegal"])
-            else:
-                break
+    servername = choose_server_name(stdscr)
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
     cursesplus.displaymsg(stdscr,["Please wait while your server is set up"],False)
     njavapath = choose_java_install(stdscr)

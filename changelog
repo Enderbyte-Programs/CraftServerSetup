@@ -1,3 +1,10 @@
+1.48:
+- Add bungeecord support
+- Create choose_server_name()
+- Bedrock servers now use softwareid:5
+- Bungeecord uses softwareiod:6
+1.47.1:
+- Emergency bugfix to use Cursesplus 3.17
 1.47:
 - Analytics major improvements
 - Now requires Python 3.10.
