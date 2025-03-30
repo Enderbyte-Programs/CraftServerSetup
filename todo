@@ -7,4 +7,6 @@
         - View minutes over day
 - Add bungeecord and Velocity support
 - Add inventory viewer or player data editor
-    - Or to be basic, playtime tracker
+- Fix underscore bug with ip lookup
+- Add textview printouts to files
+- Add server command audit log

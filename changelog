@@ -1,8 +1,11 @@
 1.48:
-- Add bungeecord support
-- Create choose_server_name()
-- Bedrock servers now use softwareid:5
-- Bungeecord uses softwareiod:6
+- Fix bug where text colourer in menus would be hyperactive
+- All textview screens can now be saved as a file
+- Add savefile_selector()
+- Fix bug where ip lookup ignores players with underscores in their username
+- Add command auditer
+- View logs is now Server Logs >>
+- Bar graphs now scroll correctly
 1.47.1:
 - Emergency bugfix to use Cursesplus 3.17
 1.47:
