@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.47.1"
+APP_UF_VERSION = "1.48"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -604,7 +604,7 @@ def send_telemetry():
         "IsActivated" : APPDATA["productKey"] != "",
         "ApplicationVersion" : APP_UF_VERSION
         }
-    #cursesplus.textview(_SCREEN,text=str(rdx))
+    #crss_textview(_SCREEN,text=str(rdx))
     r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
 def parse_size(data: int) -> str:
     if data < 0:
@@ -639,7 +639,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
         if erz == 0:
             safe_exit(1)
         elif erz == 1:
-            cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
+            crss_textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
            
         elif erz == 2:
             if WINDOWS:
@@ -865,6 +865,141 @@ def dictpath(inputd:dict,path:str):
         else:
             final = final[axx]
     return final
+
+def is_a_valid_file_name(s:str) -> bool:
+    #Checks if a string is avalid file path
+    banned_characters = ["\"","*","<",">",":","|","?"]
+    for c in banned_characters:
+        if c in s:
+            return False
+    return True
+
+def savefile_selector(stdscr,defaultdirectory=os.getcwd(),extension="",enforce_extension=False) -> str:
+    directo = defaultdirectory
+    fileo = ""
+    while True:
+        p = cursesplus.coloured_option_menu(stdscr,["Finish",f"Directory: {directo}",f"File: {fileo}",f"{directo}{os.sep}{fileo}"],colouring=[["finish",cursesplus.GREEN]])
+        match p:
+            case 0:
+                if fileo == "" or directo == "":
+                    cursesplus.messagebox.showerror(stdscr,["Please fill in the form entirely."])
+                    continue
+                final = directo + os.sep + fileo
+                if is_a_valid_file_name(final):
+                    return final
+                else:
+                    cursesplus.messagebox.showerror(stdscr,["Not a valid path."])
+            case 1:
+                directo = cursesplus.filedialog.openfolderdialog(stdscr,"Choose the directory for the file",directo,False)
+            case 2:
+                barefn = crssinput(stdscr,"Write filename",prefiltext=fileo)
+                if enforce_extension:
+                    if not barefn.endswith(extension):
+                        barefn += extension
+                fileo = barefn
+
+def crss_textview(stdscr,file=None,text=None,isagreement=False,requireyes=True,message="",allowprintout=True) -> bool:
+    """
+    ## View Text interactively
+
+    This function is resize-friendly
+    Set either file or text to not none to use mode. Set isagreement to true if you want this to be a license agreement
+    Returns true if isagreement is false or if user agreed. Returns false if the user did not agree
+    set allowprintout to set if the user can print to a file or not
+    """
+    offset = 0
+    if file is None and text is None:
+        raise cursesplus.ArgumentError("Please specify a file or text to display")
+    elif file is not None and os.path.isfile(file):
+        with open(file) as f:
+            text = f.read()
+    elif text is not None:
+        text = text
+
+    cursesplus.displaymsg(stdscr,["Preparing text","Please wait..."],False)
+    zltext = text.splitlines()
+    mx,my = os.get_terminal_size()
+    n = mx - 1
+    broken_text = []
+    for text in zltext:
+        if text.replace(" ","") == "":
+            broken_text += [""]
+        else:
+            broken_text += textwrap.wrap(text,n)
+    while True:
+        stdscr.clear()
+        #stdscr.refresh()
+        #Segment text
+        if os.get_terminal_size()[0]-1 != n:
+            #Resegment text
+            mx,my = os.get_terminal_size()
+            n = mx - 1
+            broken_text = []
+            for text in zltext:
+                if text.replace(" ","") == "":
+                    broken_text += [""]
+                else:
+                    broken_text += textwrap.wrap(text,n)
+        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(0,0,message[0:mx-8],cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        prog = f"{offset}/{len(broken_text)}"
+        stdscr.addstr(0,mx-len(prog)-1,prog,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        cursesplus.utils.fill_line(stdscr,my-1,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        appenderstring = ""
+        if isagreement:
+            appenderstring += "A: Agree | D: Disagree"
+        else:
+            appenderstring += "Press enter to exit"
+        if allowprintout:
+            appenderstring += " | S: Save to file"
+        #if isagreement:
+        #    stdscr.addstr(my-1,0,"A: Agree | D: Disagree",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        #else:
+        stdscr.addstr(my-1,0,appenderstring,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        li = 1
+        for line in broken_text[offset:offset+(my-2)]:
+            try:
+                stdscr.addstr(li,0,line)
+                li += 1
+            except:
+                pass
+
+        ch = stdscr.getch()
+        if ch == curses.KEY_DOWN:
+            offset += 1
+        elif ch == curses.KEY_UP and offset > 0:
+            offset -= 1
+        elif ch == curses.KEY_HOME:
+            offset = 0
+        elif (ch == 10 or ch == 13 or ch == curses.KEY_ENTER) and not isagreement:
+            return True
+        elif ch == 97 and isagreement:
+            return True
+        elif ch == 100 and isagreement:
+            if not requireyes:
+                return False
+            else:
+                cursesplus.messagebox.showwarning(stdscr,["You must agree to the license to proceed"])
+        elif ch == curses.KEY_END:
+            if len(broken_text) > my-2:
+                offset = len(broken_text) - my+2
+        elif ch == curses.KEY_PPAGE:
+            if offset > 10:
+                offset -= 10
+            else:
+                offset = 0
+
+        elif ch == curses.KEY_NPAGE:
+            offset += 10
+        elif ch == 115:
+            savefile = savefile_selector(stdscr,extension=".txt")
+            try:
+                with open(savefile,"w+") as f:
+                    f.write("\n".join(broken_text))
+            except Exception as e:
+                cursesplus.messagebox.showerror(stdscr,["Could not save.",f"Reason: {str(e)}"])
+            else:
+                cursesplus.messagebox.showinfo(stdscr,["Save successsful"])
 
 def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
     """isflat controls if you are allowed to add new folders/list"""
@@ -1102,6 +1237,12 @@ def list_recursive_contains(lst: list,item:str) -> int:
         ii += 1
     raise IndexError("Could not find item")
 
+def list_recursive_contains_inverse(s:str,searches:list[str]) -> bool:
+    for sr in searches:
+        if sr in s:
+            return True
+    return False
+
 def get_by_list_contains(lst: list,item:str):
     return lst[list_recursive_contains(lst,item)]
 
@@ -1137,6 +1278,13 @@ class LogEntry:
         
     def fromdict(indict:dict):
         return LogEntry(None,None,None,indict)
+    
+    def get_full_log_time(self) -> datetime.datetime:
+        timestr = self.data.split("]")[0].replace("[","")
+        try:
+            return datetime.datetime(self.logdate.year,self.logdate.month,self.logdate.day,int(timestr.split(":")[0]),int(timestr.split(":")[1]),int(timestr.split(":")[2]))
+        except:
+            return datetime.datetime(self.logdate.year,self.logdate.month,self.logdate.day,0,0,0)
 
 def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
     if "latest" in fromfilename:
@@ -1626,7 +1774,7 @@ def setupnewserver(stdscr):
         if serversoftware != 1:
             break
         else:
-            cursesplus.textview(stdscr,text="""
+            crss_textview(stdscr,text="""
                                 
 Help on choosing a server software
                                 
@@ -2017,7 +2165,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
             lenset = merge_dicts(lenset,tl)#Merge dicts
             inres = process_modrinth_api_return_with_config(oldinres,lenset)
         elif modch == 2:
-            cursesplus.textview(stdscr,text=PLUGIN_HELP,message="Help")
+            crss_textview(stdscr,text=PLUGIN_HELP,message="Help")
         else:
             chmod = inres[modch-3]
             while True:
@@ -2119,7 +2267,7 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
             cursesplus.displaymsg(stdscr,["Downloading package list",f"Page {px}"],False)
             rq = f"https://api.spiget.org/v2/resources/for/{shiftedversion}"
             r = requests.get(rq,headers=headers,params={"size":1000,"page":px}).json()
-            #cursesplus.textview(stdscr,text=json.dumps(r))
+            #crss_textview(stdscr,text=json.dumps(r))
             px += 1
             final += r["match"]
             if len(r["match"]) ==0:
@@ -2389,7 +2537,107 @@ def update_purpur_software(stdscr,serverdir:str,chosenserver:int):
     PACKAGEDATA = {"id" : verlist[verlist.index(verdn)]}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
 
+class CommandExecution:
+    issuer:str
+    when:datetime.datetime
+    commandstr: str
+    def __init__(self,i,w,c):
+        self.issuer = i
+        self.when = w
+        self.commandstr = c
+    def fromraw(line:LogEntry):
+        selsection = re.findall(r"[a-zA-Z0-9_]+\sissued server command: .*",line.data)[0]
+        i = selsection.split(" ")[0]
+        w = line.get_full_log_time()
+        c = selsection.split("issued server command")[1][2:]
+        return CommandExecution(i,w,c)
+    def __str__(self):
+        return f"{self.when} {self.issuer}{' '*(16-len(self.issuer))} {self.commandstr}"
+    
+def is_logentry_command(l:LogEntry) -> bool:
+    return len(re.findall(r"[a-zA-Z0-9_]+\sissued server command: .*",l.data)) > 0
 
+def recursive_list_startswith(searcher:str,items:list[str]) -> bool:
+    for s in items:
+        if s in searcher:
+            return True
+    return False
+
+def command_execution_auditing(stdscr,serverdir:str):
+    orderedlogs = load_server_logs(stdscr,serverdir)
+    finalcmds:list[CommandExecution] = []
+    cursesplus.displaymsg(stdscr,["Finding Commands"],False)
+    for entry in orderedlogs:
+        if is_logentry_command(entry):
+            finalcmds.append(CommandExecution.fromraw(entry))
+            
+    while True:
+        wtd = crss_custom_ad_menu(stdscr,["BACK","View Command History","Commands by Player","Commands by Text","Find command discrepancies","Graph by Player","Graph by command","Player command profile"])
+        match wtd:
+            case 0:
+                break
+            case 1:
+                crss_textview(stdscr,text="\n".join([str(s) for s in finalcmds]),message="Every command ever executed")
+            case 2:
+                whatplayer = crssinput(stdscr,"What player do you want to audit?")
+                crss_textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.issuer]),message=f"Commands from {whatplayer}")
+            case 3:
+                whatplayer = crssinput(stdscr,"What commands do you want to find?")
+                crss_textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.commandstr]),message=f"Commands including {whatplayer}")
+            case 4:
+                cursesplus.messagebox.showinfo(stdscr,["This will show when","Players have been running commands","on other players."])
+                cursesplus.displaymsg(stdscr,["searching"],False)
+                abusable_prefixes = ["/give","/gamemode","/tp","/teleport"]
+                excluder_prefixes = ["/tpa","/tpr","/msg","/w","/tpc"]
+                other_players = remove_duplicates_from_list([s.issuer for s in finalcmds])
+                final = ""
+                for cmd in finalcmds:
+                    if recursive_list_startswith(cmd.commandstr,abusable_prefixes) and not recursive_list_startswith(cmd.commandstr,excluder_prefixes):
+                        other_players.remove(cmd.issuer)
+                        if list_recursive_contains_inverse(cmd.commandstr,other_players):
+                            final += str(cmd) + "\n"
+                        other_players.append(cmd.issuer)
+                
+                crss_textview(stdscr,text=final,message="Potential Command Abuse")
+                
+            case 5:
+                dat = {}
+                for entry in finalcmds:
+                    if entry.issuer in dat:
+                        dat[entry.issuer] += 1
+                    else:
+                        dat[entry.issuer] = 1
+                        
+                bargraph(stdscr,dat,"Commands issued by player","commands")
+            case 6:
+                dat = {}
+                for entry in finalcmds:
+                    commandhead = entry.commandstr.split(" ")[0]
+                    if commandhead in dat:
+                        dat[commandhead] += 1
+                    else:
+                        dat[commandhead] = 1
+                        
+                bargraph(stdscr,dat,"Commands issued by type","times")
+                
+            case 7:
+                forwhichplayer = crssinput(stdscr,"Player name?")
+                commands = {}
+                totalcommands = 0
+                for cmd in finalcmds:
+                    if cmd.issuer.lower() == forwhichplayer.lower():
+                        chead = cmd.commandstr.split(" ")[0]
+                        if chead in commands:
+                            commands[chead] += 1
+                        else:
+                            commands[chead] = 1
+                        totalcommands += 1
+                
+                final = f"You have run {totalcommands} commands\n\n"
+                for cset in sorted(list(commands.items()),key=lambda x:x[1],reverse=True):
+                    final += f"{cset[0]} - {cset[1]} times ({round(cset[1]/totalcommands*100,2)}%)\n"
+                crss_textview(stdscr,text=final)
+                
 def view_server_logs(stdscr,server_dir:str):
     logsdir = server_dir+"/logs"
     
@@ -2397,27 +2645,44 @@ def view_server_logs(stdscr,server_dir:str):
         cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
         return
     pushd(logsdir)
+    
     while True:
-        availablelogs = list(reversed(sorted([l for l in os.listdir(logsdir) if os.path.isfile(l)])))
-        chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
-        if chosenlog == 0:
+        wtd = crss_custom_ad_menu(stdscr,["BACK","View whole log history","View by file","Chat History & Utilities","Command Execution Audits"])
+        if wtd == 0:
             popd()
             return
-        else:
-            cl = availablelogs[chosenlog-1]
-            if cl.endswith(".gz"):
-                with open(cl,'rb') as f:
-                    data = gzip.decompress(f.read()).decode()
-            else:
-                with open(cl) as f:
-                    data = f.read()
-            wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only","Chat Utilities"])
-            if wtd == 1:
-                cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
-            elif wtd == 3:
-                who_said_what(stdscr,server_dir)
-            else:
-                cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
+        elif wtd == 1:
+            logs = load_server_logs(stdscr,server_dir)
+            
+            finaltext = ""
+            for entry in logs:
+                finaltext += f"{entry.logdate} {entry.data}\n"
+            crss_textview(stdscr,text=finaltext,message="Every Log Ever")
+        elif wtd == 2:
+            while True:
+                availablelogs = list(reversed(sorted([l for l in os.listdir(logsdir) if os.path.isfile(l)])))
+                chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
+                if chosenlog == 0:
+                    break
+                else:
+                    cl = availablelogs[chosenlog-1]
+                    if cl.endswith(".gz"):
+                        with open(cl,'rb') as f:
+                            data = gzip.decompress(f.read()).decode()
+                    else:
+                        with open(cl) as f:
+                            data = f.read()
+                    wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only"])
+                    if wtd == 1:
+                        crss_textview(stdscr,text=data,message=f"Viewing {cl}")
+                    elif wtd == 3:
+                        who_said_what(stdscr,server_dir)
+                    else:
+                        crss_textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
+        elif wtd == 3:
+            who_said_what(stdscr,server_dir)
+        elif wtd == 4:
+            command_execution_auditing(stdscr,server_dir)
                 
 def init_idata(stdscr):
     global APPDATA
@@ -2624,7 +2889,8 @@ def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
                 allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
     
     #allentries.reverse()
-    
+    cursesplus.displaymsg(stdscr,["Sorting Logs..."],False)
+    allentries.sort(key=lambda x: x.get_full_log_time())
     #p.done()
     return allentries
 
@@ -2649,16 +2915,16 @@ def who_said_what(stdscr,serverdir):
                 ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data,wws)])
             elif strict and not cassen:
                 ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data.lower(),wws.lower())])
-            cursesplus.textview(stdscr,text=ft,message="Search Results")
+            crss_textview(stdscr,text=ft,message="Search Results")
         elif wtd == 2:
             wws = crssinput(stdscr,"What player would you like to search for?")
-            cursesplus.textview(stdscr,text=
+            crss_textview(stdscr,text=
                                 "\n".join(
                                 [
                                     f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws in a.playername
                                 ]),message="Search Results")
         elif wtd == 3:
-            cursesplus.textview(stdscr,text=
+            crss_textview(stdscr,text=
                                 "\n".join(
                                 [
                                     f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries
@@ -2714,7 +2980,7 @@ def ip_lookup(stdscr,serverdir):
             
     bigfatstring = "\n".join(l.data for l in allentries)
     
-    for ip in re.findall(r"\s[A-Za-z]+\s[\[|\(]/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:",bigfatstring) + re.findall(r"\s[A-Za-z0-9]+\[/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:",bigfatstring):
+    for ip in re.findall(r"\s[A-Za-z]+\s[\[|\(]\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:|\s[A-Za-z0-9_]+\[\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:",bigfatstring):
         #Look for IP addresses
         n = ip.strip().replace("[","").replace("(","").replace(":","")
         name = n.split("/")[0].strip()
@@ -2785,7 +3051,7 @@ def ip_lookup(stdscr,serverdir):
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
                 final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            cursesplus.textview(stdscr,text=final,message="All IPs")
+            crss_textview(stdscr,text=final,message="All IPs")
         elif wtd == 2:
             sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
             if sorting == 1 or sorting == 2:
@@ -2801,7 +3067,7 @@ def ip_lookup(stdscr,serverdir):
             for fi in formattedips:
                 if psearch in fi.players:
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+            crss_textview(stdscr,text=final,message=f"Searching for {psearch}")
     
         elif wtd == 3:
             sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
@@ -2818,7 +3084,7 @@ def ip_lookup(stdscr,serverdir):
             for fi in formattedips:
                 if psearch in fi.address:
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+            crss_textview(stdscr,text=final,message=f"Searching for {psearch}")
             
         elif wtd == 4:
             sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
@@ -2835,7 +3101,7 @@ def ip_lookup(stdscr,serverdir):
             for fi in formattedips:
                 if psearch.lower() in fi.country.lower():
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
+            crss_textview(stdscr,text=final,message=f"Searching for {psearch}")
             
         elif wtd == 5:
             fdata = {}
@@ -2874,7 +3140,7 @@ def bargraph(stdscr,data:dict[str,int],message:str,unit="",sort=True,adjusty=Fal
     while True:
         stdscr.clear()
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(0,0,message+" | Press Q to quit",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        stdscr.addstr(0,0,message+" | Press Q to quit | Press S to export",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         maxval = max(list(data.values()))
         if adjusty:
             minval = min(list(data.values()))
@@ -2912,14 +3178,27 @@ def bargraph(stdscr,data:dict[str,int],message:str,unit="",sort=True,adjusty=Fal
         if ch == curses.KEY_LEFT:
             if selected > 0:
                 selected -= 1
+            if selected-xoffset <= 0 and xoffset > 0:
+                xoffset -= 1
         elif ch == curses.KEY_RIGHT:
             if selected < len(data)-1:
                 selected += 1
+            if selected-xoffset > mx-7:
+                xoffset += 1
         elif ch == curses.KEY_SRIGHT:
             xoffset += 1
         elif ch == curses.KEY_SLEFT:
             if xoffset > 0:
                 xoffset -= 1
+        elif ch == 115:
+            filepath = savefile_selector(stdscr,extension=".csv",enforce_extension=True)#You had better put a CSV file
+            with open(filepath,"w+") as f:
+                f.write(f"Key,{unit},{message}")
+                f.write("\n")
+                for pair in list(data.items()):
+                    f.write(f"{pair[0]},{pair[1]}")
+                    f.write("\n")
+            cursesplus.messagebox.showinfo(stdscr,["Save successful"])
         elif ch == 113:
             return
             
@@ -3333,7 +3612,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     while True:
         os.chdir(APPDATA["servers"][chosenserver-1]["dir"])#Fix bug where running a sub-option that changes dir would screw with future operations
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
-        x__ops += ["View logs","Export server","View server info","Administration and Backups >>","Manage server icon"]
+        x__ops += ["Server Logs >>","Export server","View server info","Administration and Backups >>","Manage server icon"]
         x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
         if _sname in SERVER_INITS and not APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
             x__ops[1] = "Server is running >>"
@@ -4275,7 +4554,7 @@ def show_changelog_info(stdscr):
             final.append("")
             final.append(f"Added in {ln}")
             
-    cursesplus.textview(stdscr,text="\n".join(final),message="Changelog Info")
+    crss_textview(stdscr,text="\n".join(final),message="Changelog Info")
 
 def import_amc_server(stdscr,chlx):
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
@@ -4384,9 +4663,9 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
         oi = 0
         for op in options[offset:offset+my-7]:
-            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable") or str_contains_word(op,"reset") or str_contains_word(op,"-"):
+            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable") or str_contains_word(op,"reset") or str_contains_word(op,"[-]"):
                 col = cursesplus.RED
-            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable") or str_contains_word(op,"create") or str_contains_word(op,"-"):
+            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable") or str_contains_word(op,"create") or str_contains_word(op,"[+]") or str_contains_word(op,"finish"):
                 col = cursesplus.GREEN
             elif op.upper() == op:
                 col = cursesplus.CYAN
@@ -4711,7 +4990,7 @@ def license(stdscr):
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",ASSETSDIR+"/license")
         with open(ASSETSDIR+"/license") as f:
             dat = f.read()
-        cursesplus.textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
+        crss_textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
         APPDATA["license"] = True
 
 def oobe(stdscr):
@@ -4740,7 +5019,7 @@ def usertutorial(stdscr):
     cursesplus.messagebox.showinfo(stdscr,["Hit Ctrl-C to open up the quit menu"])
 
 def stats_and_credits(stdscr):
-    cursesplus.textview(stdscr,text="""
+    crss_textview(stdscr,text="""
 CRAFT SERVER SETUP CREDITS
 
 === DEVELOPERS ===
@@ -4865,7 +5144,7 @@ def devtools(stdscr):
             glv = globals()
             for g in list(glv.items()):
                 final += f"NAME: {g[0]} VAL: {str(g[1])}\n"
-            cursesplus.textview(stdscr,text=final)
+            crss_textview(stdscr,text=final)
         elif m == 4:
             APPDATA = dictedit(stdscr,APPDATA,"CRSS config")
             updateappdata()
