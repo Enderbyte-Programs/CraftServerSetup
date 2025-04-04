@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.48"
+APP_UF_VERSION = "1.49"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -299,7 +299,7 @@ def compatibilize_appdata(data:dict) -> dict:
             "name" : "showprog",
             "display" : "Show progress bar startup?",
             "type" : "bool",
-            "value":True
+            "value":False
         }
     if not "editor" in data["settings"]:
         data["settings"]["editor"] = {
@@ -366,6 +366,15 @@ def compatibilize_appdata(data:dict) -> dict:
                     
                 ]
             }
+        }
+        
+    #1.49
+    if not "reswarn" in data["settings"]:
+        data["settings"]["reswarn"] = {
+            "name" :"reswarn",
+            "display" : "Give warnings for high-resource operations",
+            "type" : "bool",
+            "value" : True
         }
 
     return data
@@ -447,7 +456,7 @@ __DEFAULTAPPDATA__ = {
         "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
-            "value" : True
+            "value" : False
         },
         "oldmenu":{
             "name" : "oldmenu",
@@ -458,6 +467,12 @@ __DEFAULTAPPDATA__ = {
         "showprog" : {
             "name" : "showprog",
             "display" : "Show progress bar on startup?",
+            "type" : "bool",
+            "value" : False
+        },
+        "reswarn" : {
+            "name" :"reswarn",
+            "display" : "Give warnings for high-resource operations",
             "type" : "bool",
             "value" : True
         }
@@ -2564,6 +2579,8 @@ def recursive_list_startswith(searcher:str,items:list[str]) -> bool:
     return False
 
 def command_execution_auditing(stdscr,serverdir:str):
+    if resource_warning(stdscr):
+        return
     orderedlogs = load_server_logs(stdscr,serverdir)
     finalcmds:list[CommandExecution] = []
     cursesplus.displaymsg(stdscr,["Finding Commands"],False)
@@ -2895,6 +2912,8 @@ def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
     return allentries
 
 def who_said_what(stdscr,serverdir):
+    if resource_warning(stdscr):
+        return
     allentries = load_server_logs(stdscr,serverdir)
     allentries:list[LogEntry] = [a for a in allentries if is_log_entry_a_chat_line(a)]
     allentries.sort(key=lambda x: x.logdate,reverse=False)
@@ -2965,6 +2984,8 @@ def formattediplist_getindexbyip(search:str,haystack:list[FormattedIP]):
     return None
 
 def ip_lookup(stdscr,serverdir):
+    if resource_warning(stdscr):
+        return
     ipdir = serverdir+"/.ipindex.json.gz"
     allentries = load_server_logs(stdscr,serverdir)
                 
@@ -3358,6 +3379,9 @@ def recursive_average(l:list[list[int|float]]) -> list[float]:
 
 def sanalytics(stdscr,serverdir):
     
+    if resource_warning(stdscr):
+        return
+    
     allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
     earliestentrydt:datetime.date = allentries[0].logdate
     cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
@@ -3460,7 +3484,7 @@ def sanalytics(stdscr,serverdir):
         for k in list(final.keys()):
             if k >= minminid and k <= maxminid:
                 workingdata[k] = final[k]
-        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time"],"Server Analytics Manager")
+        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time","Last Seen","First Join"],"Server Analytics Manager")
         if wtd == 0:
             return
         elif  wtd == 1:
@@ -3595,6 +3619,34 @@ def sanalytics(stdscr,serverdir):
                     unit = "online players"
                 
             bargraph(stdscr,gd,"Popularity Results",unit,False,False)
+        elif wtd == 10:
+            plcheck = crssinput(stdscr,"What player do you want to search for")
+            lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
+            for line in reversed(list(workingdata.values())):
+                if plcheck in line.onlineplayers:
+                    lastseen = get_datetime_from_minute_id(line.minuteid)
+                    break
+            if lastseen.year == 2000:
+                cursesplus.messagebox.showinfo(stdscr,["This player could not be found"])
+                return
+            cursesplus.messagebox.showinfo(stdscr,[f"{plcheck} was last seen",str(lastseen)])
+        elif wtd == 11:
+            plcheck = crssinput(stdscr,"What player do you want to search for")
+            lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
+            for line in list(workingdata.values()):
+                if plcheck in line.onlineplayers:
+                    lastseen = get_datetime_from_minute_id(line.minuteid)
+                    break
+            if lastseen.year == 2000:
+                cursesplus.messagebox.showinfo(stdscr,["This player could not be found"])
+                return
+            cursesplus.messagebox.showinfo(stdscr,[f"{plcheck} was first seen",str(lastseen)])
+
+def resource_warning(stdscr) -> bool:
+    if APPDATA["settings"]["reswarn"]:
+        return not cursesplus.messagebox.askyesno(stdscr,["What you just selected is a high resource operation.","Continuing may affect the performance of other apps running on this device.","Are you sure you wish to proceed?"])
+    else:
+        return False
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
@@ -3868,17 +3920,20 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.addstr(3,0,"Allocated Memory")
             stdscr.addstr(4,0,"Server Size")
             stdscr.addstr(5,0,"Moddable server?")
+            stdscr.addstr(6,0,"Number of Plugins")
             stdscr.refresh()
             sdat = APPDATA["servers"][chosenserver-1]
             stdscr.addstr(0,20,sdat["name"])
             stdscr.addstr(1,20,sdat["version"])
             stdscr.addstr(2,20,sdat["dir"][0:os.get_terminal_size()[0]])
             stdscr.addstr(3,20,sdat["memory"])
+            stdscr.addstr(4,20,"...")
             stdscr.refresh()
             stdscr.addstr(4,20,parse_size(get_tree_size(sdat["dir"])))
             stdscr.refresh()
             stdscr.addstr(5,20,["Yes" if sdat["moddable"] else "No"][0])
-            stdscr.addstr(6,0,"Press any key to continue",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+            stdscr.addstr(6,20,str(len(glob.glob(SERVER_DIR+"/plugins/*.jar")) if os.path.isdir(SERVER_DIR+"/plugins") else "N/A"))
+            stdscr.addstr(7,0,"Press any key to continue",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
             stdscr.refresh()
             stdscr.getch()
         elif w == 11:
@@ -4347,6 +4402,8 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
             popd()
             break
         elif z == 1:
+            if resource_warning(stdscr):
+                continue
             with open(serverdir+"/crss.json","w+") as f:
                 f.write(json.dumps(serverdata))
             useprofile = APPDATA["backupprofiles"][list(APPDATA["backupprofiles"].keys())[crss_custom_ad_menu(stdscr,list(APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
