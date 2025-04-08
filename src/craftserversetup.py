@@ -345,6 +345,11 @@ def compatibilize_appdata(data:dict) -> dict:
             data['servers'][svri]["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(data['servers'][svri]["id"])
         if data["servers"][svri]["software"] == 0:
             data["servers"][svri]["software"] = 5#v1.48
+            
+        #1.49.1
+        if not "flags" in svr["settings"]:
+            data["servers"][svri]["settings"]["flags"] = ""
+            
         svri += 1
 
     svk = 0
@@ -2432,9 +2437,9 @@ def generate_script(svrdict: dict) -> str:
         _space = "\\ "
         _bs = "\\"
         if not WINDOWS:
-            __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir']}/server.jar\" nogui"
+            __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict["settings"]["flags"]} \"{svrdict['dir']}/server.jar\" nogui"
         else:
-            __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
+            __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict["settings"]["flags"]} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
     return __SCRIPT__
 
 def update_s_software_preinit(serverdir:str):
@@ -2813,6 +2818,7 @@ def config_server(stdscr,chosenserver):
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
     elif __l == 7:
         APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
+        APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
 
 def change_software(stdscr,directory,data) -> dict:
     zxc = crss_custom_ad_menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
@@ -2870,7 +2876,7 @@ def text_editor(text:str,headmessage="edit") -> str:
 
 def startup_options(stdscr,serverdata:dict):
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands","Set startup mode"])
+        wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands","Set startup mode","Command Line Arguments","View server script"])
         if wtd == 0:
             return serverdata
         elif wtd == 1:
@@ -2879,6 +2885,11 @@ def startup_options(stdscr,serverdata:dict):
             serverdata["settings"]["exitcommands"] = text_editor("\n".join(serverdata["settings"]["exitcommands"]),"Edit Exit Commands").splitlines()
         elif wtd == 3:
             serverdata["settings"]["legacy"] = crss_custom_ad_menu(stdscr,["New Startups (fancy)","Old Startups (legacy)"],"Choose startup mode") == 1
+        elif wtd == 4:
+            serverdata["settings"]["flags"] = crssinput(stdscr,"Custom flags for your server",prefiltext=serverdata['settings']["flags"])
+        elif wtd == 5:
+            crss_textview(stdscr,text=serverdata["script"],message="Server startup script")
+            
 
 def strict_word_search(haystack:str,needle:str) -> bool:
     #PHP
