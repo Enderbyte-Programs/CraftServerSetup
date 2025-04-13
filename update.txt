@@ -1,1 +1,1 @@
-https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.49.2/CraftServerSetup-1.49.2-installer.exe|1.49.2|Add stuff
+https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v1.49.3/CraftServerSetup-1.49.3-installer.exe|1.49.3|Add stuff
