@@ -1,3 +1,7 @@
+1.49.3:
+- Fix bug
+1.49.2:
+- Fix bug
 1.49.1:
     - Adds the ability to set startup flags
     - Adds the ability to see the server's script
