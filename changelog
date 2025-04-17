@@ -1,3 +1,11 @@
+1.49.4:
+- Update cursesplus to 3.20 from 3.17
+- Update certifi to 2025.1.31 from 2024.7.4
+- Update charset normalizer to 3.4.1 from 3.3.2
+- Update idna to 3.10 from 3.7
+- Update urllib to 3.4 from 2.2.2
+- Update requests to 2.32.3 from 2.32.1 (uh oh, accidently shipped a version with a security vulnerability for 9 months!)
+- Remove custom controls, as they were ported to cursesplus
 1.49.3:
 - Fix bug
 1.49.2:
@@ -228,313 +236,313 @@
 1.31.1:
 - Fix bug in option menu
 1.31:
--server jar will no longer be deleted in s_softwaere_preinit 
-    -This prevents cases where a server could be left broken
--Innocent until proven guilty for product keys
--Add support for gumroad
--Remove startup progress bar
--Streamline main menu
+- server jar will no longer be deleted in s_softwaere_preinit 
+- This prevents cases where a server could be left broken
+- Innocent until proven guilty for product keys
+- Add support for gumroad
+- Remove startup progress bar
+- Streamline main menu
 1.30:
--Rename product key to premium
--Limit to 1 server
+- Rename product key to premium
+- Limit to 1 server
 1.30-b1:
--Rebuild product key system
+- Rebuild product key system
 1.29:
--Add way to change software!
+- Add way to change software!
 1.29-b2:
--Will now got to individual server management after creation is complete
--Add appdata editor to dev tools
--Fix bugs in dictedit lists
--Replace curses showerror with messagebox showerror
+- Will now got to individual server management after creation is complete
+- Add appdata editor to dev tools
+- Fix bugs in dictedit lists
+- Replace curses showerror with messagebox showerror
 1.29-b1:
--Different software downloads are now in a seperate function
+- Different software downloads are now in a seperate function
 1.28:
--Massive additions to server config
--Windows now uses Pyinstaller 6.2
+- Massive additions to server config
+- Windows now uses Pyinstaller 6.2
 1.28-b2:
--Linux update now uses dofile
+- Linux update now uses dofile
 1.28-b1:
--Fix bug in args
+- Fix bug in args
 1.27.1:
--Fix massive bug
+- Fix massive bug
 1.27:
--Error if python version too old
--Migrate all server configuration to checkboxlist
+- Error if python version too old
+- Migrate all server configuration to checkboxlist
 1.26:
--Move build system to dofile
--Remove edit with config.yml
+- Move build system to dofile
+- Remove edit with config.yml
 1.25.1:
--Add debian update support
--Drop Arch support :()
+- Add debian update support
+- Drop Arch support :()
     -It is because I have no arch computer
 1.25:
--Move server config to a new function because manage_server is getting too fat
--Add option to download mod files from Modrinth
--Doesn't have very many features, but it gets the job done
+- Move server config to a new function because manage_server is getting too fat
+- Add option to download mod files from Modrinth
+- Doesn't have very many features, but it gets the job done
 1.24:
--All of the below
+- All of the below
 1.24-b2:
--Sort of fix annoying issue on spigot build where log would go past file bar
--Remove setup progress bar aside from spigot build
+- Sort of fix annoying issue on spigot build where log would go past file bar
+- Remove setup progress bar aside from spigot build
     -As the setup process has gotten more complex, the progress bar has been rarely seen.
 1.24-b1:
--Add new memory selection dialogue
--Replaces old memory selection dialogue
--The first step on simplifying the server setup, which has not changed since 0.1 (or 1.0) according to the versioning scheme
--Fix giant bug in server setup
+- Add new memory selection dialogue
+- Replaces old memory selection dialogue
+- The first step on simplifying the server setup, which has not changed since 0.1 (or 1.0) according to the versioning scheme
+- Fix giant bug in server setup
 1.23.1:
--Change versioning scheme
--Major and minor versions are now independant
--Fix bugs in new plugins manager
+- Change versioning scheme
+- Major and minor versions are now independant
+- Fix bugs in new plugins manager
 1.3:
--Pushed to prevent having the generic version string 1.2.3
--Fix some problems with the import process
--There is now an option to import a server in the Setup new server
--Improve deb file description
--Add estimated size to deb control
--Re-strictify java detection because it was getting out of hand
--install.sh is now less verbose
+- Pushed to prevent having the generic version string 1.2.3
+- Fix some problems with the import process
+- There is now an option to import a server in the Setup new server
+- Improve deb file description
+- Add estimated size to deb control
+- Re-strictify java detection because it was getting out of hand
+- install.sh is now less verbose
 1.2.2:
--Improve updates
+- Improve updates
 1.2.1:
--Fix bug
+- Fix bug
 1.2:
--Improve plugins menu
--Add basis for dictedit
--It is too hard to do so it is postponed
--Upgrade cursesplus to 2.11.6
--World success confirmation
+- Improve plugins menu
+- Add basis for dictedit
+- It is too hard to do so it is postponed
+- Upgrade cursesplus to 2.11.6
+- World success confirmation
 1.1:
--All internet activity is now done in a seperate thread
--This improves startup speed GREATLY
--However, ads usually don't load on the main menu.
--Oh well, I don't really care
+- All internet activity is now done in a seperate thread
+- This improves startup speed GREATLY
+- However, ads usually don't load on the main menu.
+- Oh well, I don't really care
 1.0:
--All below changes
--Exception handling now uses textview
--Internet connection is now mandatory.
+- All below changes
+- Exception handling now uses textview
+- Internet connection is now mandatory.
 0.18.11:
--Add pngdim.py module
+- Add pngdim.py module
     -Calculates png dimensions
--Add server icon manager
--Add APPDATADIR/assets
+- Add server icon manager
+- Add APPDATADIR/assets
     -Docs and license now go in there
--Fix critical bug in server starting
+- Fix critical bug in server starting
 0.18.10:
--Add debian package
--Add arch package
+- Add debian package
+- Add arch package
 0.18.9:
--Users in portable mode can no longer update
--Fix typo crasftserversetup.desktop to craftserversetup.desktop
+- Users in portable mode can no longer update
+- Fix typo crasftserversetup.desktop to craftserversetup.desktop
 0.18.8:
--Update cursesplus to 2.11.2
--dist directory is now removed.
--Fix problems with direct running
--add startupflags.txt
-    -Create in same directory as executable
-    -Can contain PORTABLE (or use -p arg)
-        -Creates AppData folder in same folder, thus not installing anything to the user's computer
-    -Can conain DEVELOPER (or use -d arg)
-        -Enables usage of the debug command prompt from the settings menu and forced crashing
--Increase internet timeout from 5 to 10 seconds
--Remove access to dev command prompt from crash menu
--Add developer tools menu
--Fix another stupid oobe problem
--Add report bug option from crash menu
+- Update cursesplus to 2.11.2
+- dist directory is now removed.
+- Fix problems with direct running
+- add startupflags.txt
+    - Create in same directory as executable
+    - Can contain PORTABLE (or use -p arg)
+        - Creates AppData folder in same folder, thus not installing anything to the user's computer
+    - Can conain DEVELOPER (or use -d arg)
+        - Enables usage of the debug command prompt from the settings menu and forced crashing
+- Increase internet timeout from 5 to 10 seconds
+- Remove access to dev command prompt from crash menu
+- Add developer tools menu
+- Fix another stupid oobe problem
+- Add report bug option from crash menu
 0.18.7:
--Fix critical bug (thanks to find-replace)
--12345678 is no longer a valid product key.
+- Fix critical bug (thanks to find-replace)
+- 12345678 is no longer a valid product key.
 0.18.6:
--Add manage world menu inplace of new world
--Fix poor design in settings
--Fix bugs on Windows
+- Add manage world menu inplace of new world
+- Fix poor design in settings
+- Fix bugs on Windows
 0.18.5:
--Fix problem on server updates where UI would stall
+- Fix problem on server updates where UI would stall
 0.18.4:
--Add settings advanced options
--Help is now highlighted by the new option menu
--TODO Write docs
--Improve telemetry (sender and server)
+- Add settings advanced options
+- Help is now highlighted by the new option menu
+- TODO Write docs
+- Improve telemetry (sender and server)
 0.18.3:
--Add new crss menu
--Potential replacement for displayops?
--Replace Linux update system
--Wow this is a fat update
+- Add new crss menu
+- Potential replacement for displayops?
+- Replace Linux update system
+- Wow this is a fat update
 0.18.2:
--Remove Donate option
--Ads no longer appear when not in an X server (POTENTIAL FIX FOR #1)
+- Remove Donate option
+- Ads no longer appear when not in an X server (POTENTIAL FIX FOR #1)
 0.18.1:
--Improve Windows build system
--Add progress bar on startup
+- Improve Windows build system
+- Add progress bar on startup
 0.18:
--Culminated betas
--Add cursesplus usage tutorial
--First screen you see on new boot up
+- Culminated betas
+- Add cursesplus usage tutorial
+- First screen you see on new boot up
 0.18-b7:
--Add license agreement
+- Add license agreement
 0.18-b6:
--Add transitions
--Add transitions config key
+- Add transitions
+- Add transitions config key
 0.18-b5:
--Modify epadverts
--Add documentation
--Upgrade to cursesplus 2.9
+- Modify epadverts
+- Add documentation
+- Upgrade to cursesplus 2.9
 0.18-b4:
--Add credits
+- Add credits
 0.18-b3:
--Add idata
--Add Dead Man's Switch
--Add MOTD
--Move oobe to oobe()
+- Add idata
+- Add Dead Man's Switch
+- Add MOTD
+- Move oobe to oobe()
 0.18-b2:
--Code epdocs.py
--Fix bugs in epdocs.py
--Add "Shutting down" screen
--Add updateappdata() on normal shutdown
+- Code epdocs.py
+- Fix bugs in epdocs.py
+- Add "Shutting down" screen
+- Add updateappdata() on normal shutdown
 0.18-b1:
--Move advertisements to epadvertisements.py
--Add epdocs.py
+- Move advertisements to epadvertisements.py
+- Add epdocs.py
 0.17:
--Add ban manager
--Add admin manager
+- Add ban manager
+- Add admin manager
 0.17-b1:
--fix serious bugs
--Add administration manager
+- fix serious bugs
+- Add administration manager
 0.16.2:
--fix MORE bugs
+- fix MORE bugs
 0.16.1:
--Fix a dumb bug
+- Fix a dumb bug
 0.16:
--Remove all "loose ends" where some options will throw a not yet implemented error.
+- Remove all "loose ends" where some options will throw a not yet implemented error.
 0.16-b3:
--Remove duplicate nyi() manage_whitelist
+- Remove duplicate nyi() manage_whitelist
 0.16-b2:
--Remove nyi() on convert server to moddable
--Remove shlex dependancy
+- Remove nyi() on convert server to moddable
+- Remove shlex dependancy
 0.16-b1:
--Add world setup (w == 5)
--Improve setup_new_world()
--Remove nyi() on invalid server type id
--Fix vanilla update bug due to unmade VERSION_MANIFEST_DATA
--Rename Back to RETURN TO MAIN MENU
--NOTICE: Servers may be broken! Remove the #!/usr/bin/sh from script
--Appdata file is now pretty-printed
+- Add world setup (w == 5)
+- Improve setup_new_world()
+- Remove nyi() on invalid server type id
+- Fix vanilla update bug due to unmade VERSION_MANIFEST_DATA
+- Rename Back to RETURN TO MAIN MENU
+- NOTICE: Servers may be broken! Remove the #!/usr/bin/sh from script
+- Appdata file is now pretty-printed
 0.15.4:
--Fix critical bug in Windows servers (took us that long)
+- Fix critical bug in Windows servers (took us that long)
 0.15.3:
--Remove critical bug with telemetry
+- Remove critical bug with telemetry
 0.15.2:
--Remove "Do you want to set up a new server?" option in OOBE.
--Add Telemetry Consent to OOBE
--Add settings key to Appdata File
--Add settings/telemetry (bool) to Appdata
--Move assorted appdata functions to compatibilize_appdata
+- Remove "Do you want to set up a new server?" option in OOBE.
+- Add Telemetry Consent to OOBE
+- Add settings key to Appdata File
+- Add settings/telemetry (bool) to Appdata
+- Move assorted appdata functions to compatibilize_appdata
 0.15.1:
--Fix problem in installer
--Fix crash in logview
+- Fix problem in installer
+- Fix crash in logview
 0.15:
--Fully complete log view routine. You can now view all logs from your server
+- Fully complete log view routine. You can now view all logs from your server
 0.15-b2:
--Improve steamlinedness of shortcut installation
+- Improve steamlinedness of shortcut installation
 0.15-b1:
--Add start menu shortcut to Linux
--Move mc.ico to assets/mc.ico
+- Add start menu shortcut to Linux
+- Move mc.ico to assets/mc.ico
 0.14.2:
--Fix Windows bugs
+- Fix Windows bugs
 0.14.1:
--Add Windows Update support
+- Add Windows Update support
 0.14:
--Add windows support
--Really Really bad
+- Add windows support
+- Really Really bad
 0.13.3:
--Remove gz,make,gcc as dependancies
--DO NOT RUN ON WINDOWS
+- Remove gz,make,gcc as dependancies
+- DO NOT RUN ON WINDOWS
 0.13.2:
--Fix textview. You can neow see server logs.
+- Fix textview. You can neow see server logs.
 0.13.1:
--Fix cosmetic issues
+- Fix cosmetic issues
 0.13:
--SUMMARY OF b1-b5
--Add backups on global and server level
--Add ads
--Now 1485 lines of code (Oh how you've grown)
+- SUMMARY OF b1-b5
+- Add backups on global and server level
+- Add ads
+- Now 1485 lines of code (Oh how you've grown)
 0.13-b5:
--Add server backups
--Add server id which is a random number between 1111 and 9999
+- Add server backups
+- Add server id which is a random number between 1111 and 9999
 0.13-b4:
--Add advertisements for non-upgraded users
--CHANGE NAME TO CRAFT SERVER SETUP
+- Add advertisements for non-upgraded users
+- CHANGE NAME TO CRAFT SERVER SETUP
 0.13-b3:
--Add Exception advanced options
+- Add Exception advanced options
 0.13-b2:
--Begin rewrite of exception handling system
+- Begin rewrite of exception handling system
 0.13-b1:
--Add global backups (probably big enough to be 0.12.5)
+- Add global backups (probably big enough to be 0.12.5)
 0.12.4:
--Add product key system
--UPgrading offers no advantages yet
+- Add product key system
+- UPgrading offers no advantages yet
 0.12.3:
--Add mandatory telemetry
--Sends OS type and AMCS Version
+- Add mandatory telemetry
+- Sends OS type and AMCS Version
 0.12.2:
--Make a new interactive installer
--Add BSOD Excephan (Still better than old one)
+- Make a new interactive installer
+- Add BSOD Excephan (Still better than old one)
 0.12.1:
--Add spigot update support
--Add pushd() and popd()
+- Add spigot update support
+- Add pushd() and popd()
 0.12:
--Add whitelist management
+- Add whitelist management
 0.11:
--Add Server Import from folder
+- Add Server Import from folder
 0.10:
--Improve server import
--Add updater
+- Improve server import
+- Add updater
 0.9:
--Replace "would you like to start server now" with new config menu
--Edits every part of server.properties
+- Replace "would you like to start server now" with new config menu
+- Edits every part of server.properties
 0.8.1:
--Assorted library updates
--Replace some displaymsgnodelay with PleaseWaitScreen
+- Assorted library updates
+- Replace some displaymsgnodelay with PleaseWaitScreen
 0.8:
--Add server import/export
+- Add server import/export
 0.7.1:
--Update docs
--Add src tree safe run
+- Update docs
+- Add src tree safe run
 0.7:
--Overhaul build system
--Delete old install.sh
--Third party libraries now come included
+- Overhaul build system
+- Delete old install.sh
+- Third party libraries now come included
 0.6.8:
--Bug fixes
+- Bug fixes
 0.6.7:
--Bug fixes
+- Bug fixes
 0.6.6:
--Add server crash warning
+- Add server crash warning
 0.6.5:
--Bug fixes
+- Bug fixes
 0.6.4:
--Add Appdata Compatibility warning
+- Add Appdata Compatibility warning
 0.6.3:
--Add support for updating paper software
+- Add support for updating paper software
 0.6.2:
--Fix bug
+- Fix bug
 0.6.1:
--Fix bug
+- Fix bug
 0.6:
--Add support for update vanilla software
--Replace run.sh with generate_script() internally
+- Add support for update vanilla software
+- Replace run.sh with generate_script() internally
 0.5:
--Add Java Installation manager
+- Add Java Installation manager
 0.4:
--Add Paper support
+- Add Paper support
 0.3:
--Add mod management system
+- Add mod management system
 0.2:
--Add spigot support
+- Add spigot support
 0.1.1:
--Add default memory
+- Add default memory
 0.1:
--Welcome to automcserver
--Just vanilla for now!
--Fun fact- Released on 2 year aniversary of BasicUtilities
--Only 300 lines of code
+- Welcome to automcserver
+- Just vanilla for now!
+- Fun fact- Released on 2 year aniversary of BasicUtilities
+- Only 300 lines of code

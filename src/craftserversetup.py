@@ -624,7 +624,7 @@ def send_telemetry():
         "IsActivated" : APPDATA["productKey"] != "",
         "ApplicationVersion" : APP_UF_VERSION
         }
-    #crss_textview(_SCREEN,text=str(rdx))
+    #cursesplus.textview(_SCREEN,text=str(rdx))
     r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
 def parse_size(data: int) -> str:
     if data < 0:
@@ -659,7 +659,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
         if erz == 0:
             safe_exit(1)
         elif erz == 1:
-            crss_textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
+            cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
            
         elif erz == 2:
             if WINDOWS:
@@ -832,306 +832,6 @@ def trail(ind,maxlen:int):
         return ind[0:maxlen-4]+"..."
     else:
         return ind
-
-def dict_to_calctype(inputd) -> list:# Inputd must be dict or list. Fixed because of bug when running on py3.9
-    if inputd is None:
-        return ["NULL!!"]
-    final = []
-    if type(inputd) == dict:
-        for ik in list(inputd.items()):
-            src = ik[0]
-            dst = ik[1]
-            if type(dst) == int or type(dst) == float:
-                obtype = "number"
-            elif type(dst) == str:
-                obtype = "string"
-            elif type(dst) == dict:
-                obtype = "folder"
-            elif type(dst) == list:
-                obtype = "list"
-            elif type(dst) == bool:
-                obtype = "bool"
-            else:
-                obtype = str(type(dst))
-            final.append(f"{src} ( {obtype} ) = {trail(dst,os.get_terminal_size()[1]-20)}")
-    else:
-        oi = 0
-        for ik in list(inputd):
-            if type(ik) == int or type(ik) == float:
-                obtype = "number"
-            elif type(ik) == str:
-                obtype = "string"
-            elif type(ik) == dict:
-                obtype = "folder"
-            elif type(ik) == list:
-                obtype = "list"
-            elif type(ik) == bool:
-                obtype = "bool"
-            else:
-                obtype = str(type(ik))
-            final.append(f"Object {oi} ( {obtype} ) = {trail(ik,os.get_terminal_size()[1]-30)}")
-            oi += 1
-    return final
-
-def dictpath(inputd:dict,path:str):
-    if path == "/":
-        return inputd
-    final = inputd
-    for axx in path.split("/"):
-        if axx == "":
-            continue
-        if type(final) == list:
-            final = final[int(axx)]
-        else:
-            final = final[axx]
-    return final
-
-def is_a_valid_file_name(s:str) -> bool:
-    #Checks if a string is avalid file path
-    banned_characters = ["\"","*","<",">",":","|","?"]
-    for c in banned_characters:
-        if c in s:
-            return False
-    return True
-
-def savefile_selector(stdscr,defaultdirectory=os.getcwd(),extension="",enforce_extension=False) -> str:
-    directo = defaultdirectory
-    fileo = ""
-    while True:
-        p = cursesplus.coloured_option_menu(stdscr,["Finish",f"Directory: {directo}",f"File: {fileo}",f"{directo}{os.sep}{fileo}"],colouring=[["finish",cursesplus.GREEN]])
-        match p:
-            case 0:
-                if fileo == "" or directo == "":
-                    cursesplus.messagebox.showerror(stdscr,["Please fill in the form entirely."])
-                    continue
-                final = directo + os.sep + fileo
-                if is_a_valid_file_name(final):
-                    return final
-                else:
-                    cursesplus.messagebox.showerror(stdscr,["Not a valid path."])
-            case 1:
-                directo = cursesplus.filedialog.openfolderdialog(stdscr,"Choose the directory for the file",directo,False)
-            case 2:
-                barefn = crssinput(stdscr,"Write filename",prefiltext=fileo)
-                if enforce_extension:
-                    if not barefn.endswith(extension):
-                        barefn += extension
-                fileo = barefn
-
-def crss_textview(stdscr,file=None,text=None,isagreement=False,requireyes=True,message="",allowprintout=True) -> bool:
-    """
-    ## View Text interactively
-
-    This function is resize-friendly
-    Set either file or text to not none to use mode. Set isagreement to true if you want this to be a license agreement
-    Returns true if isagreement is false or if user agreed. Returns false if the user did not agree
-    set allowprintout to set if the user can print to a file or not
-    """
-    offset = 0
-    if file is None and text is None:
-        raise cursesplus.ArgumentError("Please specify a file or text to display")
-    elif file is not None and os.path.isfile(file):
-        with open(file) as f:
-            text = f.read()
-    elif text is not None:
-        text = text
-
-    cursesplus.displaymsg(stdscr,["Preparing text","Please wait..."],False)
-    zltext = text.splitlines()
-    mx,my = os.get_terminal_size()
-    n = mx - 1
-    broken_text = []
-    for text in zltext:
-        if text.replace(" ","") == "":
-            broken_text += [""]
-        else:
-            broken_text += textwrap.wrap(text,n)
-    while True:
-        stdscr.clear()
-        #stdscr.refresh()
-        #Segment text
-        if os.get_terminal_size()[0]-1 != n:
-            #Resegment text
-            mx,my = os.get_terminal_size()
-            n = mx - 1
-            broken_text = []
-            for text in zltext:
-                if text.replace(" ","") == "":
-                    broken_text += [""]
-                else:
-                    broken_text += textwrap.wrap(text,n)
-        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(0,0,message[0:mx-8],cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        prog = f"{offset}/{len(broken_text)}"
-        stdscr.addstr(0,mx-len(prog)-1,prog,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        cursesplus.utils.fill_line(stdscr,my-1,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        appenderstring = ""
-        if isagreement:
-            appenderstring += "A: Agree | D: Disagree"
-        else:
-            appenderstring += "Press enter to exit"
-        if allowprintout:
-            appenderstring += " | S: Save to file"
-        #if isagreement:
-        #    stdscr.addstr(my-1,0,"A: Agree | D: Disagree",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        #else:
-        stdscr.addstr(my-1,0,appenderstring,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        li = 1
-        for line in broken_text[offset:offset+(my-2)]:
-            try:
-                stdscr.addstr(li,0,line)
-                li += 1
-            except:
-                pass
-
-        ch = stdscr.getch()
-        if ch == curses.KEY_DOWN:
-            offset += 1
-        elif ch == curses.KEY_UP and offset > 0:
-            offset -= 1
-        elif ch == curses.KEY_HOME:
-            offset = 0
-        elif (ch == 10 or ch == 13 or ch == curses.KEY_ENTER) and not isagreement:
-            return True
-        elif ch == 97 and isagreement:
-            return True
-        elif ch == 100 and isagreement:
-            if not requireyes:
-                return False
-            else:
-                cursesplus.messagebox.showwarning(stdscr,["You must agree to the license to proceed"])
-        elif ch == curses.KEY_END:
-            if len(broken_text) > my-2:
-                offset = len(broken_text) - my+2
-        elif ch == curses.KEY_PPAGE:
-            if offset > 10:
-                offset -= 10
-            else:
-                offset = 0
-
-        elif ch == curses.KEY_NPAGE:
-            offset += 10
-        elif ch == 115:
-            savefile = savefile_selector(stdscr,extension=".txt")
-            try:
-                with open(savefile,"w+") as f:
-                    f.write("\n".join(broken_text))
-            except Exception as e:
-                cursesplus.messagebox.showerror(stdscr,["Could not save.",f"Reason: {str(e)}"])
-            else:
-                cursesplus.messagebox.showinfo(stdscr,["Save successsful"])
-
-def dictedit(stdscr,inputd:dict,name:str,isflat:bool=False) -> dict:
-    """isflat controls if you are allowed to add new folders/list"""
-    path = "/"
-    while True:
-        mx,my = os.get_terminal_size()
-        path = path.replace("//","/")
-        options = ["Quit","Move up directory","ADD ITEM"]
-        currentedit = dictpath(inputd,path)
-        options += dict_to_calctype(currentedit)
-        e = cursesplus.coloured_option_menu(stdscr,options,f"{name} | Path: {path}",[
-            [
-                "quit",cursesplus.RED
-            ],["ADD",cursesplus.GREEN],
-            ["list",cursesplus.YELLOW],
-            ["folder",cursesplus.YELLOW],
-            ["string",cursesplus.CYAN],
-            ["number",cursesplus.MAGENTA]
-        ],preselected=2,footer="When editing a key: If you didn't mean to edit, press enter without doing anything")
-        if e == 0:
-            return inputd
-        elif e == 1:
-            if path != "/":
-                path = "/".join(path.split("/")[0:-1])
-            else:
-                continue
-        elif e == 2:
-            if type(dictpath(inputd,path)) == dict:
-                keynamne = crssinput(stdscr,"Please input the key name.")
-                ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
-                if ktype > 3 and isflat:
-                    cursesplus.messagebox.showerror(stdscr,["The selected type is not supported by this","file format"])
-                    continue
-                if ktype == 0:
-                    continue
-                elif ktype == 1:
-                    val = crssinput(stdscr,"What is the value of this key?")
-                elif ktype == 2:
-                    val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
-                    if int(val) == val:
-                        val = int(val)
-                elif ktype == 3:
-                    val = cursesplus.messagebox.askyesno(stdscr,["New value for boolean?"])
-                elif ktype == 4:
-                    val = []
-                elif ktype == 5:
-                    val = {}
-                paths = [z for z in path.split("/") if z != ""]
-                mydata = inputd
-                for i in paths:
-                    if type(mydata) == list:
-                        mydata = mydata[int(i)]
-                    else:
-                        mydata = mydata[i]
-                mydata[keynamne] = val 
-            elif type(dictpath(inputd,path)) == list:
-                #keynamne = crssinput(stdscr,"Please input the key name.")
-                ktype = crss_custom_ad_menu(stdscr,["Cancel add","String","Number","Boolean (yes/no)","Empty list","Empty folder"],"What is the type of the key")
-                if ktype == 0:
-                    continue
-                elif ktype == 1:
-                    val = crssinput(stdscr,"What is the value of this key?")
-                elif ktype == 2:
-                    val = cursesplus.numericinput(stdscr,"What is the value of this key?",True,True)
-                    if int(val) == val:
-                        val = int(val)
-                elif ktype == 3:
-                    val = cursesplus.messagebox.askyesno(stdscr,["New value for boolean?"])
-                elif ktype == 4:
-                    val = []
-                elif ktype == 5:
-                    val = {}
-                paths = [z for z in path.split("/") if z != ""]
-                mydata = inputd
-                for i in paths:
-                    if type(mydata) == list:
-                        mydata = mydata[int(i)]
-                    else:
-                        mydata = mydata[i]
-                mydata.append(val)
-        else:
-            newval = None
-            if type(currentedit) == dict:
-                path += "/" + list(currentedit.items())[e-3][0]
-            elif type(currentedit) == list:
-                path += "/" + str(e-3)
-            epath = path.split("/")[-1]
-            if type(dictpath(inputd,path)) == str:
-                cursesplus.utils.showcursor()
-                newval = crssinput(stdscr,f"Please input a new value for {path}",prefiltext=dictpath(inputd,path))
-                cursesplus.utils.hidecursor()
-            elif type(dictpath(inputd,path)) == int or type(dictpath(inputd,path)) == float:
-                cursesplus.utils.showcursor()
-                newval = cursesplus.numericinput(stdscr,f"Please input a new value for {path}",True,True,prefillnumber=dictpath(inputd,path))
-                cursesplus.utils.hidecursor()
-            elif type(dictpath(inputd,path)) == bool:
-                if dictpath(inputd,path):
-                    nv = cursesplus.messagebox.MessageBoxStates.YES
-                else:
-                    nv = cursesplus.messagebox.MessageBoxStates.NO
-                newval = cursesplus.messagebox.askyesno(stdscr,["New boolean value for",path],default=nv)
-            if type(dictpath(inputd,path)) != dict and type(dictpath(inputd,path)) != list:
-                path = "/".join(path.split("/")[0:-1]) 
-            if newval is not None:
-                paths = [z for z in path.split("/") if z != ""]
-                mydata = inputd
-                for i in paths:
-                    if type(mydata) == list:
-                        mydata = mydata[int(i)]
-                    else:
-                        mydata = mydata[i]
-                mydata[epath] = newval      
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
     sdata = APPDATA["servers"][chosenserver]
@@ -1506,12 +1206,12 @@ def bedrock_config_server(stdscr,chosenserver):
             with open("server.properties") as f:
                 config = PropertiesParse.load(f.read())
 
-            config = dictedit(stdscr,config,"Editing Server Properties",True)
+            config = cursesplus.dictedit(stdscr,config,"Editing Server Properties",True)
             with open("server.properties","w+") as f:
                 f.write(PropertiesParse.dump(config))
     elif __l == 2:
         dt = APPDATA["servers"][chosenserver-1]
-        dt = dictedit(stdscr,dt,"More Server Properties")
+        dt = cursesplus.dictedit(stdscr,dt,"More Server Properties")
         APPDATA["servers"][chosenserver-1] = dt
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 3:
@@ -1794,7 +1494,7 @@ def setupnewserver(stdscr):
         if serversoftware != 1:
             break
         else:
-            crss_textview(stdscr,text="""
+            cursesplus.textview(stdscr,text="""
                                 
 Help on choosing a server software
                                 
@@ -2185,7 +1885,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
             lenset = merge_dicts(lenset,tl)#Merge dicts
             inres = process_modrinth_api_return_with_config(oldinres,lenset)
         elif modch == 2:
-            crss_textview(stdscr,text=PLUGIN_HELP,message="Help")
+            cursesplus.textview(stdscr,text=PLUGIN_HELP,message="Help")
         else:
             chmod = inres[modch-3]
             while True:
@@ -2287,7 +1987,7 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
             cursesplus.displaymsg(stdscr,["Downloading package list",f"Page {px}"],False)
             rq = f"https://api.spiget.org/v2/resources/for/{shiftedversion}"
             r = requests.get(rq,headers=headers,params={"size":1000,"page":px}).json()
-            #crss_textview(stdscr,text=json.dumps(r))
+            #cursesplus.textview(stdscr,text=json.dumps(r))
             px += 1
             final += r["match"]
             if len(r["match"]) ==0:
@@ -2304,14 +2004,12 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
     activesearch = ""
     display = process_spigot_api_entries(final,activesearch)
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["FINISH","New Search"]+[chop_str_with_limit(z["name"],40) for z in display],f"Searching for {activesearch} from Spigot")
+        #wtd = crss_custom_ad_menu(stdscr,["FINISH","New Search"]+[chop_str_with_limit(z["name"],40) for z in display],f"Searching for {activesearch} from Spigot")
+        wtd = cursesplus.searchable_option_menu(stdscr,[d["name"] for d in display],"Choose a plugin",["Finish"])
         if wtd == 0:
             break
-        elif wtd == 1:
-            activesearch = crssinput(stdscr,"What do you want to search for?")
-            display = process_spigot_api_entries(final,activesearch)
         else:
-            chosenplugin = display[wtd-2]
+            chosenplugin = display[wtd-1]
             cursesplus.displaymsg(stdscr,["Fetching plugin info"],False)
             pldat = requests.get(f"https://api.spiget.org/v2/resources/{chosenplugin['id']}",headers=headers).json()
             if pldat["premium"]:
@@ -2420,7 +2118,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
                         ef = SERVERDIRECTORY+"/plugins/"+activeplug["name"]+"/config.yml"
                         with open(ef) as f:
                             data = yaml.load(f,yaml.FullLoader)
-                        data = dictedit(stdscr,data,f"{activeplug['name']} config")
+                        data = cursesplus.dictedit(stdscr,data,f"{activeplug['name']} config")
                         with open(ef,"w+") as f:
                             f.write(yaml.dump(data,default_flow_style=False))
 
@@ -2599,13 +2297,13 @@ def command_execution_auditing(stdscr,serverdir:str):
             case 0:
                 break
             case 1:
-                crss_textview(stdscr,text="\n".join([str(s) for s in finalcmds]),message="Every command ever executed")
+                cursesplus.textview(stdscr,text="\n".join([str(s) for s in finalcmds]),message="Every command ever executed")
             case 2:
                 whatplayer = crssinput(stdscr,"What player do you want to audit?")
-                crss_textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.issuer]),message=f"Commands from {whatplayer}")
+                cursesplus.textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.issuer]),message=f"Commands from {whatplayer}")
             case 3:
                 whatplayer = crssinput(stdscr,"What commands do you want to find?")
-                crss_textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.commandstr]),message=f"Commands including {whatplayer}")
+                cursesplus.textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.commandstr]),message=f"Commands including {whatplayer}")
             case 4:
                 cursesplus.messagebox.showinfo(stdscr,["This will show when","Players have been running commands","on other players."])
                 cursesplus.displaymsg(stdscr,["searching"],False)
@@ -2620,7 +2318,7 @@ def command_execution_auditing(stdscr,serverdir:str):
                             final += str(cmd) + "\n"
                         other_players.append(cmd.issuer)
                 
-                crss_textview(stdscr,text=final,message="Potential Command Abuse")
+                cursesplus.textview(stdscr,text=final,message="Potential Command Abuse")
                 
             case 5:
                 dat = {}
@@ -2630,7 +2328,7 @@ def command_execution_auditing(stdscr,serverdir:str):
                     else:
                         dat[entry.issuer] = 1
                         
-                bargraph(stdscr,dat,"Commands issued by player","commands")
+                cursesplus.bargraph(stdscr,dat,"Commands issued by player","commands")
             case 6:
                 dat = {}
                 for entry in finalcmds:
@@ -2640,7 +2338,7 @@ def command_execution_auditing(stdscr,serverdir:str):
                     else:
                         dat[commandhead] = 1
                         
-                bargraph(stdscr,dat,"Commands issued by type","times")
+                cursesplus.bargraph(stdscr,dat,"Commands issued by type","times")
                 
             case 7:
                 forwhichplayer = crssinput(stdscr,"Player name?")
@@ -2658,7 +2356,7 @@ def command_execution_auditing(stdscr,serverdir:str):
                 final = f"You have run {totalcommands} commands\n\n"
                 for cset in sorted(list(commands.items()),key=lambda x:x[1],reverse=True):
                     final += f"{cset[0]} - {cset[1]} times ({round(cset[1]/totalcommands*100,2)}%)\n"
-                crss_textview(stdscr,text=final)
+                cursesplus.textview(stdscr,text=final)
                 
 def view_server_logs(stdscr,server_dir:str):
     logsdir = server_dir+"/logs"
@@ -2679,7 +2377,7 @@ def view_server_logs(stdscr,server_dir:str):
             finaltext = ""
             for entry in logs:
                 finaltext += f"{entry.logdate} {entry.data}\n"
-            crss_textview(stdscr,text=finaltext,message="Every Log Ever")
+            cursesplus.textview(stdscr,text=finaltext,message="Every Log Ever")
         elif wtd == 2:
             while True:
                 availablelogs = list(reversed(sorted([l for l in os.listdir(logsdir) if os.path.isfile(l)])))
@@ -2696,11 +2394,11 @@ def view_server_logs(stdscr,server_dir:str):
                             data = f.read()
                     wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only"])
                     if wtd == 1:
-                        crss_textview(stdscr,text=data,message=f"Viewing {cl}")
+                        cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
                     elif wtd == 3:
                         who_said_what(stdscr,server_dir)
                     else:
-                        crss_textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
+                        cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
         elif wtd == 3:
             who_said_what(stdscr,server_dir)
         elif wtd == 4:
@@ -2776,12 +2474,12 @@ def config_server(stdscr,chosenserver):
             with open("server.properties") as f:
                 config = PropertiesParse.load(f.read())
 
-            config = dictedit(stdscr,config,"Editing Server Properties",True)
+            config = cursesplus.dictedit(stdscr,config,"Editing Server Properties",True)
             with open("server.properties","w+") as f:
                 f.write(PropertiesParse.dump(config))
     elif __l == 2:
         dt = APPDATA["servers"][chosenserver-1]
-        dt = dictedit(stdscr,dt,"More Server Properties")
+        dt = cursesplus.dictedit(stdscr,dt,"More Server Properties")
         APPDATA["servers"][chosenserver-1] = dt
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 3:
@@ -2805,7 +2503,7 @@ def config_server(stdscr,chosenserver):
                 else:
                     with open(lkz[dz-1]) as f:
                         data = yaml.load(f,yaml.FullLoader)
-                    data = dictedit(stdscr,data,os.path.split(lkz[dz-1])[1])
+                    data = cursesplus.dictedit(stdscr,data,os.path.split(lkz[dz-1])[1])
                     with open(lkz[dz-1],"w+") as f:
                         f.write(yaml.dump(data,default_flow_style=False))
     elif __l == 5:
@@ -2888,7 +2586,7 @@ def startup_options(stdscr,serverdata:dict):
         elif wtd == 4:
             serverdata["settings"]["flags"] = crssinput(stdscr,"Custom flags for your server",prefiltext=serverdata['settings']["flags"])
         elif wtd == 5:
-            crss_textview(stdscr,text=serverdata["script"],message="Server startup script")
+            cursesplus.textview(stdscr,text=serverdata["script"],message="Server startup script")
             
 
 def strict_word_search(haystack:str,needle:str) -> bool:
@@ -2945,16 +2643,16 @@ def who_said_what(stdscr,serverdir):
                 ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data,wws)])
             elif strict and not cassen:
                 ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data.lower(),wws.lower())])
-            crss_textview(stdscr,text=ft,message="Search Results")
+            cursesplus.textview(stdscr,text=ft,message="Search Results")
         elif wtd == 2:
             wws = crssinput(stdscr,"What player would you like to search for?")
-            crss_textview(stdscr,text=
+            cursesplus.textview(stdscr,text=
                                 "\n".join(
                                 [
                                     f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws in a.playername
                                 ]),message="Search Results")
         elif wtd == 3:
-            crss_textview(stdscr,text=
+            cursesplus.textview(stdscr,text=
                                 "\n".join(
                                 [
                                     f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries
@@ -2966,7 +2664,7 @@ def who_said_what(stdscr,serverdir):
                     sdata[entry.playername] += 1
                 else:
                     sdata[entry.playername] = 1
-            bargraph(stdscr,sdata,"Most Talkative Players","Messages")
+            cursesplus.bargraph(stdscr,sdata,"Most Talkative Players","Messages")
     popd()
 
 class FormattedIP:
@@ -3083,7 +2781,7 @@ def ip_lookup(stdscr,serverdir):
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
                 final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            crss_textview(stdscr,text=final,message="All IPs")
+            cursesplus.textview(stdscr,text=final,message="All IPs")
         elif wtd == 2:
             sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
             if sorting == 1 or sorting == 2:
@@ -3099,7 +2797,7 @@ def ip_lookup(stdscr,serverdir):
             for fi in formattedips:
                 if psearch in fi.players:
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            crss_textview(stdscr,text=final,message=f"Searching for {psearch}")
+            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
     
         elif wtd == 3:
             sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
@@ -3116,7 +2814,7 @@ def ip_lookup(stdscr,serverdir):
             for fi in formattedips:
                 if psearch in fi.address:
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            crss_textview(stdscr,text=final,message=f"Searching for {psearch}")
+            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
             
         elif wtd == 4:
             sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
@@ -3133,7 +2831,7 @@ def ip_lookup(stdscr,serverdir):
             for fi in formattedips:
                 if psearch.lower() in fi.country.lower():
                     final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
-            crss_textview(stdscr,text=final,message=f"Searching for {psearch}")
+            cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
             
         elif wtd == 5:
             fdata = {}
@@ -3142,7 +2840,7 @@ def ip_lookup(stdscr,serverdir):
                     fdata[fip.country] += 1
                 else:
                     fdata[fip.country] = 1
-            bargraph(stdscr,fdata,"Player Country Statistics","unique IPs")
+            cursesplus.bargraph(stdscr,fdata,"Player Country Statistics","unique IPs")
         elif wtd == 6:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to delete the cache?","This will result in slow loading times."],default=cursesplus.messagebox.MessageBoxStates.NO):
                 os.remove(ipdir)
@@ -3159,80 +2857,6 @@ def friendly_positions(ins:int) -> str:
     else:
         conv += "th"
     return conv
-
-def bargraph(stdscr,data:dict[str,int],message:str,unit="",sort=True,adjusty=False):
-    if len(data) == 0:
-        cursesplus.messagebox.showerror(stdscr,["No data"])
-        return
-    xoffset = 0
-    footerl = 1
-    selected = 0
-    if sort:
-        data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
-    while True:
-        stdscr.clear()
-        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(0,0,message+" | Press Q to quit | Press S to export",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        maxval = max(list(data.values()))
-        if adjusty:
-            minval = min(list(data.values()))
-        else:
-            minval = 0
-        if maxval-minval == 0:
-            minval = maxval-1
-        my,mx = stdscr.getmaxyx()
-        my -= 1 #Strange bug
-        graphspace = my - 1 - footerl #Remove head and foot
-        ti = 4
-        #Add numbers]
-        for i in range(graphspace):
-            stdscr.addstr(my-(i+footerl),0,str(round(i/graphspace*(maxval-minval))+minval))
-        for pset in list(data.items())[xoffset:xoffset+mx-5]:
-            ti += 1
-            pval = pset[1]
-            trueoffset = round(((pval-minval)/(maxval-minval))*graphspace)+1
-            
-            for i in range(trueoffset):             
-                if ti-5+xoffset == selected:
-                    try:
-                        stdscr.addstr(my-(i+footerl),ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
-                    except:
-                        pass
-                else:
-                    try:
-                        stdscr.addstr(my-(i+footerl),ti,"█")
-                    except:
-                        pass
-        dnsel = list(data.keys())[selected]
-        stdscr.addstr(my,0,f"{dnsel} ({list(data.values())[selected]} {unit}) - {friendly_positions(sorted(list(data.values()),reverse=True).index(list(data.values())[selected])+1)} place")
-        stdscr.refresh()
-        ch = stdscr.getch()
-        if ch == curses.KEY_LEFT:
-            if selected > 0:
-                selected -= 1
-            if selected-xoffset <= 0 and xoffset > 0:
-                xoffset -= 1
-        elif ch == curses.KEY_RIGHT:
-            if selected < len(data)-1:
-                selected += 1
-            if selected-xoffset > mx-7:
-                xoffset += 1
-        elif ch == curses.KEY_SRIGHT:
-            xoffset += 1
-        elif ch == curses.KEY_SLEFT:
-            if xoffset > 0:
-                xoffset -= 1
-        elif ch == 115:
-            filepath = savefile_selector(stdscr,extension=".csv",enforce_extension=True)#You had better put a CSV file
-            with open(filepath,"w+") as f:
-                f.write(f"Key,{unit},{message}")
-                f.write("\n")
-                for pair in list(data.items()):
-                    f.write(f"{pair[0]},{pair[1]}")
-                    f.write("\n")
-            cursesplus.messagebox.showinfo(stdscr,["Save successful"])
-        elif ch == 113:
-            return
             
 def get_minute_id_from_datetime(d:datetime.datetime) -> int:
     return int(d.timestamp()/60//1)
@@ -3373,6 +2997,7 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
         elif ch == "KEY_HOME":
             offset = 0
         elif ch == "j":
+            stdscr.clear()
             ndate = cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a date and time to jump to",True,False,get_datetime_from_minute_id(ldata[offset].minuteid))
             nmid = get_minute_id_from_datetime(ndate)
             if not nmid in data:
@@ -3509,11 +3134,13 @@ def sanalytics(stdscr,serverdir):
                         playminutes[p] = 0
                     playminutes[p] += 1
             while True:
-                swtd = crss_custom_ad_menu(stdscr,["Back","VIEW GRAPH"]+list(playminutes.keys()),"Choose a player to view their playtime information")
+                #swtd = crss_custom_ad_menu(stdscr,["Back","VIEW GRAPH"]+list(playminutes.keys()),"Choose a player to view their playtime information")
+                swtd = cursesplus.searchable_option_menu(stdscr,list(playminutes.keys()),"Choose a player to view their playtime information",["Back","View Total Graph"])
                 if swtd == 0:
                     break
                 elif swtd == 1:
-                    bargraph(stdscr,playminutes,"Player Minute Information","minutes")
+                    
+                    cursesplus.bargraph(stdscr,playminutes,"Player Minute Information","minutes")
                 else:
                     plstudy = list(playminutes.keys())[swtd-2]
                     zwtd = crss_custom_ad_menu(stdscr,["Total Playtime Minutes","Playtime History","Time of Day analyzers"])
@@ -3532,7 +3159,7 @@ def sanalytics(stdscr,serverdir):
                                     else:
                                         dzl[nk] += 1
                                         
-                            bargraph(stdscr,dzl,f"How has {plstudy} played over the months?","minutes spend",False,True)
+                            cursesplus.bargraph(stdscr,dzl,f"How has {plstudy} played over the months?","minutes spend",False,True)
                         case 2:
                             cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
                             dataset:list[int] = [0 for _ in range(24)]#0:00 to 23:00
@@ -3548,7 +3175,7 @@ def sanalytics(stdscr,serverdir):
                                 dataset_ps[f"{i}:00 - {i}:59"] = ex
                                 i += 1
                                 
-                            bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
+                            cursesplus.bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
                             
         elif wtd == 3:
             cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
@@ -3572,11 +3199,13 @@ def sanalytics(stdscr,serverdir):
                 dataset_ps[f"{i}:00 - {i}:59"] = ex
                 i += 1
                 
-            bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
+            cursesplus.bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
             
         elif wtd == 5:
+            stdscr.clear()
             minminid = get_minute_id_from_datetime(cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a new minimum filter time",True,False,get_datetime_from_minute_id(minminid)))
         elif wtd == 6:
+            stdscr.clear()
             maxminid = get_minute_id_from_datetime(cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a new minimum filter time",True,False,get_datetime_from_minute_id(maxminid)))
         elif wtd == 7:
             minminid = firstentrymid      
@@ -3629,7 +3258,7 @@ def sanalytics(stdscr,serverdir):
                         gd[dkey] = average_list(gd[dkey])
                     unit = "online players"
                 
-            bargraph(stdscr,gd,"Popularity Results",unit,False,False)
+            cursesplus.bargraph(stdscr,gd,"Popularity Results",unit,False,False)
         elif wtd == 10:
             plcheck = crssinput(stdscr,"What player do you want to search for")
             lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
@@ -4002,7 +3631,7 @@ def handle_file_editing(stdscr,path:str):
             except:
                 pass
         try:
-            ndict = dictedit(stdscr,ndict,os.path.split(path)[1])
+            ndict = cursesplus.dictedit(stdscr,ndict,os.path.split(path)[1])
             with open(path,"w+") as f:
                 if path.endswith("json"):
                     json.dump(ndict,f)
@@ -4622,7 +4251,7 @@ def show_changelog_info(stdscr):
             final.append("")
             final.append(f"Added in {ln}")
             
-    crss_textview(stdscr,text="\n".join(final),message="Changelog Info")
+    cursesplus.textview(stdscr,text="\n".join(final),message="Changelog Info")
 
 def import_amc_server(stdscr,chlx):
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
@@ -5058,7 +4687,7 @@ def license(stdscr):
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",ASSETSDIR+"/license")
         with open(ASSETSDIR+"/license") as f:
             dat = f.read()
-        crss_textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
+        cursesplus.textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
         APPDATA["license"] = True
 
 def oobe(stdscr):
@@ -5087,7 +4716,7 @@ def usertutorial(stdscr):
     cursesplus.messagebox.showinfo(stdscr,["Hit Ctrl-C to open up the quit menu"])
 
 def stats_and_credits(stdscr):
-    crss_textview(stdscr,text="""
+    cursesplus.textview(stdscr,text="""
 CRAFT SERVER SETUP CREDITS
 
 === DEVELOPERS ===
@@ -5212,9 +4841,9 @@ def devtools(stdscr):
             glv = globals()
             for g in list(glv.items()):
                 final += f"NAME: {g[0]} VAL: {str(g[1])}\n"
-            crss_textview(stdscr,text=final)
+            cursesplus.textview(stdscr,text=final)
         elif m == 4:
-            APPDATA = dictedit(stdscr,APPDATA,"CRSS config")
+            APPDATA = cursesplus.dictedit(stdscr,APPDATA,"CRSS config")
             updateappdata()
 
 def internet_thread(stdscr):
