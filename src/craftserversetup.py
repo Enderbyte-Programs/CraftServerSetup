@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.49.3"
+APP_UF_VERSION = "1.50"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -502,6 +502,24 @@ except:
     except:
         print("WARN: Can't find translations file.")
         _transndt = True
+
+UUID_INDEX = {}
+
+def is_uuidindex_loaded():
+    return len(UUID_INDEX) != 0
+
+def get_name_from_uuid(uuid:str) -> str:
+    if uuid in UUID_INDEX:
+        return UUID_INDEX[uuid]
+    else:
+        r = requests.get("https://api.minetools.eu/uuid/"+uuid)
+        try:
+            name = r.json()["name"]
+            UUID_INDEX[uuid] = name
+            sleep(1)#Prevent crash from rate spamming
+            return name
+        except:
+            return uuid#If all fails, just return to sender
 
 def extract_links_from_page(data: str) -> list[str]:
     dl = data.split("href=")
@@ -2594,7 +2612,7 @@ def strict_word_search(haystack:str,needle:str) -> bool:
     words = haystack.split(" ")
     return needle in words
 
-def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
+def load_server_logs(stdscr,serverdir:str,dosort=True) -> list[LogEntry]:
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
     logfile = serverdir + "/logs"
     if not os.path.isdir(logfile):
@@ -2613,11 +2631,11 @@ def load_server_logs(stdscr,serverdir) -> list[LogEntry]:
         else:
             with open(lf) as f:
                 allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
-    
-    #allentries.reverse()
-    cursesplus.displaymsg(stdscr,["Sorting Logs..."],False)
-    allentries.sort(key=lambda x: x.get_full_log_time())
-    #p.done()
+    if dosort:
+        #allentries.reverse()
+        cursesplus.displaymsg(stdscr,["Sorting Logs..."],False)
+        allentries.sort(key=lambda x: x.get_full_log_time())
+        #p.done()
     return allentries
 
 def who_said_what(stdscr,serverdir):
@@ -3603,7 +3621,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
             updateappdata()
         elif w == 14:
-            w2 = crss_custom_ad_menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics"],"Additional Utilities")
+            w2 = crss_custom_ad_menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
@@ -3612,9 +3630,112 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 #cursesplus.messagebox.showerror(stdscr,["This feature is coming soon.","Sorry"])
                 #continue
                 sanalytics(stdscr,SERVER_DIR)
+            elif w2 == 4:
+                playerstat(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN = None
+
+def get_nested_keys(d, parent_key=''):
+    keys = []#COPIED
+    for k, v in d.items():
+        full_key = f"{parent_key}.{k}" if parent_key else k
+        
+        if isinstance(v, dict):
+            keys.extend(get_nested_keys(v, full_key))
+        else:
+            keys.append(full_key)
+    return keys
+
+def dictpath(inputd:dict,path:str):
+    """Select path from inputd where path is seperated by /"""
+    if path == ".":
+        return inputd
+    final = inputd
+    for axx in path.split("."):
+        if axx == "":
+            continue
+        if type(final) == list:
+            final = final[int(axx)]
+        else:
+            final = final[axx]
+    return final
+
+def playerstat(stdscr,serverdir):
+    worlds = find_world_folders(serverdir)
+    selworld = crss_custom_ad_menu(stdscr,["Cancel"]+worlds,"Choose a world to search statistics for")
+    if selworld == 0:
+        return
+    else:
+        cursesplus.displaymsg(stdscr,["Loading data"],False)
+        playerdatafolder = worlds[selworld-1]+"/stats/"
+        uuids = []
+        filemaps = {}
+        playerdatafiles = glob.glob(playerdatafolder+"*.json")
+        for datafile in playerdatafiles:
+            b = os.path.basename(datafile)
+            uuid = b.split(".")[0]
+            if len(uuid) == 36:
+                uuids.append(uuid)
+                filemaps[datafile] = uuid
+        
+        #cursesplus.textview(stdscr,text="\n".join(uuids))
+                
+        #Attempt to load UUID to playernames
+        localmappings = {k:None for k in uuids}
+        p = cursesplus.ProgressBar(stdscr,len(uuids),message="Converting UUIDs")
+        for uuid in uuids:
+            p.step(f"{p.max - p.value} remaining - {uuid}")
+            localmappings[uuid] = get_name_from_uuid(uuid)
+            
+        updateappdata()
+        
+        while True:
+            pl = cursesplus.searchable_option_menu(stdscr,list(localmappings.values()),"Select an option or a player to view their statistics",["FINISH","COMPETITION GRAPHS"])
+            if pl == 0:
+                break
+            elif pl == 1:
+                bigdata = {}
+                allkeys = []
+                for file in playerdatafiles:
+                    with open(file) as f:
+                        d = json.load(f)["stats"]
+                        allkeys += get_nested_keys(d)
+                        bigdata[get_name_from_uuid(filemaps[file])] = d
+                
+                allkeys = remove_duplicates_from_list(allkeys)
+                while True:
+                    compe = cursesplus.searchable_option_menu(stdscr,allkeys,"Choose a statistic to compare",["FINISH"])
+                    if compe == 0:
+                        break
+                    else:
+                        ktg = allkeys[compe-1]
+                        final = {}
+                        for person in bigdata:
+                            try:
+                                final[person] = dictpath(bigdata[person],ktg)
+                            except:
+                                pass
+                        cursesplus.bargraph(stdscr,final,f"Competition for {ktg}")
+                
+            else:
+                assocuuid = uuids[pl-2]
+                assocfile = playerdatafolder + assocuuid + ".json"
+                with open(assocfile) as f:
+                    data = json.load(f)['stats']
+                    options = get_nested_keys(data)
+                    while True:
+                        to_look = cursesplus.searchable_option_menu(stdscr,options,"Choose a statistic",["FINISH","Graph"])
+                        if to_look == 0:
+                            break
+                        elif to_look == 1:
+                            final = {}
+                            for o in options:
+                                final[o] = dictpath(data,o)
+                            cursesplus.bargraph(stdscr,final,"All statistics")
+                        else:
+                            res = dictpath(data,options[to_look-2])
+                            cursesplus.messagebox.showinfo(stdscr,[options[to_look-1],str(res)])
 
 def handle_file_editing(stdscr,path:str):
     
@@ -4132,8 +4253,12 @@ def get_tree_size(start_path = '.'):
 def updateappdata():
     global APPDATA
     global APPDATAFILE
+    global UUID_INDEX
+    global UUIDFILE
     with open(APPDATAFILE,"w+") as f:
         f.write(json.dumps(APPDATA,indent=2))
+    with open(UUIDFILE,"wb+") as f:
+        f.write(gzip.compress(json.dumps(UUID_INDEX).encode()))#Write compressed file
 
 def choose_java_install(stdscr) -> str:
 
@@ -4881,7 +5006,10 @@ def main(stdscr):
     global UPDATEINSTALLED
     global _SCREEN
     global SHOW_ADVERT
+    global UUIDFILE
     global ADS
+    global UUID_INDEX
+    global UUIDFILE
     _SCREEN = stdscr
     global DEBUG
     
@@ -4924,6 +5052,7 @@ def main(stdscr):
         
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         APPDATAFILE = APPDATADIR+"/config.json"
+        UUIDFILE = APPDATADIR+"/uuidindex.json.gz"
         if not os.path.isfile(APPDATAFILE):
             with open(APPDATAFILE,"w+") as f:
                 f.write(json.dumps(__DEFAULTAPPDATA__))
@@ -4937,6 +5066,18 @@ def main(stdscr):
                     f.write(json.dumps(__DEFAULTAPPDATA__))
                 APPDATA = __DEFAULTAPPDATA__
         APPDATA = compatibilize_appdata(APPDATA)
+        
+        if not os.path.isfile(UUIDFILE):
+            with open(UUIDFILE,"wb+") as f:
+                f.write(gzip.compress(json.dumps({}).encode()))
+        else:
+            try:
+                with open(UUIDFILE,"rb") as f:
+                    UUID_INDEX = json.loads(gzip.decompress(f.read()))
+            except:
+                with open(UUIDFILE,"wb+") as f:
+                    f.write(gzip.compress(json.dumps({}).encode()))
+        
         #send_telemetry()
         if APPDATA["language"] is None:
             eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
@@ -4953,7 +5094,9 @@ def main(stdscr):
                 
                 product_key_page(stdscr,True)
         APPDATA["pkd"] = True
+        
         updateappdata()
+        
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
         introsuffix = ""
