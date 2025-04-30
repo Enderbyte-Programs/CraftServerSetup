@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50"
+APP_UF_VERSION = "1.50.1"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"

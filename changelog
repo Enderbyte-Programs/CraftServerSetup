@@ -1,3 +1,6 @@
+1.50.1:
+- Fix bugs with updating
+- Fix bugs in import process
 1.50:
 - Big number = cool update
 - Add player statistic viewer
