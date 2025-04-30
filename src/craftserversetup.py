@@ -2153,9 +2153,9 @@ def generate_script(svrdict: dict) -> str:
         _space = "\\ "
         _bs = "\\"
         if not WINDOWS:
-            __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict["settings"]["flags"]} \"{svrdict['dir']}/server.jar\" nogui"
+            __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict['settings']['flags']} \"{svrdict['dir']}/server.jar\" nogui"
         else:
-            __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict["settings"]["flags"]} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
+            __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict['settings']['flags']} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
     return __SCRIPT__
 
 def update_s_software_preinit(serverdir:str):
@@ -4345,7 +4345,7 @@ def compare_versions(version1, version2):
 def windows_update_software(stdscr,interactive=True):
     if interactive:
         cursesplus.displaymsg(stdscr,["Checking for updates"],False)
-    td = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").text
+    td = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/refs/heads/main/update.txt").text
     tdz = td.split("|")
     svr = tdz[1]
     url = tdz[0]
@@ -4621,16 +4621,22 @@ def import_server(stdscr):
             xdat["version"] = crssinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?","That is, Can it be changed with plugins/mods"])
             xdat["software"] = crss_custom_ad_menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
+            xdat["settings"] = {"legacy":True,"launchcommands":[],"exitcommands":[],"flags" : ""}
+            xdat["id"] = random.randint(1111,9999)
+            xdat["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(xdat["id"])
             xdat["script"] = generate_script(xdat)
             
             APPDATA["servers"].append(xdat)
             pushd(xdat["dir"])
             with open("exdata.json","w+") as f:
                 f.write(json.dumps(xdat))
-            os.rename(fpl,"server.jar")#Fix problem if someone is not using server.jar as their executable jar file
+            try:
+                os.rename(fpl,"server.jar")#Fix problem if someone is not using server.jar as their executable jar file
+            except:
+                pass#Good Satan how did this bug stay in here for so long
             cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
-        except:
-            cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
+        except Exception as e:
+            cursesplus.messagebox.showerror(stdscr,["An error occured importing your server.",str(e)])
     else: return
 
 def ads_available() -> bool:

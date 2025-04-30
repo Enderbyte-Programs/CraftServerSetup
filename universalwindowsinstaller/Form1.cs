@@ -40,10 +40,10 @@ namespace CRSSAutoInstall
             try
             {
                 WebClient client = new WebClient();
-                downloadedString = client.DownloadString("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/update.txt").Split('|')[0];
-            } catch
+                downloadedString = client.DownloadString("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/refs/heads/main/update.txt").Split('|')[0];
+            } catch (Exception e)
             {
-                MessageBox.Show("There was an error. Make sure you have a stable internet connection and try again", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("There was an error. Make sure you have a stable internet connection and try again\nM:"+e.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
                 Thread thread = new Thread(() => {
