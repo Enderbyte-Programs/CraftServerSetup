@@ -8,3 +8,13 @@ C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.csproj.Gen
 C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.csproj.CoreCompileInputs.cache
 C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.exe
 C:\Users\jorda\source\repos\CRSSAutoInstall\obj\Debug\CRSSAutoInstall.pdb
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\bin\Debug\CRSSAutoInstall.exe.config
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\bin\Debug\CRSSAutoInstall.exe
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\bin\Debug\CRSSAutoInstall.pdb
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.csproj.AssemblyReference.cache
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.Form1.resources
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.Properties.Resources.resources
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.csproj.GenerateResource.cache
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.csproj.CoreCompileInputs.cache
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.exe
+C:\Python311\Scripts\CraftServerSetup\universalwindowsinstaller\obj\Debug\CRSSAutoInstall.pdb
