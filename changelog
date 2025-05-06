@@ -1,4 +1,7 @@
 1.50.1:
+- Improve UUID algorthm
+- Remove redundant log entry sorting
+1.50.1:
 - Fix bugs with updating
 - Fix bugs in import process
 1.50:
@@ -18,8 +21,8 @@
 1.49.2:
 - Fix bug
 1.49.1:
-    - Adds the ability to set startup flags
-    - Adds the ability to see the server's script
+- Adds the ability to set startup flags
+- Adds the ability to see the server's script
 1.49:
 - Server info now shows number of plugins if applicable
 - Add resource warning on heavy tasks

@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50.1"
+APP_UF_VERSION = "1.50.2"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -510,6 +510,8 @@ def is_uuidindex_loaded():
 
 def get_name_from_uuid(uuid:str) -> str:
     if uuid in UUID_INDEX:
+        if uuid is None:
+            return uuid#Failed all attemps. I know it's a bad idea to be using this both internally and from the user side, but I am a bad developer
         return UUID_INDEX[uuid]
     else:
         r = requests.get("https://api.minetools.eu/uuid/"+uuid)
@@ -2612,6 +2614,25 @@ def strict_word_search(haystack:str,needle:str) -> bool:
     words = haystack.split(" ")
     return needle in words
 
+def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
+    cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
+    logfile = serverdir + "/logs"
+    if not os.path.isdir(logfile):
+        return []
+    pushd(logfile)
+    logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
+    final:list[str] = []
+    for lf in logs:
+        p.step(lf)
+        if lf.endswith(".gz"):
+            with open(lf,'rb') as f:
+                final.extend(re.findall(tofind,gzip.decompress(f.read()).decode()))
+        else:
+            with open(lf) as f:
+                final.extend(re.findall(tofind,f.read()))
+    return final
+
 def load_server_logs(stdscr,serverdir:str,dosort=True) -> list[LogEntry]:
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
     logfile = serverdir + "/logs"
@@ -2643,7 +2664,8 @@ def who_said_what(stdscr,serverdir):
         return
     allentries = load_server_logs(stdscr,serverdir)
     allentries:list[LogEntry] = [a for a in allentries if is_log_entry_a_chat_line(a)]
-    allentries.sort(key=lambda x: x.logdate,reverse=False)
+    #allentries.sort(key=lambda x: x.logdate,reverse=False)
+    #Not needed after LSL does sorting
     #allentries.reverse()
     while True:
         wtd = crss_custom_ad_menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server","View Chat Bar Graph"])
@@ -2714,7 +2736,7 @@ def ip_lookup(stdscr,serverdir):
     if resource_warning(stdscr):
         return
     ipdir = serverdir+"/.ipindex.json.gz"
-    allentries = load_server_logs(stdscr,serverdir)
+    allentries = load_server_logs(stdscr,serverdir,False)
                 
     IPS:dict[str,list] = {}
     formattedips:list[FormattedIP] = []
@@ -3661,6 +3683,76 @@ def dictpath(inputd:dict,path:str):
             final = final[axx]
     return final
 
+def push_uuids_for_searching(uuids:list[str]) -> None:
+    """Adds a list of uuids to the list. It is a good idea to call create_uuid_index after this"""
+    for uuid in uuids:
+        if not uuid in UUID_INDEX:
+            UUID_INDEX[uuid] = None
+    updateappdata()
+
+def collapse_tuple(l) -> str:
+    if isinstance(l,tuple) or isinstance(l,list):
+        best = ""
+        bestn = 0
+        for i in l:
+            if len(i) > bestn:
+                best = i
+                bestn = len(i)
+        return best
+    else:
+        return l
+
+def create_uuid_index(stdscr) -> None:
+    """Loads logs from all servers and attempts to fill in as many uuids as it can"""
+    global UUID_INDEX
+    #First, check if UUID index actually needs to be updated.
+    if not None in list(UUID_INDEX.values()):
+        return#Doesn't need updating
+    cursesplus.displaymsg(stdscr,["Finding missing UUIDs"],False)
+    missinguuids = []
+    for entry in list(UUID_INDEX.items()):
+        if entry[1] is None:
+            missinguuids.append(entry[0])
+    matches = []
+    s1knowledgebase = {}
+    for server in APPDATA["servers"]:
+        matches.extend(load_server_logs_and_find(stdscr,server['dir'],r'(UUID of player \S+ is [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(logged in as \S+ joined \(UUID: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'))
+        #Load servers
+    
+    cursesplus.displaymsg(stdscr,["Parsing data..."],False)
+    for match in matches:
+        s = collapse_tuple(match).split(" ")
+        s1knowledgebase[s[3]] = s[-1]#Match player name to UUID
+    saveduuids = 0
+    faileduuids = 0
+    cursesplus.displaymsg(stdscr,["Saving UUIDS..."],False)
+    #Attempt to match UUID-less matches
+    cursesplus.textview(stdscr,text=str(missinguuids))
+    for missinuuid in missinguuids:
+        if missinuuid in s1knowledgebase:
+            UUID_INDEX[missinuuid] = s1knowledgebase[missinuuid]
+            saveduuids += 1
+            missinguuids.remove(missinuuid)
+            
+    cursesplus.messagebox.showinfo(stdscr,[str(saveduuids),str(faileduuids)])
+    #Use webrequests for remaining UUIDS
+    tofindpbar = cursesplus.ProgressBar(stdscr,len(missinguuids),message="Finding UUIDs")
+    for missinuuid in missinguuids:
+        tofindpbar.step(f"{saveduuids} found; {faileduuids} failed || {missinuuid}")
+        if missinuuid.startswith("0000"):
+            faileduuids += 1
+            continue
+        webresult = get_name_from_uuid(missinuuid)
+        if webresult is None or webresult == missinuuid:
+            faileduuids += 1
+            continue
+        UUID_INDEX[missinuuid] = webresult
+        saveduuids += 1
+        missinguuids.remove(missinuuid)
+        sleep(1)
+       
+    updateappdata() 
+
 def playerstat(stdscr,serverdir):
     worlds = find_world_folders(serverdir)
     selworld = crss_custom_ad_menu(stdscr,["Cancel"]+worlds,"Choose a world to search statistics for")
@@ -3668,7 +3760,7 @@ def playerstat(stdscr,serverdir):
         return
     else:
         cursesplus.displaymsg(stdscr,["Loading data"],False)
-        playerdatafolder = worlds[selworld-1]+"/stats/"
+        playerdatafolder = serverdir+"/"+worlds[selworld-1]+"/stats/"
         uuids = []
         filemaps = {}
         playerdatafiles = glob.glob(playerdatafolder+"*.json")
@@ -3682,13 +3774,15 @@ def playerstat(stdscr,serverdir):
         #cursesplus.textview(stdscr,text="\n".join(uuids))
                 
         #Attempt to load UUID to playernames
-        localmappings = {k:None for k in uuids}
+        localmappings = {k:k for k in uuids}
         p = cursesplus.ProgressBar(stdscr,len(uuids),message="Converting UUIDs")
+        push_uuids_for_searching(uuids)
+        create_uuid_index(stdscr)
         for uuid in uuids:
             p.step(f"{p.max - p.value} remaining - {uuid}")
             localmappings[uuid] = get_name_from_uuid(uuid)
-            
-        updateappdata()
+        localmappings = {k:v for k,v in list(localmappings.items()) if k is not None and v is not None }
+        #localmappings = {k:v for k,v in list(localmappings.items()) if os.path.isfile(playerdatafolder+k+".json")}
         
         while True:
             pl = cursesplus.searchable_option_menu(stdscr,list(localmappings.values()),"Select an option or a player to view their statistics",["FINISH","COMPETITION GRAPHS"])
