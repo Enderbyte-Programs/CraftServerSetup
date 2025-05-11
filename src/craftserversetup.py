@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50.2"
+APP_UF_VERSION = "1.50.3"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2917,6 +2917,7 @@ class JLLogFrame:
 class ServerMinuteFrame:
     minuteid:int
     onlineplayers:list[str] = []
+    playerminutes:int = None
     
     def __init__(self,minuteid):
         self.minuteid = minuteid
@@ -2926,6 +2927,11 @@ class ServerMinuteFrame:
         return datetime.datetime.fromtimestamp(self.minuteid*60)
     def howmanyonline(self) -> int:
         return len(self.onlineplayers)
+    def getplayerminutes(self) -> int:
+        if self.playerminutes is None:
+            return self.howmanyonline()
+        else:
+            return self.playerminutes
 
 def serverminuteframe_uf(smf:ServerMinuteFrame):
     return f"{smf.minuteid} ({smf.todatetime()}) - {smf.onlineplayers}"
@@ -2950,27 +2956,46 @@ def split_list_into_chunks(l, n):
         yield l[i:i + n]
 
 class AnalyticsExplorerZoomLevels(enum.Enum):
-    MINUTE = 0
+    MINUTE = 1
     HOUR = 60
     DAY = 1440
-    MONTH = 43200
+    WEEK = 1440*7
     
 class AnalyticsExplorerDataTypes(enum.Enum):
     TOTALPLAYERMINUTES = 0
-    MAXPLAYERCOUNT = 1
-    AVERAGEPLAYERCOUNT = 2
+    PLAYERCOUNT = 1
 
 def sort_dict_by_key(d:dict) -> dict:
     return dict(sorted(list(d.items())))
 
+def get_chunk_size_from_aezl(s:AnalyticsExplorerZoomLevels):
+    return {
+        AnalyticsExplorerZoomLevels.MINUTE:1,
+        AnalyticsExplorerZoomLevels.HOUR:60,
+        AnalyticsExplorerZoomLevels.DAY:1440,
+        AnalyticsExplorerZoomLevels.WEEK:1440*7
+        }[s]
+
 def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
-    
+    cursesplus.displaymsg(stdscr,["Analytics Explorer","Initializing..."],False)
     #This function allows users to explore their analytics
     offset = 0
     datasize = len(data)-1
     currentzoomlevel = AnalyticsExplorerZoomLevels.MINUTE#Also passively the list chunk size
-    currentdatatype = AnalyticsExplorerDataTypes.MAXPLAYERCOUNT
+    currentdatatype = AnalyticsExplorerDataTypes.PLAYERCOUNT
+    zoomlevels = {
+        AnalyticsExplorerZoomLevels.MINUTE: "Minute (default)",
+        AnalyticsExplorerZoomLevels.HOUR: "Hour",
+        AnalyticsExplorerZoomLevels.DAY: "Day",
+        AnalyticsExplorerZoomLevels.WEEK: "Week"
+    }
+    datatypes = {
+        AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES: "Player Minutes Spent",
+        AnalyticsExplorerDataTypes.PLAYERCOUNT: "Online Players (default)"
+    }
     ldata = list(data.values())#List representation of data to prevent performance issues?
+    ogdata = copy.deepcopy(data)
+    ogldata = copy.deepcopy(ldata)#For use later
     maxval = max([len(p.onlineplayers) for p in list(data.values())])
     while True:
         my,mx = stdscr.getmaxyx()
@@ -2980,8 +3005,6 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.BLUE))
         stdscr.addstr(0,0,"Analytics Explorer - Press Q to quit and H for help",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         
-        if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
-            maxval = maxval*currentzoomlevel
         
         ti = 0
         for i in range(offset-xspace//2,offset+xspace//2):
@@ -2992,7 +3015,10 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                     stdscr.addstr(dy,ti,"█",cursesplus.set_colour(cursesplus.RED,cursesplus.RED))
             else:
                 seldata = ldata[i]
-                scale = int(seldata.howmanyonline()/maxval*yspace)
+                if currentdatatype == AnalyticsExplorerDataTypes.PLAYERCOUNT:
+                    scale = int(seldata.howmanyonline()/maxval*yspace)
+                else:
+                    scale = int(seldata.getplayerminutes()/maxval*yspace)
                 
                 if i == offset:
                     for p in range(1,yspace+2):
@@ -3006,13 +3032,19 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
             ti += 1
             
         seldata = ldata[offset]
-        stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.howmanyonline()} players online - {seldata.onlineplayers}")
+        if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
+            stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.getplayerminutes()} player-minutes")
+        else:
+            try:
+                stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.howmanyonline()} players online - {seldata.onlineplayers}")
+            except:
+                stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.howmanyonline()} players online")#Too long for list
         
         ch = curses.keyname(stdscr.getch()).decode()
         if ch == "q":
             break
         elif ch == "h":
-            cursesplus.displaymsg(stdscr,["KEYBINDS","q - Quit","h - Help","<- -> Scroll","END - Go to end","HOME - Go to beginning","j - Jump to time","SHIFT <-- --> - Jump hour","Ctrl <-- --> - Jump day"])
+            cursesplus.displaymsg(stdscr,["KEYBINDS","q - Quit","h - Help","<- -> Scroll","END - Go to end","HOME - Go to beginning","j - Jump to time","SHIFT <-- --> - Jump hour","Ctrl <-- --> - Jump day","T - Select time unit","D - Select data type"])
         elif ch == "KEY_LEFT":
             if offset > 0:
                 offset -= 1
@@ -3025,9 +3057,9 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                 offset = 0
         elif ch == "KEY_SRIGHT":#Jump around by an hour
             offset += 60 
-        elif ch == "kRIT5":
+        elif ch == "kRIT5":#ctrl left
             offset += 1440
-        elif ch == "kLFT5":
+        elif ch == "kLFT5":#ctrl right
             if offset > 1440:
                 offset -= 1440
             else:
@@ -3039,11 +3071,52 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
         elif ch == "j":
             stdscr.clear()
             ndate = cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a date and time to jump to",True,False,get_datetime_from_minute_id(ldata[offset].minuteid))
+            if currentzoomlevel == AnalyticsExplorerZoomLevels.HOUR:
+                ndate.minute = 0
+                ndate.second = 0
+            if currentzoomlevel == AnalyticsExplorerZoomLevels.DAY or currentzoomlevel == AnalyticsExplorerZoomLevels.WEEK:
+                ndate.hour = 0
             nmid = get_minute_id_from_datetime(ndate)
             if not nmid in data:
                 cursesplus.messagebox.showerror(stdscr,["Records do not exist for the selected date."])
             else:
                 offset = list(data.keys()).index(nmid)
+        elif ch == "t":
+            currentzoomlevel = list(zoomlevels.keys())[crss_custom_ad_menu(stdscr,list(zoomlevels.values()),"Choose a zoom level")]
+            cursesplus.displaymsg(stdscr,["Generating Data"],False)
+            #This will use ogdat because data may have been used for hour or day, which will screw it up
+            offset = 0
+            if currentzoomlevel == AnalyticsExplorerZoomLevels.MINUTE:
+                data = ogdata
+                ldata = ogldata
+            else:
+                chunked_data:list[list[ServerMinuteFrame]] = split_list_into_chunks(ogldata,get_chunk_size_from_aezl(currentzoomlevel))
+                final_data:dict[int,ServerMinuteFrame] = {}
+                for chunk in chunked_data:
+                    s:ServerMinuteFrame = ServerMinuteFrame(chunk[0].minuteid)
+                    #Append all unique players, and set playerminutes
+                    total_playerminutes = 0
+                    unique_players = []
+                    for minute in chunk:
+                        total_playerminutes += minute.howmanyonline()
+                        for onlineplayer in minute.onlineplayers:
+                            if onlineplayer not in unique_players:
+                                unique_players.append(onlineplayer)
+                    s.playerminutes = total_playerminutes
+                    s.onlineplayers = unique_players
+                    final_data[s.minuteid] = s
+                data = final_data
+                ldata = list(data.values())
+            maxval = max([p.getplayerminutes() for p in list(data.values())])
+            #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
+            #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
+            datasize = len(data)-1
+                
+        elif ch == "d":
+            currentdatatype = list(datatypes.keys())[crss_custom_ad_menu(stdscr,list(datatypes.values()),"Choose a data type")]
+            maxval = max([p.getplayerminutes() for p in list(data.values())])
+            #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
+            #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
         if offset > datasize:
             offset = datasize - 1
             
@@ -3082,7 +3155,8 @@ def sanalytics(stdscr,serverdir):
             rs:str = lz[0].strip()
             plname = rs.split(" ")[0]
             action = rs.split(" ")[1]
-            
+            #Remove special characters from plname
+            plname = plname.replace("(","")
             mid = get_minute_id_from_datetime(eventslist[-1].ext)
             if "joined" in action:
                 if not mid in joins:

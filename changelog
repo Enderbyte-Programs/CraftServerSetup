@@ -1,4 +1,6 @@
-1.50.1:
+1.50.3:
+- Add data zooming to the Analytics Viewer
+1.50.2:
 - Improve UUID algorthm
 - Remove redundant log entry sorting
 1.50.1:
