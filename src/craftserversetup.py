@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50.3"
+APP_UF_VERSION = "1.50.4"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2932,6 +2932,11 @@ class ServerMinuteFrame:
             return self.howmanyonline()
         else:
             return self.playerminutes
+    def get_data(self,setting):
+        if setting == AnalyticsExplorerDataTypes.PLAYERCOUNT:
+            return self.howmanyonline()
+        else:
+            return self.getplayerminutes()
 
 def serverminuteframe_uf(smf:ServerMinuteFrame):
     return f"{smf.minuteid} ({smf.todatetime()}) - {smf.onlineplayers}"
@@ -3072,10 +3077,9 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
             stdscr.clear()
             ndate = cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a date and time to jump to",True,False,get_datetime_from_minute_id(ldata[offset].minuteid))
             if currentzoomlevel == AnalyticsExplorerZoomLevels.HOUR:
-                ndate.minute = 0
-                ndate.second = 0
+                ndate = ndate.replace(second=0,minute=0)
             if currentzoomlevel == AnalyticsExplorerZoomLevels.DAY or currentzoomlevel == AnalyticsExplorerZoomLevels.WEEK:
-                ndate.hour = 0
+                ndate = ndate.replace(hour=0)
             nmid = get_minute_id_from_datetime(ndate)
             if not nmid in data:
                 cursesplus.messagebox.showerror(stdscr,["Records do not exist for the selected date."])
@@ -3107,14 +3111,14 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                     final_data[s.minuteid] = s
                 data = final_data
                 ldata = list(data.values())
-            maxval = max([p.getplayerminutes() for p in list(data.values())])
+            maxval = max([p.get_data(currentdatatype) for p in list(data.values())])
             #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
             #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
             datasize = len(data)-1
                 
         elif ch == "d":
             currentdatatype = list(datatypes.keys())[crss_custom_ad_menu(stdscr,list(datatypes.values()),"Choose a data type")]
-            maxval = max([p.getplayerminutes() for p in list(data.values())])
+            maxval = max([p.get_data(currentdatatype) for p in list(data.values())])
             #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
             #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
         if offset > datasize:
@@ -3801,14 +3805,14 @@ def create_uuid_index(stdscr) -> None:
     faileduuids = 0
     cursesplus.displaymsg(stdscr,["Saving UUIDS..."],False)
     #Attempt to match UUID-less matches
-    cursesplus.textview(stdscr,text=str(missinguuids))
+    #cursesplus.textview(stdscr,text=str(missinguuids))
     for missinuuid in missinguuids:
         if missinuuid in s1knowledgebase:
             UUID_INDEX[missinuuid] = s1knowledgebase[missinuuid]
             saveduuids += 1
             missinguuids.remove(missinuuid)
             
-    cursesplus.messagebox.showinfo(stdscr,[str(saveduuids),str(faileduuids)])
+    #cursesplus.messagebox.showinfo(stdscr,[str(saveduuids),str(faileduuids)])
     #Use webrequests for remaining UUIDS
     tofindpbar = cursesplus.ProgressBar(stdscr,len(missinguuids),message="Finding UUIDs")
     for missinuuid in missinguuids:

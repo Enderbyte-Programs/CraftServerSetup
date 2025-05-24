@@ -1,3 +1,6 @@
+1.50.4:
+- Fix bugs in Analytics
+- Fix bugs in stat lookup
 1.50.3:
 - Add data zooming to the Analytics Viewer
 1.50.2:
