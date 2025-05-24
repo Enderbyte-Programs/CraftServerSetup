@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50.4"
+APP_UF_VERSION = "1.50.5"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2633,7 +2633,7 @@ def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
                 final.extend(re.findall(tofind,f.read()))
     return final
 
-def load_server_logs(stdscr,serverdir:str,dosort=True) -> list[LogEntry]:
+def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datetime.datetime=None) -> list[LogEntry]:
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
     logfile = serverdir + "/logs"
     if not os.path.isdir(logfile):
@@ -2645,6 +2645,13 @@ def load_server_logs(stdscr,serverdir:str,dosort=True) -> list[LogEntry]:
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
     allentries:list[LogEntry] = []
     for lf in logs:
+        log_lastwrite_dates = lf.replace("\\","/").split("/")[-1]
+        if "latest" in lf:
+            loglastwrite = datetime.datetime.now().date()
+        else:
+            loglastwrite = datetime.date(int(log_lastwrite_dates.split("-")[0]),int(log_lastwrite_dates.split("-")[1]),int(log_lastwrite_dates.split("-")[2]))
+        if load_no_earlier_than is not None and load_no_earlier_than.date() > loglastwrite:
+            continue
         p.step(lf)
         if lf.endswith(".gz"):
             with open(lf,'rb') as f:
@@ -3130,12 +3137,30 @@ def average_list(l:list[int|float]) -> float:
 def recursive_average(l:list[list[int|float]]) -> list[float]:
     return [average_list(z) for z in l]
 
+class JsonGz:
+    def read(path:str) -> dict:
+        with open(path,'rb') as f:
+            rd = f.read()
+        return json.loads(gzip.decompress(rd).decode())
+    def write(path:str,data:dict) -> None:
+        with open(path,'wb+') as f:
+            f.write(gzip.compress(json.dumps(data).encode()))
+
 def sanalytics(stdscr,serverdir):
     
     if resource_warning(stdscr):
         return
     
-    allentries:list[LogEntry] = load_server_logs(stdscr,serverdir)
+    analytics_file_path = serverdir + os.sep + "anacache.json.gz"
+    cursesplus.displaymsg(stdscr,["Loading from cache..."],False)
+    readfrom = None
+    cachefile = {"end":None,"minutes":{}}
+    if os.path.isfile(analytics_file_path):
+        cachefile = JsonGz.read(analytics_file_path)
+        if cachefile["end"] is not None:
+            readfrom = get_datetime_from_minute_id(cachefile["end"])#Stores the last minuteid that it successfully processed.
+    
+    allentries:list[LogEntry] = load_server_logs(stdscr,serverdir,False,readfrom)
     earliestentrydt:datetime.date = allentries[0].logdate
     cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
     eventslist:list[JLLogFrame] = []
@@ -3157,7 +3182,7 @@ def sanalytics(stdscr,serverdir):
             #print(lz)
             eventslist.append(JLLogFrame(entry))
             rs:str = lz[0].strip()
-            plname = rs.split(" ")[0]
+            plname = rs.split(" ")[0].lower()
             action = rs.split(" ")[1]
             #Remove special characters from plname
             plname = plname.replace("(","")
@@ -3176,12 +3201,15 @@ def sanalytics(stdscr,serverdir):
     joins = sort_dict_by_key(joins)
     leavs = sort_dict_by_key(leavs)
     firstentrymid = get_minute_id_from_datetime(datetime.datetime.combine(earliestentrydt,datetime.time(0,0,0)))
+    if len(cachefile["minutes"]) > 0:
+        firstentrymid = int(list(cachefile["minutes"].keys())[0])+1
     cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],wait_for_keypress=False)
     currentmid = get_minute_id_from_datetime(datetime.datetime.now())
     #Take leavs and joins and assemble minuteframe
     final:dict[int,ServerMinuteFrame] = {
         firstentrymid-1:ServerMinuteFrame(firstentrymid-1)#Keep template incase no action in first minute
     }
+    
     lastrealjoin:dict[str,int] = {}#keep track of the last registered join of a player. If they stay on for longer than 6 hours without a real join, they get removed.
     for m in range(firstentrymid,currentmid+1):
         #M is minute id
@@ -3220,12 +3248,26 @@ def sanalytics(stdscr,serverdir):
                 except:
                     pass#If player inspects analytics starting from when players were online, this could crash
             final[m] = frame
-            
+    for cachedentry in list(cachefile["minutes"].items()):
+        final[int(cachedentry[0])] = ServerMinuteFrame(int(cachedentry[0]))
+        final[int(cachedentry[0])].onlineplayers = cachedentry[1]
+        #This should overwrite any nasty data.
     cursesplus.displaymsg(stdscr,["Cleaning Data","Please Wait"],wait_for_keypress=False)
     
     for k in final:
         final[k].onlineplayers = remove_duplicates_from_list(final[k].onlineplayers)
-       
+        
+    #Find last zeroed time to store in cache
+    for mre in list(final.values()).__reversed__():
+        if mre.howmanyonline() == 0:
+            storeto = mre.minuteid
+            break
+    cursesplus.displaymsg(stdscr,["Saving Data","Please Wait"],False)
+    newcache = {"end":int(storeto),"minutes":{}}
+    for line in list(final.items()):
+        if int(line[0]) <= int(storeto):
+            newcache["minutes"][int(line[0])] = line[1].onlineplayers
+    JsonGz.write(analytics_file_path,newcache)
     #with open("/tmp/cwf.txt","w+") as f:
     #    f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
     cursesplus.displaymsg(stdscr,["Done"],False)
@@ -3238,7 +3280,7 @@ def sanalytics(stdscr,serverdir):
         for k in list(final.keys()):
             if k >= minminid and k <= maxminid:
                 workingdata[k] = final[k]
-        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time","Last Seen","First Join"],"Server Analytics Manager")
+        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time","Last Seen","First Join","Reset Cache"],"Server Analytics Manager")
         if wtd == 0:
             return
         elif  wtd == 1:
@@ -3378,7 +3420,7 @@ def sanalytics(stdscr,serverdir):
                 
             cursesplus.bargraph(stdscr,gd,"Popularity Results",unit,False,False)
         elif wtd == 10:
-            plcheck = crssinput(stdscr,"What player do you want to search for")
+            plcheck = crssinput(stdscr,"What player do you want to search for").lower()
             lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
             for line in reversed(list(workingdata.values())):
                 if plcheck in line.onlineplayers:
@@ -3389,7 +3431,7 @@ def sanalytics(stdscr,serverdir):
                 return
             cursesplus.messagebox.showinfo(stdscr,[f"{plcheck} was last seen",str(lastseen)])
         elif wtd == 11:
-            plcheck = crssinput(stdscr,"What player do you want to search for")
+            plcheck = crssinput(stdscr,"What player do you want to search for").lower()
             lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
             for line in list(workingdata.values()):
                 if plcheck in line.onlineplayers:
@@ -3399,6 +3441,10 @@ def sanalytics(stdscr,serverdir):
                 cursesplus.messagebox.showinfo(stdscr,["This player could not be found"])
                 return
             cursesplus.messagebox.showinfo(stdscr,[f"{plcheck} was first seen",str(lastseen)])
+            
+        elif wtd == 12:
+            os.remove(analytics_file_path)
+            return
 
 def resource_warning(stdscr) -> bool:
     if APPDATA["settings"]["reswarn"]:
