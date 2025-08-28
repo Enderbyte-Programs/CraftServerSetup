@@ -1,3 +1,6 @@
+1.50.6:
+- Private messages are now included in chat lookups
+- Fix typo in python version check
 1.50.5:
 - Improve performance of analytics data loading
 - Make last seen lookups case insensitive

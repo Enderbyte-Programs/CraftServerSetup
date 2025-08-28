@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50.5"
+APP_UF_VERSION = "1.50.6"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -19,7 +19,6 @@ import shutil                   #File utilities
 import sys                      #C Utilities
 import os                       #OS System Utilities
 import curses                   #NCurses Terminal Library
-import curses.textpad           #Geometry drawing extension
 import json                     #JSON Parser
 import signal                   #Unix Signal Interceptor
 import datetime                 #Getting current date
@@ -42,15 +41,16 @@ import enum                     #Just a coding thing
 import io                       #File streams
 import shlex                    #Data parsing
 import re                       #Pattern matching
+import typing                   #HArd types
 
 WINDOWS = platform.system() == "Windows"
 
 if sys.version_info < (3,10):
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print("!!!!!! Serious  Error !!!!!!")
-    print("!! Python version too old !!")
-    print("! Use version 3.7 or newer !")
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("!!!!!!! Serious Error !!!!!!!")
+    print("!! Python version  too old !!")
+    print("! Use version 3.10 or newer !")
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     input("Press enter to halt -->")
     sys.exit(5)
 
@@ -531,6 +531,7 @@ def extract_links_from_page(data: str) -> list[str]:
     return final
 
 class ServerRunWrapper:
+    process:typing.Any
     def __init__(self,command):
         self.command = command
         self.datastream = io.StringIO()
@@ -560,16 +561,16 @@ class ServerRunWrapper:
             self.process.kill()
         except:
             return#Already dead
-    def getexitcode(self):
+    def getexitcode(self) -> None|int:
         if not self.isprocessrunning() :
             return self.process.returncode
         else:
             return None
     def hascrashed(self):
-        if self.getexitcode() is None:
+        code = self.getexitcode()
+        if code is None:
             return None
         else:
-            code = self.getexitcode()
             if code != 0:
                 if code < 128 or code > 130:
                     return True
@@ -647,6 +648,7 @@ def send_telemetry():
     #cursesplus.textview(_SCREEN,text=str(rdx))
     r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
 def parse_size(data: int) -> str:
+    result:str = ""
     if data < 0:
         neg = True
         data = -data
@@ -699,7 +701,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
                         cursesplus.messagebox.showerror(_SCREEN,["This feature is not available on Windows"])
                         continue
                     if cursesplus.messagebox.askyesno(_SCREEN,["This will re-install CraftServerSetup and restore any lost files.","You will need to have a release downloaded"]):
-                        flz = cursesplus.filedialog.openfiledialog(_SCREEN,"Please choose the release file",[["*.xz","crss XZ Release"],["*","All files"]])
+                        flz = cursesplus.filedialog.openfiledialog(_SCREEN,"Please choose the release file",[["*.xz","crss XZ Release"],["*","All files"]]) # type: ignore
                         _SCREEN.erase()
                         _SCREEN.refresh()
                         curses.reset_shell_mode()
@@ -871,7 +873,7 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
         os.remove(serverdir+"/exdata.json")
         cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
 
-def download_vanilla_software(stdscr,serverdir) -> dict:
+def download_vanilla_software(stdscr,serverdir) -> dict|None:
     cursesplus.displaymsg(stdscr,["Getting version information"],False)
     
     stdscr.clear()
@@ -908,6 +910,8 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
         proc = subprocess.Popen([javapath,"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
         tick = 0
         while True:
+            if proc.stdout is None:
+                continue
             output = proc.stdout.readline()
             if proc.poll() is not None:
                 break
@@ -1000,6 +1004,9 @@ class LogEntry:
             if is_log_line_a_chat_line(data):
                 if "[Server]" in data:
                     self.playername = "[Server]"
+                elif "issued server command" in data:
+                    #Handle targetted chat
+                    self.playername = data.split(" issued server")[0].split(" ")[-1]
                 else:
                     self.playername = data.split("<")[1].split(">")[0]
             else:
@@ -1041,7 +1048,7 @@ def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
     return final
         
 def is_log_line_a_chat_line(line:str) -> bool:
-    if (("INFO" in line and "<" in line and ">" in line) or "[Server]" in line) and "chat" in line.lower():
+    if ((("INFO" in line and "<" in line and ">" in line) or "[Server]" in line) and "chat" in line.lower()) or "issued server command: /msg" in line or "issued server command: /w " in line or "issued server command: /tell" in line:
         return True
     else:
         return False
@@ -2666,11 +2673,45 @@ def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datet
         #p.done()
     return allentries
 
+class ChatEntry:
+    logtime:datetime.datetime
+    playername:str
+    destination:str|None = None#Only used if targetted message
+    message:str
+
+    def __init__(self):
+        pass
+
+    def from_logentry(l:LogEntry):
+        r = ChatEntry()
+        r.logtime = l.get_full_log_time()
+        r.playername = l.playername
+        rawmessage:str = l.data
+
+        is_targetted = "issued server command" in rawmessage.lower()#Spigot/paper servers only
+        if not is_targetted:
+            r.message = rawmessage.split(l.playername)[1][1:]
+        else:
+            try:
+                cmdsection = rawmessage.split("issued server command: ")[1]
+                target = cmdsection.split(" ")[1]
+                r.destination = target
+                r.message = f"--> {r.destination}  "+" ".join(cmdsection.split(" ")[2:])
+                pass
+            except:
+                r.message = rawmessage#If it fails, use the raw data
+                
+        return r
+    
+    def get_parsed_date(self) -> str:
+        #Return a friendly date
+        return self.logtime.strftime("%Y-%m-%d %H:%M:%S")
+
 def who_said_what(stdscr,serverdir):
     if resource_warning(stdscr):
         return
     allentries = load_server_logs(stdscr,serverdir)
-    allentries:list[LogEntry] = [a for a in allentries if is_log_entry_a_chat_line(a)]
+    allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries if is_log_entry_a_chat_line(a)]
     #allentries.sort(key=lambda x: x.logdate,reverse=False)
     #Not needed after LSL does sorting
     #allentries.reverse()
@@ -2683,26 +2724,26 @@ def who_said_what(stdscr,serverdir):
             strict = cursesplus.messagebox.askyesno(stdscr,["Do you want to search strictly?","(Full words only)"])
             cassen = cursesplus.messagebox.askyesno(stdscr,["Do you want to be case sensitive?"])
             if not strict and cassen:
-                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws in a.data])
+                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws in a.message])
             elif not strict and not cassen:
-                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws.lower() in a.data.lower()])
+                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws.lower() in a.message.lower()])
             elif strict and cassen:
-                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data,wws)])
+                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if strict_word_search(a.message,wws)])
             elif strict and not cassen:
-                ft = "\n".join([f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if strict_word_search(a.data.lower(),wws.lower())])
+                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if strict_word_search(a.message.lower(),wws.lower())])
             cursesplus.textview(stdscr,text=ft,message="Search Results")
         elif wtd == 2:
             wws = crssinput(stdscr,"What player would you like to search for?")
             cursesplus.textview(stdscr,text=
                                 "\n".join(
                                 [
-                                    f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries if wws in a.playername
+                                    f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws in a.playername
                                 ]),message="Search Results")
         elif wtd == 3:
             cursesplus.textview(stdscr,text=
                                 "\n".join(
                                 [
-                                    f"{a.logdate} {a.data.split(' ')[0][1:].replace(']','')} {a.playername}: {a.data.split(a.playername)[1][1:]}" for a in allentries
+                                    f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries
                                 ]),message="Search Results")
         elif wtd == 4:
             sdata = {}
@@ -2752,7 +2793,7 @@ def ip_lookup(stdscr,serverdir):
             with open(ipdir,'rb') as f:
                 formattedips = [FormattedIP.fromdict(d) for d in json.loads(gzip.decompress(f.read()).decode())]
         except Exception as e:
-            +cursesplus.messagebox.showerror(stdscr,["Error loading cache",str(e)])
+            cursesplus.messagebox.showerror(stdscr,["Error loading cache",str(e)])
             os.remove(ipdir)
             
     bigfatstring = "\n".join(l.data for l in allentries)
@@ -3780,7 +3821,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 playerstat(stdscr,SERVER_DIR)
         elif w == 15:
             file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
-_SCREEN = None
+_SCREEN:typing.Any = None
 
 def get_nested_keys(d, parent_key=''):
     keys = []#COPIED
