@@ -1,3 +1,6 @@
+1.51:
+- Redo first join
+- Redo last seen
 1.50.6:
 - Private messages are now included in chat lookups
 - Fix typo in python version check

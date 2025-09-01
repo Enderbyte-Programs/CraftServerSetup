@@ -4,7 +4,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.50.6"
+APP_UF_VERSION = "1.51"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -81,7 +81,6 @@ import cursesplus               #Terminal Display Control
 from cursesplus import CheckBoxItem
 import requests                 #Networking Utilities
 import urllib.request
-import urllib.error
 import yaml                     #Parse YML Files
 from epadvertisements import *  #Advertisements library (BY ME)
 import epdoc                    #Documentations library (BY ME)
@@ -3461,27 +3460,47 @@ def sanalytics(stdscr,serverdir):
                 
             cursesplus.bargraph(stdscr,gd,"Popularity Results",unit,False,False)
         elif wtd == 10:
-            plcheck = crssinput(stdscr,"What player do you want to search for").lower()
-            lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
+            plf = 0
+            cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
+            sortop = crss_custom_ad_menu(stdscr,["Alphabetically","Recent -> Old"],"Choose search option")
+            fjblock:dict[str,datetime.datetime] = {}
             for line in reversed(list(workingdata.values())):
-                if plcheck in line.onlineplayers:
-                    lastseen = get_datetime_from_minute_id(line.minuteid)
-                    break
-            if lastseen.year == 2000:
-                cursesplus.messagebox.showinfo(stdscr,["This player could not be found"])
-                return
-            cursesplus.messagebox.showinfo(stdscr,[f"{plcheck} was last seen",str(lastseen)])
+                for pl in line.onlineplayers:
+                    if not pl in fjblock.keys():
+                        fjblock[pl] = get_datetime_from_minute_id(line.minuteid)
+                        plf += 1
+                        cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
+
+            if sortop == 0:
+                fjblock = dict(sorted(fjblock))#Sort A-Z
+
+            #Assemble text
+            finals = "PLAYER NAME".ljust(16)+" "+"LAST SEEN"+"\n"
+            for blk in fjblock.items():
+                finals += blk[0].ljust(16) + " " + strip_datetime(blk[1]) + "\n"
+
+            cursesplus.textview(stdscr,text=finals,message="Results")
         elif wtd == 11:
-            plcheck = crssinput(stdscr,"What player do you want to search for").lower()
-            lastseen:datetime.datetime = datetime.datetime(2000,1,1,1,1,1)#Placeholder
+            plf = 0
+            cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
+            sortop = crss_custom_ad_menu(stdscr,["Alphabetically","Oldest to newest"],"Choose search option")
+            fjblock:dict[str,datetime.datetime] = {}
             for line in list(workingdata.values()):
-                if plcheck in line.onlineplayers:
-                    lastseen = get_datetime_from_minute_id(line.minuteid)
-                    break
-            if lastseen.year == 2000:
-                cursesplus.messagebox.showinfo(stdscr,["This player could not be found"])
-                return
-            cursesplus.messagebox.showinfo(stdscr,[f"{plcheck} was first seen",str(lastseen)])
+                for pl in line.onlineplayers:
+                    if not pl in fjblock.keys():
+                        fjblock[pl] = get_datetime_from_minute_id(line.minuteid)
+                        plf += 1
+                        cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
+
+            if sortop == 0:
+                fjblock = dict(sorted(fjblock))#Sort A-Z
+
+            #Assemble text
+            finals = "PLAYER NAME".ljust(16)+" "+"JOIN DATE"+"\n"
+            for blk in fjblock.items():
+                finals += blk[0].ljust(16) + " " + strip_datetime(blk[1]) + "\n"
+
+            cursesplus.textview(stdscr,text=finals,message="Results")
             
         elif wtd == 12:
             os.remove(analytics_file_path)
