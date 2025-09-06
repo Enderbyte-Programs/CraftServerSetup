@@ -1,3 +1,5 @@
+1.51.1:
+- Fix last seen and first join
 1.51:
 - Redo first join
 - Redo last seen

@@ -1,10 +1,11 @@
 #!/usr/bin/python3
+#type: ignore
 #Early load variables
 #TODO - Backup profiles and improvements, bungeecord support (if possible)
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.51"
+APP_UF_VERSION = "1.51.1"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -3472,7 +3473,7 @@ def sanalytics(stdscr,serverdir):
                         cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
 
             if sortop == 0:
-                fjblock = dict(sorted(fjblock))#Sort A-Z
+                fjblock = dict(sorted(fjblock.items()))#Sort A-Z
 
             #Assemble text
             finals = "PLAYER NAME".ljust(16)+" "+"LAST SEEN"+"\n"
@@ -3493,7 +3494,7 @@ def sanalytics(stdscr,serverdir):
                         cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
 
             if sortop == 0:
-                fjblock = dict(sorted(fjblock))#Sort A-Z
+                fjblock = dict(sorted(fjblock.items()))#Sort A-Z
 
             #Assemble text
             finals = "PLAYER NAME".ljust(16)+" "+"JOIN DATE"+"\n"
