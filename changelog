@@ -1,3 +1,7 @@
+1.52:
+    - Add improved CLI system
+    - Run with -s <id> to automatically start that server
+    - Run with -m <id> to automatically manage that server
 1.51.1:
 - Fix last seen and first join
 1.51:
