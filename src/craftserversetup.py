@@ -5,7 +5,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.51.1"
+APP_UF_VERSION = "1.52"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -43,6 +43,7 @@ import io                       #File streams
 import shlex                    #Data parsing
 import re                       #Pattern matching
 import typing                   #HArd types
+import argparse                 #Arguments system
 
 WINDOWS = platform.system() == "Windows"
 
@@ -408,10 +409,35 @@ if os.path.isdir(execdir):
             PORTABLE = True
         if "developer" in sfd:
             DEVELOPER = True
+"""
 if "-p" in sys.argv or "--portable" in sys.argv:
     PORTABLE = True
 if "-d" in sys.argv or "--developer" in sys.argv:
     DEVELOPER = True
+"""
+
+argparser = argparse.ArgumentParser("CraftServerSetup",description="A TUI Minecraft Server maker and manager. Run without arguments for a standard interactive experience.",epilog="(c) 2023-2025 Enderbyte programs, some rights reserved. For support, please email enderbyte09@gmail.com")
+argparser.add_argument('-p','--portable',action="store_true",required=False,help="Run CraftServerSetup self-contained",dest="p",default=False)
+argparser.add_argument('-d','--developer',action="store_true",required=False,help="Enable debug features",dest="d",default=False)
+argparser.add_argument('-m','--manage',help="Open management UI directly to the server id. Must not be used in conjunction with --start",required=False,default=0,dest="manage_id")#Manage a certain server
+argparser.add_argument("-s",'--start',help="Start the server id provided. Must not be used in conjunction with --manage",required=False,default=0,dest="start_id")#start a certain server
+out = argparser.parse_args()
+PORTABLE = out.p
+DEVELOPER = out.d
+
+try:
+    int(out.manage_id)
+    int(out.start_id)
+except:
+    print("ARGUMENT ERROR - Please specify the server id to manage or start.")
+    sys.exit(4)
+
+manageid = int(out.manage_id)
+startid = int(out.start_id)
+if manageid != 0 and startid != 0:
+    print("ARGUMENT ERROR - You may not command a manage and a start at the same time.")
+    sys.exit(4)
+
 if not WINDOWS:
     APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
     if PORTABLE:
@@ -3513,6 +3539,150 @@ def resource_warning(stdscr) -> bool:
     else:
         return False
 
+def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
+    if sys.version_info[1] < 11:
+        cursesplus.messagebox.showerror(stdscr,["Unfortunately, the new startups can only be used with Python 3.11 or newer.",f"You are running {sys.version}.","Your server will be started in legacy mode (pre 1.43)"])
+        APPDATA["servers"][chosenserver-1]["settings"]["legacy"] = True
+    os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
+    if APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
+        os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
+        stdscr.clear()
+        stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
+        stdscr.refresh()
+        if not WINDOWS:
+            curses.curs_set(1)
+            curses.reset_shell_mode()
+            lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
+            #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
+            #child.expect("Finished")
+            curses.reset_prog_mode()
+            curses.curs_set(0)
+        else:
+            curses.curs_set(1)
+            curses.reset_shell_mode()
+            #COLOURS_ACTIVE = False
+            lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
+            curses.reset_prog_mode()
+            curses.curs_set(0)
+            #restart_colour()
+        os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+        if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
+            displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
+            if displog:
+                view_server_logs(stdscr,SERVER_DIR)
+        stdscr.clear()
+        stdscr.refresh()
+    else:
+        if not _sname in SERVER_INITS:
+            truecommand = APPDATA["servers"][chosenserver-1]["script"]
+            if WINDOWS:
+                truecommand = "cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")"
+            SERVER_INITS[_sname] = ServerRunWrapper(truecommand)
+            SERVER_INITS[_sname].launch()
+            cursesplus.messagebox.showinfo(stdscr,["The server has been started.","It will be ready for use in a few minutes"])
+        latestlogfile = SERVER_DIR+"/logs/latest.log"
+        #pos = 0
+        obuffer = ["Getting logs. Please wait...","The log may take some time to appear.","Don't worry, your server is still running."]
+        ooffset = 0
+        oxoffset = 0
+        tick = 0
+        #lfsize = os.path.getsize(latestlogfile)
+        stdscr.nodelay(1)
+        
+        redraw = True
+        while True:
+            
+            tick += 1
+            if tick % 30 == 0:
+                tick = 0
+                #SERVER_INITS[_sname].datastream.seek(0,0)
+                #obuffer = SERVER_INITS[_sname].datastream.readlines()
+                if os.path.isfile(latestlogfile):
+                    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(latestlogfile))
+                    if mtime < SERVER_INITS[_sname].runtime:
+                        pass
+                    else:
+                    
+                        with open(latestlogfile) as f:
+                            obc = f.readlines()
+                            if obc != obuffer:
+                                obuffer = obc
+                                ooffset = len(obuffer)-my+headeroverhead
+                                if ooffset < 0:
+                                    ooffset = 0
+                                redraw = True
+                
+            #Visual part
+            mx,my = os.get_terminal_size()
+            mx -= 1
+            my -= 1
+            headeroverhead = 5
+            if redraw:
+                stdscr.clear()
+                cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                stdscr.addstr(0,0,f"Live options for {_sname}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+                stdscr.addstr(1,0,"Press B to go back to the options")
+                stdscr.addstr(2,0,"Press C to run a command | Press K to kill the server")
+                stdscr.addstr(3,0,"Press S to stop the server")
+                stdscr.addstr(4,0,cursesplus.constants.THIN_HORIZ_LINE*mx)
+                oi = 5
+                for line in obuffer[ooffset:]:
+                    try:
+                        stdscr.addstr(oi,0,line[oxoffset:oxoffset+mx-1])
+                    except:
+                        break
+                    oi += 1
+                
+            svrstat = SERVER_INITS[_sname]
+            if not svrstat.isprocessrunning():
+                
+                stdscr.nodelay(0)
+                os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+                if svrstat.hascrashed():
+                    displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
+                    if displog:
+                        view_server_logs(stdscr,SERVER_DIR)
+                else:
+                    cursesplus.messagebox.showinfo(stdscr,["The server has been stopped safely."])
+                del SERVER_INITS[_sname]
+                break
+            #stdscr.addstr(0,0,f"Y: {ooffset} X: {oxoffset}")
+            if redraw:    
+                stdscr.refresh()
+            redraw = False
+            ch = stdscr.getch()
+            if ch == curses.KEY_UP and ooffset > 0:
+                ooffset -= 1
+                redraw = True
+            elif ch == curses.KEY_DOWN:
+                ooffset += 1
+                redraw = True
+            elif ch == curses.KEY_LEFT and oxoffset > 0:
+                oxoffset -= 1
+                redraw = True
+            elif ch == curses.KEY_RIGHT:
+                oxoffset += 1
+                redraw = True
+                
+            elif ch == 98:
+                break
+            elif ch == 99:
+                stdscr.nodelay(0)
+                svrstat.send(crssinput(stdscr,"Enter a command to run"))
+                stdscr.nodelay(1)
+            elif ch == 115:
+                svrstat.send("stop")
+                pass
+            elif ch == 107:
+                stdscr.nodelay(0)
+                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to kill the server?","This can corrupt data.","Only do this if you believe the server to be frozen"]):
+                    svrstat.fullhalt()
+                stdscr.nodelay(1)
+                
+            sleep(1/30)
+            
+        stdscr.nodelay(0)
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     global APPDATA
     global COLOURS_ACTIVE
@@ -3543,148 +3713,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             break
         
         elif w == 1:
-            if sys.version_info[1] < 11:
-                cursesplus.messagebox.showerror(stdscr,["Unfortunately, the new startups can only be used with Python 3.11 or newer.",f"You are running {sys.version}.","Your server will be started in legacy mode (pre 1.43)"])
-                APPDATA["servers"][chosenserver-1]["settings"]["legacy"] = True
-            os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
-            if APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
-                os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
-                stdscr.clear()
-                stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
-                stdscr.refresh()
-                if not WINDOWS:
-                    curses.curs_set(1)
-                    curses.reset_shell_mode()
-                    lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
-                    #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
-                    #child.expect("Finished")
-                    curses.reset_prog_mode()
-                    curses.curs_set(0)
-                else:
-                    curses.curs_set(1)
-                    curses.reset_shell_mode()
-                    #COLOURS_ACTIVE = False
-                    lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
-                    curses.reset_prog_mode()
-                    curses.curs_set(0)
-                    #restart_colour()
-                os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
-                if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
-                    displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
-                    if displog:
-                        view_server_logs(stdscr,SERVER_DIR)
-                stdscr.clear()
-                stdscr.refresh()
-            else:
-                if not _sname in SERVER_INITS:
-                    truecommand = APPDATA["servers"][chosenserver-1]["script"]
-                    if WINDOWS:
-                        truecommand = "cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")"
-                    SERVER_INITS[_sname] = ServerRunWrapper(truecommand)
-                    SERVER_INITS[_sname].launch()
-                    cursesplus.messagebox.showinfo(stdscr,["The server has been started.","It will be ready for use in a few minutes"])
-                latestlogfile = SERVER_DIR+"/logs/latest.log"
-                #pos = 0
-                obuffer = ["Getting logs. Please wait...","The log may take some time to appear.","Don't worry, your server is still running."]
-                ooffset = 0
-                oxoffset = 0
-                tick = 0
-                #lfsize = os.path.getsize(latestlogfile)
-                stdscr.nodelay(1)
-                
-                redraw = True
-                while True:
-                    
-                    tick += 1
-                    if tick % 30 == 0:
-                        tick = 0
-                        #SERVER_INITS[_sname].datastream.seek(0,0)
-                        #obuffer = SERVER_INITS[_sname].datastream.readlines()
-                        if os.path.isfile(latestlogfile):
-                            mtime = datetime.datetime.fromtimestamp(os.path.getmtime(latestlogfile))
-                            if mtime < SERVER_INITS[_sname].runtime:
-                                pass
-                            else:
-                            
-                                with open(latestlogfile) as f:
-                                    obc = f.readlines()
-                                    if obc != obuffer:
-                                        obuffer = obc
-                                        ooffset = len(obuffer)-my+headeroverhead
-                                        if ooffset < 0:
-                                            ooffset = 0
-                                        redraw = True
-                        
-                    #Visual part
-                    mx,my = os.get_terminal_size()
-                    mx -= 1
-                    my -= 1
-                    headeroverhead = 5
-                    if redraw:
-                        stdscr.clear()
-                        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-                        stdscr.addstr(0,0,f"Live options for {_sname}",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-                        stdscr.addstr(1,0,"Press B to go back to the options")
-                        stdscr.addstr(2,0,"Press C to run a command | Press K to kill the server")
-                        stdscr.addstr(3,0,"Press S to stop the server")
-                        stdscr.addstr(4,0,cursesplus.constants.THIN_HORIZ_LINE*mx)
-                        oi = 5
-                        for line in obuffer[ooffset:]:
-                            try:
-                                stdscr.addstr(oi,0,line[oxoffset:oxoffset+mx-1])
-                            except:
-                                break
-                            oi += 1
-                        
-                    svrstat = SERVER_INITS[_sname]
-                    if not svrstat.isprocessrunning():
-                        
-                        stdscr.nodelay(0)
-                        os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
-                        if svrstat.hascrashed():
-                            displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
-                            if displog:
-                                view_server_logs(stdscr,SERVER_DIR)
-                        else:
-                            cursesplus.messagebox.showinfo(stdscr,["The server has been stopped safely."])
-                        del SERVER_INITS[_sname]
-                        break
-                    #stdscr.addstr(0,0,f"Y: {ooffset} X: {oxoffset}")
-                    if redraw:    
-                        stdscr.refresh()
-                    redraw = False
-                    ch = stdscr.getch()
-                    if ch == curses.KEY_UP and ooffset > 0:
-                        ooffset -= 1
-                        redraw = True
-                    elif ch == curses.KEY_DOWN:
-                        ooffset += 1
-                        redraw = True
-                    elif ch == curses.KEY_LEFT and oxoffset > 0:
-                        oxoffset -= 1
-                        redraw = True
-                    elif ch == curses.KEY_RIGHT:
-                        oxoffset += 1
-                        redraw = True
-                        
-                    elif ch == 98:
-                        break
-                    elif ch == 99:
-                        stdscr.nodelay(0)
-                        svrstat.send(crssinput(stdscr,"Enter a command to run"))
-                        stdscr.nodelay(1)
-                    elif ch == 115:
-                        svrstat.send("stop")
-                        pass
-                    elif ch == 107:
-                        stdscr.nodelay(0)
-                        if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to kill the server?","This can corrupt data.","Only do this if you believe the server to be frozen"]):
-                            svrstat.fullhalt()
-                        stdscr.nodelay(1)
-                        
-                    sleep(1/30)
-                    
-                stdscr.nodelay(0)
+            start_server(stdscr)
         elif w == 2:
             if not os.path.isfile("server.properties"):
                 cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
@@ -5362,6 +5391,33 @@ def main(stdscr):
             except:
                 with open(UUIDFILE,"wb+") as f:
                     f.write(gzip.compress(json.dumps({}).encode()))
+
+        #Breakaway point for -m and -s tasks
+        _scc = False
+        if manageid != 0:
+            inc = 0
+            for server in APPDATA["servers"]:
+                if server["id"] == manageid:
+                    manage_server(stdscr,server["name"],inc)
+                    _scc = True
+                    break
+
+                inc += 1
+            if not _scc:
+                cursesplus.messagebox.showerror(stdscr,["Unable to find requested","direct manage ID."])
+        
+        if startid != 0:
+            inc = 0
+            for server in APPDATA["servers"]:
+                if server["id"] == startid:
+                    os.chdir(server["dir"])
+                    start_server(stdscr,server["name"],inc,server["dir"])
+                    _scc = True
+                    break
+
+                inc += 1
+            if not _scc:
+                cursesplus.messagebox.showerror(stdscr,["Unable to find requested","direct start ID."])
         
         #send_telemetry()
         if APPDATA["language"] is None:
