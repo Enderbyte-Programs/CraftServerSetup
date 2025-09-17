@@ -1,3 +1,8 @@
+1.52.1:
+- Fix bug where you could not start servers by hand
+- Fix corrupt library TAR archives since around v1.50
+- Upgrade certifi to 2025.8.3 from 2025.1.31
+- Upgrade charset-normalizer to 3.4.3 from 3.4.1
 1.52:
     - Add improved CLI system
     - Run with -s <id> to automatically start that server

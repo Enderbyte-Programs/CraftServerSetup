@@ -69,9 +69,10 @@
         python3 scripts/minify.py dist/craftserversetup.py dist/craftserversetup.py.tmp
         rm -rf scripts/python_minifier
         mv dist/craftserversetup.py.tmp dist/craftserversetup.py
-        chmod +x dist/craftserversetup.py
+        
         
     fi
+    chmod +x dist/craftserversetup.py
     mv dist/craftserversetup.py dist/craftserversetup
     cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
 
