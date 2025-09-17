@@ -5,7 +5,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.52"
+APP_UF_VERSION = "1.52.1"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -3713,7 +3713,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             break
         
         elif w == 1:
-            start_server(stdscr)
+            start_server(stdscr,_sname,chosenserver,SERVER_DIR)
         elif w == 2:
             if not os.path.isfile("server.properties"):
                 cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
