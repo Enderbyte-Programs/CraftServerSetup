@@ -5,7 +5,7 @@
 VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.52.1"
+APP_UF_VERSION = "1.52.2"
 #The semver version
 UPDATEINSTALLED = False
 DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
@@ -2026,6 +2026,15 @@ def write_package_file(packages:list,serverdir:str):
     with open(assemble_package_file_path(serverdir),"w+") as f:
         f.write(json.dumps({"date":datetime.datetime.now().strftime("%Y%m%d"),"packages":[{"name":z["name"],"id":z["id"]} for z in packages]},indent=2))
 
+def clean_file_name(name:str) -> str:
+    ALLOWED_CHARACTERS = list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
+    fn_name = ""
+    for ch in name:
+        if ch in ALLOWED_CHARACTERS:
+            fn_name += ch
+
+    return fn_name
+
 def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
     final = []
     headers = {
@@ -2086,7 +2095,7 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
                 _dloc[1] = _dloc[1].split(".")[1]
                 dloc = "/".join(_dloc)
                 try:
-                    urllib.request.urlretrieve(f"https://api.spiget.org/v2/{dloc}",modfolder+"/"+pldat["name"]+".jar")
+                    urllib.request.urlretrieve(f"https://api.spiget.org/v2/{dloc}",modfolder+"/"+clean_file_name(pldat["name"])+".jar")
                 except:
                     cursesplus.messagebox.showerror(stdscr,["There was an error downloading","the plugin. You may have to download it manually."])
     
@@ -2516,7 +2525,7 @@ def manage_server_icon(stdscr):
                     pass
 
 def config_server(stdscr,chosenserver):
-    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options"])#Todo rename server, memory
+    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options","Change Java Installation"])#Todo rename server, memory
     if __l == 0:
         updateappdata()
         return
@@ -2570,6 +2579,12 @@ def config_server(stdscr,chosenserver):
     elif __l == 7:
         APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
         APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
+
+    elif __l == 8:
+        njavapath = choose_java_install(stdscr)
+        APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
+        APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
+
 
 def change_software(stdscr,directory,data) -> dict:
     zxc = crss_custom_ad_menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
