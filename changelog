@@ -1,6 +1,6 @@
 1.52.2:
 - Add the ability to change the server's java installation
-- Add the ability 
+- Fix bugs
 1.52.1:
 - Fix bug where you could not start servers by hand
 - Fix corrupt library TAR archives since around v1.50
