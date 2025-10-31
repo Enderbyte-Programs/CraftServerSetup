@@ -3,3 +3,7 @@
 - Add bungeecord and Velocity support
 - Add inventory viewer or player data editor
 - Add disk space analyzer
+- Add code of conduct manager
+- Update server.properties to 1.21.10
+
+(future) - actually make server properties version dependent
