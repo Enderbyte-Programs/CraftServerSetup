@@ -1,3 +1,9 @@
+1.53:
+- MAJOR RESTRUCTURING. Source tree
+    - Add tree-based-source system
+    - Move self-made libraries to src
+    - Unzip libraries
+    - Move other files in src directory to scripts
 1.52.2:
 - Add the ability to change the server's java installation
 - Fix bugs

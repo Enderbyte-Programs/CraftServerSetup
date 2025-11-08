@@ -65,7 +65,7 @@
     if [ "$1" = "nominify" ]; then
         echo INFO: Skipping script minification as you requested.
     else
-        tar -xf lib/python_minifier.tar.xz -C scripts --warning=no-timestamp
+        cp -r lib/python_minifier scripts/
         python3 scripts/minify.py dist/craftserversetup.py dist/craftserversetup.py.tmp
         rm -rf scripts/python_minifier
         mv dist/craftserversetup.py.tmp dist/craftserversetup.py
@@ -80,12 +80,10 @@
     ln -sf "$INSTALLDIR/craftserversetup" "$INSTALLDIR/crss"
     pushd lib >/dev/null
     echo "INFO: Installing libraries"
-    #Copy prebuilt python library
-    for file in *.xz
-    do
-        tar -xf $file -C $LIBDIR --warning=no-timestamp #Extract library to custom library path
-    done
-    cp *.py $LIBDIR #Copy remaining custom librariespa
+    cp -r ./* $LIBDIR
+    cp ../src/*.py $LIBDIR
+    rm $LIBDIR/craftserversetup.py
+    #Do not copy executable to library dir
     popd >/dev/null
     if [ ! -d $ICONDIR ]; then
         mkdir -p $ICONDIR
@@ -221,7 +219,7 @@
         rm -rf output
     fi
     mkdir output
-    cp src/linux_universal_installer.sh output
+    cp scripts/linux_universal_installer.sh output
     mv craftserversetup.tar.xz output
     mv craftserversetup.deb output
     cp universalwindowsinstaller/bin/Debug/CraftServerSetup-Universal-Installer.exe.exe output/WindowsUniversalInstaller.exe
@@ -300,8 +298,8 @@
     sed -i "42iOutputBaseFilename=CraftServerSetup-$version-installer" crss-wine.iss
 
     cd ..
-    cp src/vf.txt $FDIR
-    cp src/crss-wine.iss $FDIR
+    cp scripts/vf.txt $FDIR
+    cp scripts/crss-wine.iss $FDIR
 
     echo "Compiling stage 1"
     pushd $FDIR
