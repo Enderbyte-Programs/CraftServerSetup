@@ -1,18 +1,10 @@
 #!/usr/bin/python3
 #type: ignore
 #Early load variables
-#TODO - Backup profiles and improvements, bungeecord support (if possible)
-VERSION_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
-BUNGEECORD_DOWNLOAD_URL = "https://ci.md-5.net/job/BungeeCord/lastStableBuild/artifact/bootstrap/target/BungeeCord.jar"
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.52.2"
+APP_UF_VERSION = "1.53"
 #The semver version
-UPDATEINSTALLED = False
-DOCFILE = "https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/doc/craftserversetup.epdoc"
-DEVELOPER = False#Enable developer tools by putting DEVELOPER as a startup flag
-MODRINTH_USER_AGENT = f"Enderbyte-Programs/CraftServerSetup/{APP_UF_VERSION}"
-SHOW_ADVERT = False
-print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025")
+print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025, some rights reserved")
 
 ### Standard Library Imports ###
 
@@ -32,20 +24,20 @@ import platform                 #Get system information
 import threading                #Start threads
 import random                   #Random number generation
 import traceback                #Error management
-import webbrowser               #Advertisements
+import webbrowser               #Open links like the bug link
 import tarfile                  #Create archives
 import gzip                     #Compression utilities
 import time                     #Timezone data
-import textwrap                 #Text wrapping
 import copy                     #Object copies
-import enum                     #Just a coding thing
+import enum                     #Improve readability
 import io                       #File streams
 import shlex                    #Data parsing
 import re                       #Pattern matching
 import typing                   #HArd types
-import argparse                 #Arguments system
+import importlib                #For import reloading
 
 WINDOWS = platform.system() == "Windows"
+DEBUG = False#Some constants need to be loaded before library startup... It's a bad system, but this is what is needed to split up this 7000 line file
 
 if sys.version_info < (3,10):
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -84,134 +76,45 @@ from cursesplus import CheckBoxItem
 import requests                 #Networking Utilities
 import urllib.request
 import yaml                     #Parse YML Files
-from epadvertisements import *  #Advertisements library (BY ME)
+
+#Modularized inputs (1.53 refactoring +)
 import epdoc                    #Documentations library (BY ME)
 import pngdim                   #Calculate dimensions of a PNG file
-import epprodkey                #Product key manager
 import eptranslate              #Translations
 from eptranslate import t       #Shorthand
+import staticflags              #Constants and urls
+import arguments
+#Setup static flags
+staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
+staticflags.setup_early_load(WINDOWS,DEBUG)
+from staticflags import * #Static flags are locked at this time
+import appdata
 
-___DEFAULT_SERVER_PROPERTIES___ = r"""
-accepts-transfers=false
-allow-flight=false
-allow-nether=true
-broadcast-console-to-ops=true
-broadcast-rcon-to-ops=true
-difficulty=easy
-enable-command-block=false
-enable-jmx-monitoring=false
-enable-query=false
-enable-rcon=false
-enable-status=true
-enforce-secure-profile=true
-enforce-whitelist=false
-entity-broadcast-range-percentage=100
-force-gamemode=false
-function-permission-level=2
-gamemode=survival
-generate-structures=true
-generator-settings={}
-hardcore=false
-hide-online-players=false
-initial-disabled-packs=
-initial-enabled-packs=vanilla
-level-name=world
-level-seed=
-level-type=minecraft:normal
-log-ips=true
-max-chained-neighbor-updates=1000000
-max-players=20
-max-tick-time=60000
-max-world-size=29999984
-motd=A Minecraft Server
-network-compression-threshold=256
-online-mode=true
-op-permission-level=4
-player-idle-timeout=0
-prevent-proxy-connections=false
-pvp=true
-query.port=25565
-rate-limit=0
-rcon.password=
-rcon.port=25575
-region-file-compression=deflate
-require-resource-pack=false
-resource-pack=
-resource-pack-id=
-resource-pack-prompt=
-resource-pack-sha1=
-server-ip=
-server-port=25565
-simulation-distance=10
-spawn-animals=true
-spawn-monsters=true
-spawn-npcs=true
-spawn-protection=16
-sync-chunk-writes=true
-text-filtering-config=
-use-native-transport=true
-view-distance=10
-white-list=false
-"""
+del WINDOWS
+del DEBUG
 
-__BEDROCK_DEFAULT_SERVER_PROPERTIES__ = r"""
-server-name=Dedicated Server
-gamemode=survival
-force-gamemode=false
-difficulty=easy
-allow-cheats=false
-max-players=10
-online-mode=true
-allow-list=false
-server-port=19132
-server-portv6=19133
-enable-lan-visibility=true
-view-distance=32
-tick-distance=4
-player-idle-timeout=30
-max-threads=8
-level-name=Bedrock level
-level-seed=
-default-player-permission-level=member
-texturepack-required=false
-content-log-file-enabled=false
-compression-threshold=1
-compression-algorithm=zlib
-server-authoritative-movement=server-auth
-player-position-acceptance-threshold=0.5
-player-movement-action-direction-threshold=0.85
-server-authoritative-block-breaking-pick-range-scalar=1.5
-chat-restriction=None
-disable-player-interaction=false
-client-side-chunk-generation-enabled=true
-block-network-ids-are-hashes=true
-disable-persona=false
-disable-custom-skins=false
-server-build-radius-ratio=Disabled
-allow-outbound-script-debugging=false
-allow-inbound-script-debugging=false
-script-debugger-auto-attach=disabled
-"""
+if not os.path.isdir(APPDATADIR):
+    os.mkdir(APPDATADIR)
+if not os.path.isdir(SERVERSDIR):
+    os.mkdir(SERVERSDIR)
+if not os.path.isdir(TEMPDIR):
+    os.mkdir(TEMPDIR)
+if not os.path.isdir(BACKUPDIR):
+    os.mkdir(BACKUPDIR)
+if not os.path.isdir(SERVERS_BACKUP_DIR):
+    os.mkdir(SERVERS_BACKUP_DIR)
+if not os.path.isdir(ASSETSDIR):
+    os.mkdir(ASSETSDIR)
 
-PLUGIN_HELP = r"""
-So You Can't Find Your Plugin
-
-Sometimes Modrinth can be finicky and you can't find your plugin. Here are some things that could have happened:
-
-- The plugin owner misconfigured the plugin, leading to its exclusion from results
-- The plugin is listed to work on (say 1.19 +) but since it is 1.20, it works anyway but you can't find it
-- You are using a forge or fabric server. This program does not officially support them but you are allowed to import them anyway
-
-Do not worry; There are things you can do to find your plugin/mod. These are leniency settings. In leniency settings, you can change the following settings:
-
-Enforce Version         If enabled, makes sure that the plugin explicitly lists the server version as a supported version
-
-Enforce Software        If enabled, makes sure that the plugin explicitly supports Bukkit
-
-Enforce Type            If enabled, makes sure that what you are downloading is actually a mod and not something else
-"""
-
-COLOURS_ACTIVE = False
+_transndt = False
+try:
+    eptranslate.load("translations.toml")
+except:
+    try:
+        eptranslate.load(APPDATADIR+"/translations.toml")
+    except:
+        print("WARN: Can't find translations file.")
+        _transndt = True
 
 def merge_dicts(a,b):
     if sys.version_info < (3,9):
@@ -233,158 +136,6 @@ def sigint(signal,frame):
     if cursesplus.messagebox.askyesno(_SCREEN,message):
         safe_exit(0)
 
-def verifykey(key:str):
-    global SHOW_ADVERT
-    f = epprodkey.check(key)
-    headers = {
-        "product_id" : "gVPMT86BgvfmzlvJ8i9RnQ==",
-        "license_key" : key
-            }
-    r = requests.post("https://api.gumroad.com/v2/licenses/verify",data=headers)
-    if r.status_code == 404:
-        rz = False
-    elif r.json()["success"]:
-        rz = True
-    else:
-        rz = False
-    SHOW_ADVERT = not (f or rz)
-    return f or rz
-
-def prodkeycheck(a):
-    return not SHOW_ADVERT
-
-def compatibilize_appdata(data:dict) -> dict:
-    """This function ensures that appdata is brought up to the latest version. It is compatible to the beginning."""
-    try:
-        cver = data["version"]
-    except:
-        data["version"] = APP_VERSION
-
-    if not "language" in data:
-        data["language"] = None
-
-    if not "settings" in data:
-        data["settings"] = {
-
-        "transitions":{
-            "display" : "Show Transitions?",
-            "type" : "bool",
-            "value" : True
-        },
-        "oldmenu":{
-            "name" : "oldmenu",
-            "display" : "Use legacy style menus?",
-            "type" : "bool",
-            "value" : False
-        }
-    }
-    elif type(data["settings"]) == list:
-        #Update data
-        data["settings"] = {
-
-        "transitions":{
-            "display" : "Show Transitions?",
-            "type" : "bool",
-            "value" : data["settings"][1]["value"]
-        },
-        "oldmenu":{
-            "name" : "oldmenu",
-            "display" : "Use legacy style menus?",
-            "type" : "bool",
-            "value" : data["settings"][2]["value"]
-        }
-
-        }
-    if not "showprog" in data["settings"]:
-        data["settings"]["showprog"] = {
-            "name" : "showprog",
-            "display" : "Show progress bar startup?",
-            "type" : "bool",
-            "value":False
-        }
-    if not "editor" in data["settings"]:
-        data["settings"]["editor"] = {
-            "name" : "editor",
-            "display" : "Text Editor",
-            "type" : "str",
-            "value" : "/usr/bin/editor %s"
-        }
-    if not "autoupdate" in data["settings"]:
-        data["settings"]["autoupdate"] = {
-            "name":"autoupdate",
-            "display":"Update automatically",
-            "type":"bool",
-            "value":True
-        }
-    if not "productKey" in list(data.keys()):
-        data["productKey"] = ""
-    if not "pkd" in list(data.keys()):
-        data["pkd"] = False
-
-    if not "idata" in data:
-        data["idata"] = {
-        "MOTD" : "No Message Yet",
-        "dead" : {
-            "active" : False,
-            "message" : "N/A"
-        }
-    }
-    svri = 0
-    for svr in data["servers"]:
-        if type(svr) is not dict:
-            del svr
-            continue#I don't know how this happened
-        if not "id" in svr:
-            data["servers"][svri]["id"] = random.randint(1111,9999)
-        if not "settings" in svr:
-            data["servers"][svri]["settings"] = {}#New empty settings
-        if data["servers"][svri]["settings"] == {}:
-            data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[]}
-        if not "legacy" in data["servers"][svri]["settings"]:
-            data['servers'][svri]["settings"]["legacy"] = True
-        if not "backupdir" in svr:
-            data['servers'][svri]["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(data['servers'][svri]["id"])
-        if data["servers"][svri]["software"] == 0:
-            data["servers"][svri]["software"] = 5#v1.48
-            
-        #1.49.1
-        if not "flags" in svr["settings"]:
-            data["servers"][svri]["settings"]["flags"] = ""
-            
-        svri += 1
-
-    svk = 0
-    for ji in data["javainstalls"]:
-        data["javainstalls"][svk] = {"path":ji["path"].replace("\\","/").replace("//","/"),"ver":ji["ver"]}
-
-        svk += 1
-    if not "license" in data:
-        data["license"] = False
-        
-    if not "backupprofiles" in data:
-        #Works with glob
-        data["backupprofiles"] = {
-            "everything" : {
-                "include" : [
-                    "#SD/**"
-                ],
-                "exclude" : [
-                    
-                ]
-            }
-        }
-        
-    #1.49
-    if not "reswarn" in data["settings"]:
-        data["settings"]["reswarn"] = {
-            "name" :"reswarn",
-            "display" : "Give warnings for high-resource operations",
-            "type" : "bool",
-            "value" : True
-        }
-
-    return data
-
 def internet_on():
     try:
         urllib.request.urlopen('http://google.com', timeout=10)
@@ -395,155 +146,19 @@ def internet_on():
 def assemble_package_file_path(serverdir:str):
     return TEMPDIR+"/packages-spigot-"+serverdir.replace("\\","/").split("/")[-1]+".json"
 
-### DETECT PORTABLE INSTALLATION ###
-ogpath = sys.argv[0]
-execdir = os.path.split(ogpath)[0]
-PORTABLE = False
-#Read startup flag
-if os.path.isdir(execdir):
-    if os.path.isfile(execdir+"/startupflags.txt"):
-        with open(execdir+"/startupflags.txt") as f:
-            sfd = f.read().lower()
-        
-        if "portable" in sfd :
-            PORTABLE = True
-        if "developer" in sfd:
-            DEVELOPER = True
-"""
-if "-p" in sys.argv or "--portable" in sys.argv:
-    PORTABLE = True
-if "-d" in sys.argv or "--developer" in sys.argv:
-    DEVELOPER = True
-"""
-
-argparser = argparse.ArgumentParser("CraftServerSetup",description="A TUI Minecraft Server maker and manager. Run without arguments for a standard interactive experience.",epilog="(c) 2023-2025 Enderbyte programs, some rights reserved. For support, please email enderbyte09@gmail.com")
-argparser.add_argument('-p','--portable',action="store_true",required=False,help="Run CraftServerSetup self-contained",dest="p",default=False)
-argparser.add_argument('-d','--developer',action="store_true",required=False,help="Enable debug features",dest="d",default=False)
-argparser.add_argument('-m','--manage',help="Open management UI directly to the server id. Must not be used in conjunction with --start",required=False,default=0,dest="manage_id")#Manage a certain server
-argparser.add_argument("-s",'--start',help="Start the server id provided. Must not be used in conjunction with --manage",required=False,default=0,dest="start_id")#start a certain server
-out = argparser.parse_args()
-PORTABLE = out.p
-DEVELOPER = out.d
-
-try:
-    int(out.manage_id)
-    int(out.start_id)
-except:
-    print("ARGUMENT ERROR - Please specify the server id to manage or start.")
-    sys.exit(4)
-
-manageid = int(out.manage_id)
-startid = int(out.start_id)
-if manageid != 0 and startid != 0:
-    print("ARGUMENT ERROR - You may not command a manage and a start at the same time.")
-    sys.exit(4)
-
-if not WINDOWS:
-    APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
-    if PORTABLE:
-        APPDATADIR = execdir+"/AppData"
-    SERVERSDIR = APPDATADIR + "/servers"
-    SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
-    TEMPDIR = APPDATADIR + "/temp"
-    BACKUPDIR = os.path.expanduser("~/.local/share/crss_backup")
-    ASSETSDIR = APPDATADIR + "/assets"
-else:
-    
-    APPDATADIR = os.path.expandvars("%APPDATA%/mcserver")
-    if PORTABLE:
-        APPDATADIR = execdir+"/AppData"
-    SERVERSDIR = APPDATADIR + "/servers"
-    SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
-    TEMPDIR = APPDATADIR + "/temp"
-    BACKUPDIR = os.path.expandvars("%APPDATA%/crss_backup")
-    ASSETSDIR = APPDATADIR + "/assets"
-
-DOCDOWNLOAD = ASSETSDIR + "/craftserversetup.epdoc"
-
-if not os.path.isdir(APPDATADIR):
-    os.mkdir(APPDATADIR)
-if not os.path.isdir(SERVERSDIR):
-    os.mkdir(SERVERSDIR)
-if not os.path.isdir(TEMPDIR):
-    os.mkdir(TEMPDIR)
-if not os.path.isdir(BACKUPDIR):
-    os.mkdir(BACKUPDIR)
-if not os.path.isdir(SERVERS_BACKUP_DIR):
-    os.mkdir(SERVERS_BACKUP_DIR)
-if not os.path.isdir(ASSETSDIR):
-    os.mkdir(ASSETSDIR)
-__DEFAULTAPPDATA__ = {
-    "servers" : [
-
-    ],
-    "hasCompletedOOBE" : False,
-    "version" : APP_VERSION,
-    "javainstalls" : [
-
-    ],
-    "productKey" : "",
-    "pkd" : False,
-    "settings" : {
-        "transitions":{
-            "display" : "Show Transitions?",
-            "type" : "bool",
-            "value" : False
-        },
-        "oldmenu":{
-            "name" : "oldmenu",
-            "display" : "Use legacy style menus?",
-            "type" : "bool",
-            "value" : False
-        },
-        "showprog" : {
-            "name" : "showprog",
-            "display" : "Show progress bar on startup?",
-            "type" : "bool",
-            "value" : False
-        },
-        "reswarn" : {
-            "name" :"reswarn",
-            "display" : "Give warnings for high-resource operations",
-            "type" : "bool",
-            "value" : True
-        }
-    },
-    "idata" : {
-        "MOTD" : "No Message Yet",
-        "dead" : {
-            "active" : False,
-            "message" : "N/A"
-        }
-    },
-    "license" : False,
-    "language" : None
-}
-
-_transndt = False
-try:
-    eptranslate.load("translations.toml")
-except:
-    try:
-        eptranslate.load(APPDATADIR+"/translations.toml")
-    except:
-        print("WARN: Can't find translations file.")
-        _transndt = True
-
-UUID_INDEX = {}
-
 def is_uuidindex_loaded():
-    return len(UUID_INDEX) != 0
+    return len(appdata.UUID_INDEX) != 0
 
 def get_name_from_uuid(uuid:str) -> str:
-    if uuid in UUID_INDEX:
+    if uuid in appdata.UUID_INDEX:
         if uuid is None:
             return uuid#Failed all attemps. I know it's a bad idea to be using this both internally and from the user side, but I am a bad developer
-        return UUID_INDEX[uuid]
+        return appdata.UUID_INDEX[uuid]
     else:
         r = requests.get("https://api.minetools.eu/uuid/"+uuid)
         try:
             name = r.json()["name"]
-            UUID_INDEX[uuid] = name
+            appdata.UUID_INDEX[uuid] = name
             sleep(1)#Prevent crash from rate spamming
             return name
         except:
@@ -607,32 +222,6 @@ class ServerRunWrapper:
 
 SERVER_INITS:dict[str,ServerRunWrapper] = {}
 
-def product_key_page(stdscr,force=False):
-    if force:
-        npk = crssinput(stdscr,"Please insert your product key (case sensitive)")
-        if not verifykey(npk):
-            cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
-        else:
-            APPDATA["productKey"] = npk
-            cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
-            updateappdata()
-            return
-    else:
-        o = crss_custom_ad_menu(stdscr,["Open store website","Insert product key","Cancel"])
-        if o == 0:
-            webbrowser.open("https://ko-fi.com/s/f44efdb343")
-        elif o == 1:
-            npk = crssinput(stdscr,"Please insert your product key (case sensitive)")
-            if not verifykey(npk):
-                cursesplus.messagebox.showwarning(stdscr,["Invalid key","Make sure you have entred it correctly and that you have a stable internet connection"])
-            else:
-                APPDATA["productKey"] = npk
-                cursesplus.messagebox.showinfo(stdscr,["Thank you for upgrading!",":D"],"Success")
-                updateappdata()
-                return
-        elif o == 2:
-            return
-
 def package_server_script(indir:str,outfile:str) -> int:
     try:
         pushd(indir)
@@ -658,21 +247,24 @@ def unpackage_server(infile:str,outdir:str) -> int:
 ### END UTILS
 
 def safe_exit(code):
-    updateappdata()
+    appdata.updateappdata()
     for server in list(SERVER_INITS.values()):
         server.safestop()
     sys.exit(code)
 
 def send_telemetry():
-    global APPDATA
     rdx = {
         "OperatingSystem" : platform.platform(),
-        "ServerCount" : len(APPDATA["servers"]),
-        "IsActivated" : APPDATA["productKey"] != "",
+        "ServerCount" : len(appdata.APPDATA["servers"]),
+        "IsActivated" : False,#This system has got to go... Some day...
         "ApplicationVersion" : APP_UF_VERSION
         }
     #cursesplus.textview(_SCREEN,text=str(rdx))
-    r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
+    try:
+        r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
+    except:
+        pass
+
 def parse_size(data: int) -> str:
     result:str = ""
     if data < 0:
@@ -710,11 +302,11 @@ def error_handling(e:Exception,message="A serious error has occured"):
             cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
            
         elif erz == 2:
-            if WINDOWS:
+            if ON_WINDOWS:
                 cursesplus.messagebox.showerror(_SCREEN,["This feature is not yet available on Windows"])
                 continue
             if cursesplus.messagebox.askyesno(_SCREEN,["Do you want to update the most recent App data?","If you suspect your appdata is corrupt, do not say yes"]):
-                updateappdata()
+                appdata.updateappdata()
             _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
             main(_SCREEN)
         elif erz == 3:
@@ -723,7 +315,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
                 if aerz == 0:
                     break
                 elif aerz == 1:
-                    if WINDOWS:
+                    if ON_WINDOWS:
                         cursesplus.messagebox.showerror(_SCREEN,["This feature is not available on Windows"])
                         continue
                     if cursesplus.messagebox.askyesno(_SCREEN,["This will re-install CraftServerSetup and restore any lost files.","You will need to have a release downloaded"]):
@@ -796,7 +388,7 @@ def popd():
     os.chdir(__DIR_LIST__[0])
 def get_java_version(file="java") -> str:
     try:
-        if not WINDOWS:
+        if not ON_WINDOWS:
             return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
         else:
             return subprocess.check_output(f"{file} --version").decode().splitlines()[0].split(" ")[1]
@@ -882,7 +474,7 @@ def trail(ind,maxlen:int):
         return ind
 
 def package_server(stdscr,serverdir:str,chosenserver:int):
-    sdata = APPDATA["servers"][chosenserver]
+    sdata = appdata.APPDATA["servers"][chosenserver]
     with open(serverdir+"/exdata.json","w+") as f:
         f.write(json.dumps(sdata))
         #Write server data into a temporary file
@@ -901,7 +493,7 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
 
 def download_vanilla_software(stdscr,serverdir) -> dict|None:
     cursesplus.displaymsg(stdscr,["Getting version information"],False)
-    
+    VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
     stdscr.clear()
     stdscr.erase()
     downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
@@ -1263,10 +855,10 @@ def bedrock_config_server(stdscr,chosenserver):
             with open("server.properties","w+") as f:
                 f.write(PropertiesParse.dump(config))
     elif __l == 2:
-        dt = APPDATA["servers"][chosenserver-1]
+        dt = appdata.APPDATA["servers"][chosenserver-1]
         dt = cursesplus.dictedit(stdscr,dt,"More Server Properties")
-        APPDATA["servers"][chosenserver-1] = dt
-        APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+        appdata.APPDATA["servers"][chosenserver-1] = dt
+        appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 3:
         if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
             os.remove("server.properties")
@@ -1276,10 +868,10 @@ def bedrock_config_server(stdscr,chosenserver):
                     f.write(PropertiesParse.dump(sd))
     elif __l == 4:
         newname = crssinput(stdscr,"Choose a new name for this server")
-        APPDATA["servers"][chosenserver-1]["name"] = newname
-        #APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+        appdata.APPDATA["servers"][chosenserver-1]["name"] = newname
+        #appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 5:
-        APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
+        appdata.APPDATA["servers"][chosenserver-1] = startup_options(stdscr,appdata.APPDATA["servers"][chosenserver-1])
 
 def setup_bedrock_server(stdscr):
     while True:
@@ -1304,7 +896,7 @@ def setup_bedrock_server(stdscr):
     link_lx_normal = get_by_list_contains(availablelinks,"linux/")
     link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
     link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
-    if WINDOWS:
+    if ON_WINDOWS:
         availablelinks = [link_win_normal,link_win_preview]
     else:
         availablelinks = [link_lx_normal,link_lx_preview]
@@ -1320,7 +912,7 @@ def setup_bedrock_server(stdscr):
     p.step("Removing excess files")
     os.remove(S_INSTALL_DIR+"/server.zip")
     p.step("Preparing exec")
-    if not WINDOWS:
+    if not ON_WINDOWS:
         os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
     
     
@@ -1347,14 +939,14 @@ def setup_bedrock_server(stdscr):
     except:
         pass
     sd["script"] = generate_script(sd)
-    APPDATA["servers"].append(sd)
-    updateappdata()
+    appdata.APPDATA["servers"].append(sd)
+    appdata.updateappdata()
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to configure your server's settings now?"]):
         with open(S_INSTALL_DIR+"/server.properties","w+") as f:
-            f.write(PropertiesParse.dump(configure_bedrock_server(stdscr,S_INSTALL_DIR,PropertiesParse.load(__BEDROCK_DEFAULT_SERVER_PROPERTIES__))))
+            f.write(PropertiesParse.dump(configure_bedrock_server(stdscr,S_INSTALL_DIR,PropertiesParse.load(BEDROCK_DEFAULT_SERVER_PROPERTIES))))
     popd()
     p.done()
-    bedrock_manage_server(stdscr,servername,APPDATA["servers"].index(sd)+1)
+    bedrock_manage_server(stdscr,servername,appdata.APPDATA["servers"].index(sd)+1)
 
 def bedrock_do_update(stdscr,chosenserver,availablelinks):
     l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
@@ -1370,7 +962,7 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
             continue
         shutil.copyfile(sf,safetydir+"/"+file_get_md5(sf))
         safemap[sf] = file_get_md5(sf)
-    S_INSTALL_DIR = APPDATA["servers"][chosenserver-1]["dir"]
+    S_INSTALL_DIR = appdata.APPDATA["servers"][chosenserver-1]["dir"]
     p.step("Downloading new server")
     #p.step("Downloading server file")
     urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
@@ -1383,12 +975,12 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
     #p.step("Removing excess files")
     os.remove(S_INSTALL_DIR+"/server.zip")
     #p.step("Preparing exec")
-    if not WINDOWS:
+    if not ON_WINDOWS:
         os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
     p.step("Restoring properties")
-    APPDATA["servers"][chosenserver-1]["ispreview"] = l2d == availablelinks[1]
-    APPDATA["servers"][chosenserver-1]["version"] = l2d.split("-")[-1].replace(".zip","")
-    APPDATA["servers"][chosenserver-1]["linkused"] = l2d
+    appdata.APPDATA["servers"][chosenserver-1]["ispreview"] = l2d == availablelinks[1]
+    appdata.APPDATA["servers"][chosenserver-1]["version"] = l2d.split("-")[-1].replace(".zip","")
+    appdata.APPDATA["servers"][chosenserver-1]["linkused"] = l2d
     for sf in safefiles:
         try:
             if os.path.isfile(sf):
@@ -1397,22 +989,22 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
         except:
             pass
     p.done()
-    updateappdata()
+    appdata.updateappdata()
 
 def bedrock_manage_server(stdscr,servername,chosenserver):
-    curver = APPDATA["servers"][chosenserver-1]["linkused"]
+    curver = appdata.APPDATA["servers"][chosenserver-1]["linkused"]
     cursesplus.displaymsg(stdscr,["Checking for Bedrock updates"],False)
     availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "bedrock" in g]
     link_win_normal = get_by_list_contains(availablelinks,"win/")
     link_lx_normal = get_by_list_contains(availablelinks,"linux/")
     link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
     link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
-    if WINDOWS:
+    if ON_WINDOWS:
         availablelinks = [link_win_normal,link_win_preview]
     else:
         availablelinks = [link_lx_normal,link_lx_preview]
     
-    if APPDATA["servers"][chosenserver-1]["ispreview"]:
+    if appdata.APPDATA["servers"][chosenserver-1]["ispreview"]:
         sel = 1
     else:
         sel = 0
@@ -1422,7 +1014,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
         if cursesplus.messagebox.askyesno(stdscr,["A bedrock update has been detected.","If you don't install it, devices can't connect.","Do you want to install this update?"]):
             bedrock_do_update(stdscr,chosenserver,availablelinks)
             
-    svrd = APPDATA["servers"][chosenserver-1]["dir"]       
+    svrd = appdata.APPDATA["servers"][chosenserver-1]["dir"]       
     while True:
         wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Server Settings","Delete Server","Configure Allowlist","Export Server","World Settings","Re/change install","FILE MANAGER"],f"Managing {servername}")
         if wtd == 0:
@@ -1435,13 +1027,13 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"],default=cursesplus.messagebox.MessageBoxStates.NO):
                     os.chdir(SERVERSDIR)
                     shutil.rmtree(svrd)
-                    del APPDATA["servers"][chosenserver-1]
+                    del appdata.APPDATA["servers"][chosenserver-1]
                     cursesplus.messagebox.showinfo(stdscr,["Deleted server"])
                     stdscr.clear()
                     break
             stdscr.erase()
         elif wtd == 8:
-            file_manager(stdscr,APPDATA["servers"][chosenserver-1]["dir"],f"Managing files for {servername}")
+            file_manager(stdscr,appdata.APPDATA["servers"][chosenserver-1]["dir"],f"Managing files for {servername}")
         elif wtd == 7:
             bedrock_do_update(stdscr,chosenserver,availablelinks)
         elif wtd == 6:
@@ -1459,16 +1051,16 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
         elif wtd == 4:
             bedrock_whitelist(stdscr,svrd)
         elif wtd == 1:
-            os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
-            os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
+            os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
+            os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])           
             stdscr.clear()
             stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
             stdscr.refresh()
-            if not WINDOWS:
+            if not ON_WINDOWS:
                 curses.curs_set(1)
                 curses.reset_shell_mode()
-                lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
-                #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
+                lretr = os.system(appdata.APPDATA["servers"][chosenserver-1]["script"])
+                #child = pexpect.spawn(appdata.APPDATA["servers"][chosenserver-1]["script"])
                 #child.expect("Finished")
                 curses.reset_prog_mode()
                 curses.curs_set(0)
@@ -1476,11 +1068,11 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                 curses.curs_set(1)
                 curses.reset_shell_mode()
                 #COLOURS_ACTIVE = False
-                lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
+                lretr = os.system("cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")")
                 curses.reset_prog_mode()
                 curses.curs_set(0)
                 #restart_colour()
-            os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+            os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
             if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
                 cursesplus.messagebox.showwarning(stdscr,["Oh No! Your server crashed"])
             stdscr.clear()
@@ -1595,8 +1187,8 @@ This is apparently even more optimized. It also supports plugins. It can configu
     __SCRIPT__ = generate_script(sd)
     sd["script"] = __SCRIPT__
     
-    APPDATA["servers"].append(sd)
-    updateappdata()
+    appdata.APPDATA["servers"].append(sd)
+    appdata.updateappdata()
     bdir = os.getcwd()
     os.chdir(S_INSTALL_DIR)
     with open("exdata.json","w+") as f:
@@ -1613,7 +1205,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
     except:
         pass
     os.chdir(bdir)
-    manage_server(stdscr,S_INSTALL_DIR,APPDATA["servers"].index(sd)+1)
+    manage_server(stdscr,S_INSTALL_DIR,appdata.APPDATA["servers"].index(sd)+1)
 
 def get_player_uuid(username:str):
     req = f"https://api.mojang.com/users/profiles/minecraft/{username}"
@@ -1691,7 +1283,7 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         dpp = merge_dicts(dpp,sslxdd)
 
     return dpp
-def setup_server_properties(stdscr,data=PropertiesParse.load(___DEFAULT_SERVER_PROPERTIES___)) -> dict:
+def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROPERTIES)) -> dict:
     dpp = data
     cursesplus.utils.showcursor()
     while True:
@@ -1817,37 +1409,37 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
             dpp["resource-pack-sha1"] = ""
 
 def prune_servers():
-    global APPDATA
+    
     pushd(SERVERSDIR)
-    APPDATA["servers"] = [a for a in APPDATA["servers"] if os.path.isdir(a["dir"])]
+    appdata.APPDATA["servers"] = [a for a in appdata.APPDATA["servers"] if os.path.isdir(a["dir"])]
     #Look for unregistered directories
     serverdirs = [f for f in os.listdir(SERVERSDIR) if os.path.isdir(f)]
-    registereddirs = [a["dir"] for a in APPDATA["servers"]]
+    registereddirs = [a["dir"] for a in appdata.APPDATA["servers"]]
     for serverdir in serverdirs:
         if not serverdir in registereddirs:
             if not os.path.isfile(serverdir+"/exdata.json") and not os.path.isfile(serverdir+"/server.properties"):
                 shutil.rmtree(serverdir)
     popd()
-    updateappdata()
+    appdata.updateappdata()
 
 def servermgrmenu(stdscr):
     prune_servers()
     stdscr.clear()
-    global APPDATA
-    chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in APPDATA["servers"]],"Please choose a server")
+    
+    chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in appdata.APPDATA["servers"]],"Please choose a server")
     if chosenserver == 0:
         return
     else:
-        _sname = [a["dir"] for a in APPDATA["servers"]][chosenserver-1]
+        _sname = [a["dir"] for a in appdata.APPDATA["servers"]][chosenserver-1]
         if os.path.isdir(_sname):
             manage_server(stdscr,_sname,chosenserver)
-            updateappdata()
+            appdata.updateappdata()
 
         else:
             cursesplus.messagebox.showerror(stdscr,["This server does not exist"])
             
-            del APPDATA["servers"][chosenserver-1]#Unregister bad server
-            updateappdata()
+            del appdata.APPDATA["servers"][chosenserver-1]#Unregister bad server
+            appdata.updateappdata()
 
 def jar_get_bukkit_plugin_name(file: str) -> dict:
     zf = zipfile.ZipFile(file)
@@ -2189,14 +1781,14 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
 
 def generate_script(svrdict: dict) -> str:
     if svrdict["software"] == 0:
-        if WINDOWS:
+        if ON_WINDOWS:
             __SCRIPT__ = svrdict["dir"]+"/bedrock_server.exe"
         else:
             __SCRIPT__ = svrdict["dir"]+"/bedrock_server"
     else:
         _space = "\\ "
         _bs = "\\"
-        if not WINDOWS:
+        if not ON_WINDOWS:
             __SCRIPT__ = f"{svrdict['javapath'].replace(' ',_space)} -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict['settings']['flags']} \"{svrdict['dir']}/server.jar\" nogui"
         else:
             __SCRIPT__ = f"\"{svrdict['javapath']}\" -jar -Xms{svrdict['memory']} -Xmx{svrdict['memory']} {svrdict['settings']['flags']} \"{svrdict['dir'].replace(_bs,'/')}/server.jar\" nogui"
@@ -2210,9 +1802,9 @@ def rm_server_jar():
         os.remove("server.jar")
 
 def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
-    APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
-    generate_script(APPDATA["servers"][chosenserver-1])
-    updateappdata()
+    appdata.APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
+    generate_script(appdata.APPDATA["servers"][chosenserver-1])
+    appdata.updateappdata()
     popd()
 
 def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
@@ -2228,7 +1820,7 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
         cursesplus.displaymsg(stdscr,["Preparing new server"],False)
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?"]):
         njavapath = choose_java_install(stdscr)
-        APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
+        appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
     S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
     stdscr.clear()
     stdscr.addstr(0,0,"Downloading new server file...")
@@ -2242,7 +1834,7 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?","WARNING! Make sure you use java 17 or newer"]):
         njavapath = choose_java_install(stdscr)
-        APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
+        appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
     p = cursesplus.ProgressBar(stdscr,2,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,show_percent=True,message="Updating spigot")
     p.update()
     rm_server_jar()
@@ -2257,7 +1849,7 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
         else:
             xver = "latest"
         PACKAGEDATA = {"id":xver}
-        proc = subprocess.Popen([APPDATA["servers"][chosenserver-1]["javapath"],"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
+        proc = subprocess.Popen([appdata.APPDATA["servers"][chosenserver-1]["javapath"],"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
         while True:
             output = proc.stdout.readline()
             if proc.poll() is not None:
@@ -2467,9 +2059,9 @@ def view_server_logs(stdscr,server_dir:str):
             command_execution_auditing(stdscr,server_dir)
                 
 def init_idata(stdscr):
-    global APPDATA
+    
     idata = requests.get("https://pastebin.com/raw/GLSGkysJ").json()
-    APPDATA["idata"] = idata
+    appdata.APPDATA["idata"] = idata
     if idata["dead"]["active"]:
         cursesplus.messagebox.showerror(stdscr,["This computer program has been locked.",f"REASON: {idata['dead']['message']}"])
         sys.exit(3)
@@ -2484,7 +2076,7 @@ def find_world_folders(directory) -> list[str]:
     return final
 
 def xdg_open_file(file:str) -> int:
-    if not WINDOWS:
+    if not ON_WINDOWS:
         return os.system(f"xdg-open {file}")
     else:
         return os.startfile(file)
@@ -2527,7 +2119,7 @@ def manage_server_icon(stdscr):
 def config_server(stdscr,chosenserver):
     __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options","Change Java Installation"])#Todo rename server, memory
     if __l == 0:
-        updateappdata()
+        appdata.updateappdata()
         return
     elif __l == 1:
         if not os.path.isfile("server.properties"):
@@ -2540,10 +2132,10 @@ def config_server(stdscr,chosenserver):
             with open("server.properties","w+") as f:
                 f.write(PropertiesParse.dump(config))
     elif __l == 2:
-        dt = APPDATA["servers"][chosenserver-1]
+        dt = appdata.APPDATA["servers"][chosenserver-1]
         dt = cursesplus.dictedit(stdscr,dt,"More Server Properties")
-        APPDATA["servers"][chosenserver-1] = dt
-        APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+        appdata.APPDATA["servers"][chosenserver-1] = dt
+        appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 3:
         if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to reset your server configuration","You won't delete any worlds"]):
             if os.path.isfile("server.properties"):
@@ -2553,7 +2145,7 @@ def config_server(stdscr,chosenserver):
                 with open("server.properties","w+") as f:
                     f.write(PropertiesParse.dump(sd))
     elif __l == 4:
-        dt = APPDATA["servers"][chosenserver-1]
+        dt = appdata.APPDATA["servers"][chosenserver-1]
         if not dt["moddable"]:
             cursesplus.messagebox.showwarning(stdscr,["There are no extra config options for this type of server"])
         else:
@@ -2570,20 +2162,20 @@ def config_server(stdscr,chosenserver):
                         f.write(yaml.dump(data,default_flow_style=False))
     elif __l == 5:
         newname = crssinput(stdscr,"Choose a new name for this server")
-        APPDATA["servers"][chosenserver-1]["name"] = newname
-        #APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
+        appdata.APPDATA["servers"][chosenserver-1]["name"] = newname
+        #appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 6:
         newmem = choose_server_memory_amount(stdscr)
-        APPDATA["servers"][chosenserver-1]["memory"] = newmem
-        APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
+        appdata.APPDATA["servers"][chosenserver-1]["memory"] = newmem
+        appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(appdata.APPDATA["servers"][chosenserver-1])#Regen script
     elif __l == 7:
-        APPDATA["servers"][chosenserver-1] = startup_options(stdscr,APPDATA["servers"][chosenserver-1])
-        APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
+        appdata.APPDATA["servers"][chosenserver-1] = startup_options(stdscr,appdata.APPDATA["servers"][chosenserver-1])
+        appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(appdata.APPDATA["servers"][chosenserver-1])#Regen script
 
     elif __l == 8:
         njavapath = choose_java_install(stdscr)
-        APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
-        APPDATA["servers"][chosenserver-1]["script"]=generate_script(APPDATA["servers"][chosenserver-1])#Regen script
+        appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
+        appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(appdata.APPDATA["servers"][chosenserver-1])#Regen script
 
 
 def change_software(stdscr,directory,data) -> dict:
@@ -2629,7 +2221,7 @@ def text_editor(text:str,headmessage="edit") -> str:
     pushd(tmpdir)
     with open(tmpdir+"/"+headmessage,"w+") as f:
         f.write(text)
-    editcmd = (APPDATA["settings"]["editor"]["value"] % "\""+headmessage+"\"")
+    editcmd = (appdata.APPDATA["settings"]["editor"]["value"] % "\""+headmessage+"\"")
     curses.reset_shell_mode()
     os.system(editcmd)#Wait for finish
     curses.reset_prog_mode()
@@ -3549,7 +3141,7 @@ def sanalytics(stdscr,serverdir):
             return
 
 def resource_warning(stdscr) -> bool:
-    if APPDATA["settings"]["reswarn"]:
+    if appdata.APPDATA["settings"]["reswarn"]:
         return not cursesplus.messagebox.askyesno(stdscr,["What you just selected is a high resource operation.","Continuing may affect the performance of other apps running on this device.","Are you sure you wish to proceed?"])
     else:
         return False
@@ -3557,18 +3149,18 @@ def resource_warning(stdscr) -> bool:
 def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
     if sys.version_info[1] < 11:
         cursesplus.messagebox.showerror(stdscr,["Unfortunately, the new startups can only be used with Python 3.11 or newer.",f"You are running {sys.version}.","Your server will be started in legacy mode (pre 1.43)"])
-        APPDATA["servers"][chosenserver-1]["settings"]["legacy"] = True
-    os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
-    if APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
-        os.chdir(APPDATA["servers"][chosenserver-1]["dir"])           
+        appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"] = True
+    os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
+    if appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
+        os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])           
         stdscr.clear()
         stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
         stdscr.refresh()
-        if not WINDOWS:
+        if not ON_WINDOWS:
             curses.curs_set(1)
             curses.reset_shell_mode()
-            lretr = os.system(APPDATA["servers"][chosenserver-1]["script"])
-            #child = pexpect.spawn(APPDATA["servers"][chosenserver-1]["script"])
+            lretr = os.system(appdata.APPDATA["servers"][chosenserver-1]["script"])
+            #child = pexpect.spawn(appdata.APPDATA["servers"][chosenserver-1]["script"])
             #child.expect("Finished")
             curses.reset_prog_mode()
             curses.curs_set(0)
@@ -3576,11 +3168,11 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
             curses.curs_set(1)
             curses.reset_shell_mode()
             #COLOURS_ACTIVE = False
-            lretr = os.system("cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")")
+            lretr = os.system("cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")")
             curses.reset_prog_mode()
             curses.curs_set(0)
             #restart_colour()
-        os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+        os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
         if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
             displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
             if displog:
@@ -3589,9 +3181,9 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
         stdscr.refresh()
     else:
         if not _sname in SERVER_INITS:
-            truecommand = APPDATA["servers"][chosenserver-1]["script"]
-            if WINDOWS:
-                truecommand = "cmd /c ("+APPDATA["servers"][chosenserver-1]["script"]+")"
+            truecommand = appdata.APPDATA["servers"][chosenserver-1]["script"]
+            if ON_WINDOWS:
+                truecommand = "cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")"
             SERVER_INITS[_sname] = ServerRunWrapper(truecommand)
             SERVER_INITS[_sname].launch()
             cursesplus.messagebox.showinfo(stdscr,["The server has been started.","It will be ready for use in a few minutes"])
@@ -3652,7 +3244,7 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
             if not svrstat.isprocessrunning():
                 
                 stdscr.nodelay(0)
-                os.system(";".join(APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+                os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
                 if svrstat.hascrashed():
                     displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
                     if displog:
@@ -3699,31 +3291,31 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
         stdscr.nodelay(0)
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
-    global APPDATA
+    
     global COLOURS_ACTIVE
     
     SERVER_DIR = _sname
     _ODIR = os.getcwd()
     
-    if APPDATA["settings"]["transitions"]["value"]:
+    if appdata.APPDATA["settings"]["transitions"]["value"]:
         cursesplus.transitions.vertical_bars(stdscr)
-    if APPDATA["servers"][chosenserver-1]["software"] == 0:
+    if appdata.APPDATA["servers"][chosenserver-1]["software"] == 0:
         bedrock_manage_server(stdscr,_sname,chosenserver)
         return
     #Manager server
     while True:
-        os.chdir(APPDATA["servers"][chosenserver-1]["dir"])#Fix bug where running a sub-option that changes dir would screw with future operations
+        os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])#Fix bug where running a sub-option that changes dir would screw with future operations
         x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
         x__ops += ["Server Logs >>","Export server","View server info","Administration and Backups >>","Manage server icon"]
         x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
-        if _sname in SERVER_INITS and not APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
+        if _sname in SERVER_INITS and not appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
             x__ops[1] = "Server is running >>"
         #w = crss_custom_ad_menu(stdscr,x__ops)
         w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
             stdscr.erase()
             os.chdir(_ODIR)
-            if APPDATA["settings"]["transitions"]["value"]:
+            if appdata.APPDATA["settings"]["transitions"]["value"]:
                 cursesplus.transitions.random_blocks(stdscr)
             break
         
@@ -3754,7 +3346,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure that you want to delete this server?","It will be GONE FOREVER","THIS IS YOUR LAST CHANCE"],default=cursesplus.messagebox.MessageBoxStates.NO):
                     os.chdir(SERVERSDIR)
                     shutil.rmtree(SERVER_DIR)
-                    del APPDATA["servers"][chosenserver-1]
+                    del appdata.APPDATA["servers"][chosenserver-1]
                     cursesplus.messagebox.showinfo(stdscr,["Deleted server"])
                     stdscr.clear()
                     break
@@ -3782,13 +3374,13 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     manage_a_world(stdscr,SERVER_DIR,po[n-2])
             
         elif w == 6:
-            if not APPDATA["servers"][chosenserver-1]["moddable"]:
+            if not appdata.APPDATA["servers"][chosenserver-1]["moddable"]:
                 update_vanilla_software(stdscr,os.getcwd(),chosenserver)
-            elif APPDATA["servers"][chosenserver-1]["software"] == 3:
+            elif appdata.APPDATA["servers"][chosenserver-1]["software"] == 3:
                 update_paper_software(stdscr,os.getcwd(),chosenserver)
-            elif APPDATA["servers"][chosenserver-1]["software"] == 2:
+            elif appdata.APPDATA["servers"][chosenserver-1]["software"] == 2:
                 update_spigot_software(stdscr,os.getcwd(),chosenserver)
-            elif APPDATA["servers"][chosenserver-1]["software"] == 4:
+            elif appdata.APPDATA["servers"][chosenserver-1]["software"] == 4:
                 update_purpur_software(stdscr,os.getcwd(),chosenserver)
             else:
                 cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
@@ -3798,10 +3390,10 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 if mmwtd == 0:
                     break
                 elif mmwtd == 1:
-                    if APPDATA["servers"][chosenserver-1]["software"] == 1:
+                    if appdata.APPDATA["servers"][chosenserver-1]["software"] == 1:
                         cursesplus.messagebox.showerror(stdscr,["Vanilla servers cannot have plugins."])
                         continue
-                    svr_mod_mgr(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1]["version"],APPDATA["servers"][chosenserver-1]["software"])
+                    svr_mod_mgr(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1]["version"],appdata.APPDATA["servers"][chosenserver-1]["software"])
                 elif mmwtd == 2:
                     world = crss_custom_ad_menu(stdscr,find_world_folders(SERVER_DIR),"Choose a world to apply datapacks to")
                     manage_datapacks(stdscr,find_world_folders(SERVER_DIR)[world]+"/datapacks")
@@ -3831,7 +3423,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.addstr(5,0,"Moddable server?")
             stdscr.addstr(6,0,"Number of Plugins")
             stdscr.refresh()
-            sdat = APPDATA["servers"][chosenserver-1]
+            sdat = appdata.APPDATA["servers"][chosenserver-1]
             stdscr.addstr(0,20,sdat["name"])
             stdscr.addstr(1,20,sdat["version"])
             stdscr.addstr(2,20,sdat["dir"][0:os.get_terminal_size()[0]])
@@ -3853,7 +3445,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 elif abkwtd == 1:
                     manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
                 elif abkwtd == 2:
-                    server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
+                    server_backups(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
                 elif abkwtd == 3:
                     manage_ops(stdscr,SERVER_DIR)
                 elif abkwtd == 4:
@@ -3861,7 +3453,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         # elif w == 11:
         #     manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
         # elif w == 12:
-        #     server_backups(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
+        #     server_backups(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
         # elif w == 13:
         #     manage_ops(stdscr,SERVER_DIR)
         # elif w == 14:
@@ -3869,8 +3461,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 12:
             manage_server_icon(stdscr)
         elif w == 13:
-            APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,APPDATA["servers"][chosenserver-1])
-            updateappdata()
+            appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
+            appdata.updateappdata()
         elif w == 14:
             w2 = crss_custom_ad_menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics"],"Additional Utilities")
             if w2 == 1:
@@ -3884,7 +3476,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             elif w2 == 4:
                 playerstat(stdscr,SERVER_DIR)
         elif w == 15:
-            file_manager(stdscr,SERVER_DIR,f"Files of {APPDATA['servers'][chosenserver-1]['name']}")
+            file_manager(stdscr,SERVER_DIR,f"Files of {appdata.APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN:typing.Any = None
 
 def get_nested_keys(d, parent_key=''):
@@ -3915,9 +3507,9 @@ def dictpath(inputd:dict,path:str):
 def push_uuids_for_searching(uuids:list[str]) -> None:
     """Adds a list of uuids to the list. It is a good idea to call create_uuid_index after this"""
     for uuid in uuids:
-        if not uuid in UUID_INDEX:
-            UUID_INDEX[uuid] = None
-    updateappdata()
+        if not uuid in appdata.UUID_INDEX:
+            appdata.UUID_INDEX[uuid] = None
+    appdata.updateappdata()
 
 def collapse_tuple(l) -> str:
     if isinstance(l,tuple) or isinstance(l,list):
@@ -3933,18 +3525,17 @@ def collapse_tuple(l) -> str:
 
 def create_uuid_index(stdscr) -> None:
     """Loads logs from all servers and attempts to fill in as many uuids as it can"""
-    global UUID_INDEX
     #First, check if UUID index actually needs to be updated.
-    if not None in list(UUID_INDEX.values()):
+    if not None in list(appdata.UUID_INDEX.values()):
         return#Doesn't need updating
     cursesplus.displaymsg(stdscr,["Finding missing UUIDs"],False)
     missinguuids = []
-    for entry in list(UUID_INDEX.items()):
+    for entry in list(appdata.UUID_INDEX.items()):
         if entry[1] is None:
             missinguuids.append(entry[0])
     matches = []
     s1knowledgebase = {}
-    for server in APPDATA["servers"]:
+    for server in appdata.APPDATA["servers"]:
         matches.extend(load_server_logs_and_find(stdscr,server['dir'],r'(UUID of player \S+ is [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(logged in as \S+ joined \(UUID: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'))
         #Load servers
     
@@ -3959,7 +3550,7 @@ def create_uuid_index(stdscr) -> None:
     #cursesplus.textview(stdscr,text=str(missinguuids))
     for missinuuid in missinguuids:
         if missinuuid in s1knowledgebase:
-            UUID_INDEX[missinuuid] = s1knowledgebase[missinuuid]
+            appdata.UUID_INDEX[missinuuid] = s1knowledgebase[missinuuid]
             saveduuids += 1
             missinguuids.remove(missinuuid)
             
@@ -3975,12 +3566,12 @@ def create_uuid_index(stdscr) -> None:
         if webresult is None or webresult == missinuuid:
             faileduuids += 1
             continue
-        UUID_INDEX[missinuuid] = webresult
+        appdata.UUID_INDEX[missinuuid] = webresult
         saveduuids += 1
         missinguuids.remove(missinuuid)
         sleep(1)
        
-    updateappdata() 
+    appdata.updateappdata() 
 
 def playerstat(stdscr,serverdir):
     worlds = find_world_folders(serverdir)
@@ -4082,18 +3673,18 @@ def handle_file_editing(stdscr,path:str):
                 else:
                     yaml.dump(ndict,f,default_flow_style=False)
         except:
-            if WINDOWS:
+            if ON_WINDOWS:
                 os.system(f"notepad \"{path}\"")
             else:
                 curses.reset_shell_mode()
-                os.system(APPDATA["settings"]["editor"]["value"].replace("%s",path))
+                os.system(appdata.APPDATA["settings"]["editor"]["value"].replace("%s",path))
                 curses.reset_prog_mode()
     else:
-        if WINDOWS:
+        if ON_WINDOWS:
             os.system(f"notepad \"{path}\"")
         else:
             curses.reset_shell_mode()
-            os.system(APPDATA["settings"]["editor"]["value"].replace("%s",path))
+            os.system(appdata.APPDATA["settings"]["editor"]["value"].replace("%s",path))
             curses.reset_prog_mode()
 
 def is_file_binary(path:str):
@@ -4490,7 +4081,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                 continue
             with open(serverdir+"/crss.json","w+") as f:
                 f.write(json.dumps(serverdata))
-            useprofile = APPDATA["backupprofiles"][list(APPDATA["backupprofiles"].keys())[crss_custom_ad_menu(stdscr,list(APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
+            useprofile = appdata.APPDATA["backupprofiles"][list(appdata.APPDATA["backupprofiles"].keys())[crss_custom_ad_menu(stdscr,list(appdata.APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
             cursesplus.displaymsg(stdscr,["Calculating backup size..."],False)
             totalbackupsize = 0
             filestoindex = []
@@ -4547,8 +4138,8 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                     with open(serverdir+"/crss.json") as f:
                         nd = json.load(f)
                         locateid = nd["id"]
-                        tom_index = next((index for (index, d) in enumerate(APPDATA["servers"]) if d["id"] == locateid), None)
-                        APPDATA["servers"][tom_index] = nd
+                        tom_index = next((index for (index, d) in enumerate(appdata.APPDATA["servers"]) if d["id"] == locateid), None)
+                        appdata.APPDATA["servers"][tom_index] = nd
                 except:
                     pass
                 w.stop()
@@ -4557,7 +4148,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
         elif z == 3:
             serverdata["backupdir"] = cursesplus.filedialog.openfolderdialog(stdscr,"Choose a new backup directory")
             LBKDIR = serverdata["backupdir"]
-            updateappdata()       
+            appdata.updateappdata()       
         elif z == 4:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete all backups?"]):
                 shutil.rmtree(LBKDIR,True)
@@ -4573,39 +4164,31 @@ def get_tree_size(start_path = '.'):
                 total_size += os.path.getsize(fp)
 
     return total_size
-def updateappdata():
-    global APPDATA
-    global APPDATAFILE
-    global UUID_INDEX
-    global UUIDFILE
-    with open(APPDATAFILE,"w+") as f:
-        f.write(json.dumps(APPDATA,indent=2))
-    with open(UUIDFILE,"wb+") as f:
-        f.write(gzip.compress(json.dumps(UUID_INDEX).encode()))#Write compressed file
+
 
 def choose_java_install(stdscr) -> str:
 
     #Return path of selected java- Smart java?
     while True:
         stdscr.erase()
-        jsl = crss_custom_ad_menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]],"Please choose a Java installation from the list")
+        jsl = crss_custom_ad_menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]],"Please choose a Java installation from the list")
         if jsl == 0:
             managejavainstalls(stdscr)
         else:
             break
-    return APPDATA["javainstalls"][jsl-1]["path"]
+    return appdata.APPDATA["javainstalls"][jsl-1]["path"]
 def managejavainstalls(stdscr):
-    global APPDATA
-    if "java" in [j["path"] for j in APPDATA["javainstalls"]]:
+    
+    if "java" in [j["path"] for j in appdata.APPDATA["javainstalls"]]:
         pass
     else:
         if os.system("java --help") == 0 or os.system("java /?") == 0 or os.system("java -help") == 0:
         
-            APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
+            appdata.APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
         stdscr.clear()
     while True:
         stdscr.erase()
-        jmg = crss_custom_ad_menu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in APPDATA["javainstalls"]])
+        jmg = crss_custom_ad_menu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]])
         if jmg == 0:
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
             if os.system(njavapath.replace("\\","/")+" -help") != 0:
@@ -4616,16 +4199,16 @@ def managejavainstalls(stdscr):
                     ndict = {"path":njavapath.replace("\\","/"),"ver":"Unknown"}
                     if cursesplus.messagebox.askyesno(stdscr,["Do you know what java version this is?"]):
                         ndict["ver"] = crssinput(stdscr,"Java version?",maxlen=10)
-                        APPDATA["javainstalls"].append(ndict)
+                        appdata.APPDATA["javainstalls"].append(ndict)
             else:
                 fver = get_java_version(njavapath.replace("\\","/"))
                 ndict = {"path":njavapath.replace("\\","/"),"ver":fver}
-                APPDATA["javainstalls"].append(ndict)
+                appdata.APPDATA["javainstalls"].append(ndict)
         elif jmg == 1:
             return
         else:
             
-            jdl = APPDATA["javainstalls"][jmg-2]
+            jdl = appdata.APPDATA["javainstalls"][jmg-2]
             stdscr.clear()
             stdscr.addstr(0,0,"MANAGING JAVA INSTALLATION")
             stdscr.addstr(2,0,"Path")
@@ -4636,16 +4219,16 @@ def managejavainstalls(stdscr):
             k = stdscr.getch()
             if k == curses.KEY_DC or k == 100:
                 if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to remove the java installation",jdl["path"]],default=cursesplus.messagebox.MessageBoxStates.NO):
-                    del APPDATA["javainstalls"][jmg-2]
+                    del appdata.APPDATA["javainstalls"][jmg-2]
             elif k == 118:
                 jdl["ver"] = get_java_version(jdl["path"])
                 if jdl["ver"] == "Error":
                     cursesplus.messagebox.showwarning(stdscr,["Java installaion is corrupt"])
-                    del APPDATA["javainstalls"][jmg-2]
+                    del appdata.APPDATA["javainstalls"][jmg-2]
                 else:
                     cursesplus.messagebox.showinfo(stdscr,["Java installation is safe"])
 
-        updateappdata()
+        appdata.updateappdata()
 
 def compare_versions(version1, version2):
     """0: Same, -1: 1 < 2. 1: 1 > 2"""
@@ -4718,7 +4301,7 @@ def import_amc_server(stdscr,chlx):
             xdat = json.load(f)
         nname = xdat["name"]
         while True:
-            if nname in [l["name"] for l in APPDATA["servers"]]:
+            if nname in [l["name"] for l in appdata.APPDATA["servers"]]:
                 #cursesplus.utils.showcursor()
                 
                 nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
@@ -4734,21 +4317,21 @@ def import_amc_server(stdscr,chlx):
         if xdat["software"] != 0:
             xdat["javapath"] = choose_java_install(stdscr)
         else:
-            if (os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and not WINDOWS) or (not os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and WINDOWS):
+            if (os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and not ON_WINDOWS) or (not os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and ON_WINDOWS):
                 bri = True
                 nwait.stop()
                 cursesplus.messagebox.showinfo(stdscr,["This server was packaged on a different OS.","The new file will be downloaded on the next screen."])
                 nwait.start()
         xdat["script"] = generate_script(xdat)
-        APPDATA["servers"].append(xdat)
-        chosensrver = len(APPDATA["servers"])
+        appdata.APPDATA["servers"].append(xdat)
+        chosensrver = len(appdata.APPDATA["servers"])
         if bri:
             availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "azureedge" in g]
             link_win_normal = get_by_list_contains(availablelinks,"win/")
             link_lx_normal = get_by_list_contains(availablelinks,"linux/")
             link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
             link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
-            if WINDOWS:
+            if ON_WINDOWS:
                 availablelinks = [link_win_normal,link_win_preview]
             else:
                 availablelinks = [link_lx_normal,link_lx_preview]
@@ -4782,10 +4365,10 @@ def crssinput(stdscr,
     cursesplus.utils.hidecursor()
     return r
 
-def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",show_ad=False,footer="") -> int:
-    """An alternate optionmenu that will be used in primary areas. has an ad. footer will only be shown if no ad (so no problems after 1.40.5)"""
+def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",footer="") -> int:
+    """An alternate optionmenu that will be used in primary areas. The only difference from Curses Plus is that it has some colour presets"""
     try:
-        uselegacy = APPDATA["settings"]["oldmenu"]["value"]
+        uselegacy = appdata.APPDATA["settings"]["oldmenu"]["value"]
     except:
         uselegacy = True
     
@@ -4793,10 +4376,7 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
         return cursesplus.optionmenu(stdscr,options,title)
     selected = 0
     offset = 0
-    if ads_available():
-        chosenad = random.choice(ADS)
-    else:
-        show_ad = False
+
     maxl = list_get_maxlen(options)
     while True:
         stdscr.clear()
@@ -4830,17 +4410,9 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
             stdscr.addstr(3,maxl+15,f"{offset} options above")
         if len(options) > offset+my-7:
             stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+7} options below")
-        if ads_available() and show_ad:
-            adx = oi + 5
-            stdscr.addstr(adx-1,0,"ADVERTISEMENT (Insert product key to remove)")
-            adl = textwrap.wrap(chosenad.message,mx-1)
-            li = 0
-            for l in adl:
-                stdscr.addstr(adx+li,0,l,curses.A_BOLD)
-                li += 1
-            stdscr.addstr(adx+li,0,"Press A to check it out in your web browser!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.MAGENTA)|curses.A_BOLD)
-        else:
-            stdscr.addstr(oi+4,0,footer)#Add footer if no add
+        
+        stdscr.addstr(oi+4,0,footer)#Add footer
+
         stdscr.refresh()
         ch = stdscr.getch()
         if ch == curses.KEY_DOWN and selected < len(options)-1:
@@ -4855,10 +4427,6 @@ def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option 
                 offset -= 1
         elif ch == 10 or ch == 13 or ch == curses.KEY_ENTER:
             return selected
-        elif ch == 97 and show_ad:
-            webbrowser.open(chosenad.url)
-            stdscr.erase()
-            stdscr.clear()
         elif ch == curses.KEY_HOME:
             selected = 0
             offset = 0
@@ -4920,7 +4488,7 @@ def import_server(stdscr):
             delaftercomplete = cursesplus.messagebox.askyesno(stdscr,["Delete original folder after import?"])
             nname = crssinput(stdscr,"Please enter the name of this server")
             while True:
-                if nname in [l["name"] for l in APPDATA["servers"]]:
+                if nname in [l["name"] for l in appdata.APPDATA["servers"]]:
                     cursesplus.utils.showcursor()
                     nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
                     cursesplus.utils.hidecursor()
@@ -4949,7 +4517,7 @@ def import_server(stdscr):
             xdat["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(xdat["id"])
             xdat["script"] = generate_script(xdat)
             
-            APPDATA["servers"].append(xdat)
+            appdata.APPDATA["servers"].append(xdat)
             pushd(xdat["dir"])
             with open("exdata.json","w+") as f:
                 f.write(json.dumps(xdat))
@@ -4962,12 +4530,6 @@ def import_server(stdscr):
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server.",str(e)])
     else: return
 
-def ads_available() -> bool:
-    if len(ADS) == 0:
-        return False
-    else:
-        return SHOW_ADVERT
-
 def parse_bp_ielist(data:dict) -> list[str]:
     final = []
     for include in data["include"]:
@@ -4977,19 +4539,19 @@ def parse_bp_ielist(data:dict) -> list[str]:
     return final
 
 def edit_backup_profile(stdscr,backupname: str) :
-    bdata = APPDATA["backupprofiles"][backupname]
+    bdata = appdata.APPDATA["backupprofiles"][backupname]
     bname = backupname
     while True:
         lditems = parse_bp_ielist(bdata)
         m = crss_custom_ad_menu(stdscr,["FINISH","CHANGE PROFILE NAME","Delete Profile","Create Rule"]+lditems,f"Editing backup profile {bname}")
         if m == 0:
-            del APPDATA["backupprofiles"][backupname]
-            APPDATA["backupprofiles"][bname] = bdata
+            del appdata.APPDATA["backupprofiles"][backupname]
+            appdata.APPDATA["backupprofiles"][bname] = bdata
             return
         elif m == 1:
             while True:
                 bname = crssinput(stdscr,"Name the backup profile")
-                if bname in APPDATA["backupprofiles"] and bname != backupname:
+                if bname in appdata.APPDATA["backupprofiles"] and bname != backupname:
                     #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
                     if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Do you want to over-write it?"]):
                         break
@@ -4997,7 +4559,7 @@ def edit_backup_profile(stdscr,backupname: str) :
                     break
         elif m == 2:
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this","backup profile?"]):
-                del APPDATA["backupprofiles"][bname]
+                del appdata.APPDATA["backupprofiles"][bname]
                 return
         elif m == 3:
             wtype = crss_custom_ad_menu(stdscr,["Cancel","Include (files to include)","Exclude (files to not include)"],"What type of rule should this be?")
@@ -5040,13 +4602,13 @@ def edit_backup_profile(stdscr,backupname: str) :
 def new_backup_profile(stdscr) -> str:
     while True:
         name = crssinput(stdscr,"Name the backup profile")
-        if name in APPDATA["backupprofiles"]:
+        if name in appdata.APPDATA["backupprofiles"]:
             if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Would you like to over-write it?"],default=cursesplus.messagebox.MessageBoxStates.NO):
                 return name
             #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
         else:
             #Add to dict
-            APPDATA["backupprofiles"][name] = {
+            appdata.APPDATA["backupprofiles"][name] = {
                 "include" : ["#SD/*"],
                 "exclude" : []
             }
@@ -5054,32 +4616,32 @@ def new_backup_profile(stdscr) -> str:
     
 def backup_manager(stdscr):
     while True:
-        co = crss_custom_ad_menu(stdscr,["Quit","Create backup profile"]+list(APPDATA["backupprofiles"].keys()),"Backup Profile Manager")
+        co = crss_custom_ad_menu(stdscr,["Quit","Create backup profile"]+list(appdata.APPDATA["backupprofiles"].keys()),"Backup Profile Manager")
         if co == 0:
-            updateappdata()
+            appdata.updateappdata()
             return
         elif co == 1:
             edit_backup_profile(stdscr,new_backup_profile(stdscr))
         else:
-            edit_backup_profile(stdscr,list(APPDATA["backupprofiles"].keys())[co-2])
+            edit_backup_profile(stdscr,list(appdata.APPDATA["backupprofiles"].keys())[co-2])
 
 def settings_mgr(stdscr):
     global COLOURS_ACTIVE
-    global APPDATA
+    
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(APPDATA["settings"].values())],"Please choose a setting to modify")
+        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(appdata.APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
-            updateappdata()
+            appdata.updateappdata()
             return
         elif m == 1:
             while True:
-                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","De-register product key","Clear temporary directory"])
+                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","Clear temporary directory"])
                 if n == 0:
                     break
                 elif n == 1:
-                    del APPDATA["settings"]
-                    APPDATA = compatibilize_appdata(APPDATA)
-                    updateappdata()
+                    del appdata.APPDATA["settings"]
+                    appdata.APPDATA = compatibilize_appdata(appdata.APPDATA)
+                    appdata.updateappdata()
                 elif n == 2:
                     if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
                         if not cursesplus.messagebox.askyesno(stdscr,["THIS IS YOUR LAST CHANCE!","To make sure that you actually intend to reset,","SELECT NO TO WIPE"]):
@@ -5088,31 +4650,27 @@ def settings_mgr(stdscr):
                                 shutil.rmtree(APPDATADIR)
                                 cursesplus.messagebox.showinfo(stdscr,["Program reset."])
                                 sys.exit()
-                    updateappdata()
+                    appdata.updateappdata()
                 elif n == 3:
-                    APPDATA["productKey"] = ""
-                    verifykey("")
-                    updateappdata()
-                elif n == 4:
                     shutil.rmtree(TEMPDIR)
         elif m == 2:
             managejavainstalls(stdscr)
         elif m == 3:
             eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
-            APPDATA["language"] = eptranslate.Config.choice
+            appdata.APPDATA["language"] = eptranslate.Config.choice
             cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         elif m == 4:
             backup_manager(stdscr)
         else:
-            selm = list(APPDATA["settings"].values())[m-5]
-            selk = list(APPDATA["settings"].keys())[m-5]
+            selm = list(appdata.APPDATA["settings"].values())[m-5]
+            selk = list(appdata.APPDATA["settings"].keys())[m-5]
             if selm["type"] == "bool":
                 selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
                 selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
             elif selm["type"] == "str":
                 selm["value"] = crssinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
-            APPDATA["settings"][selk] = selm
+            appdata.APPDATA["settings"][selk] = selm
 
 def doc_system(stdscr):
     while True:
@@ -5135,32 +4693,32 @@ def doc_system(stdscr):
                 cursesplus.messagebox.showinfo(stdscr,["Contact @enderbyte09 on Discord"])
 
 def license(stdscr):
-    global APPDATA
-    if not APPDATA["license"] and not WINDOWS:
+    
+    if not appdata.APPDATA["license"] and not ON_WINDOWS:
         if not os.path.isfile(ASSETSDIR+"/license"):
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/LICENSE",ASSETSDIR+"/license")
         with open(ASSETSDIR+"/license") as f:
             dat = f.read()
         cursesplus.textview(stdscr,text=dat,requireyes=True,isagreement=True,message="Please agree to the CraftServerSetup license to proceed.")
-        APPDATA["license"] = True
+        appdata.APPDATA["license"] = True
 
 def oobe(stdscr):
-    global APPDATA
-    if not APPDATA["hasCompletedOOBE"]:       
+    
+    if not appdata.APPDATA["hasCompletedOOBE"]:       
         stdscr.clear()
         cursesplus.displaymsg(stdscr,[t("oobe.welcome.0"),"",t("oobe.welcome.1"),t("oobe.welcome.2")])
         if not cursesplus.messagebox.askyesno(stdscr,["Do you know how to use a text-based program like this?"]):
             usertutorial(stdscr)
-        if not bool(APPDATA["javainstalls"]):
+        if not bool(appdata.APPDATA["javainstalls"]):
             if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
                 managejavainstalls(stdscr)
             else:
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
         
         if cursesplus.messagebox.askyesno(stdscr,["Would you like to change your default text editor?","YES: Choose a custom command","NO: use the default editor (usually nano)"],default=cursesplus.messagebox.MessageBoxStates.NO):
-            APPDATA["settings"]["editor"]["value"] = crssinput(stdscr,"Please type a custom command: use %s to represent the file name")
-        APPDATA["hasCompletedOOBE"] = True
-        updateappdata()
+            appdata.APPDATA["settings"]["editor"]["value"] = crssinput(stdscr,"Please type a custom command: use %s to represent the file name")
+        appdata.APPDATA["hasCompletedOOBE"] = True
+        appdata.updateappdata()
 
 def usertutorial(stdscr):
     cursesplus.messagebox.showinfo(stdscr,["This is a messagebox","Press enter to dismiss it"])
@@ -5265,7 +4823,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
         return False#Quit because errpr
 
 def devtools(stdscr):
-    global APPDATA
+    
     while True:
         m = crss_custom_ad_menu(stdscr,["BACK","Python debug prompt","Test exception handling","Global variable dump","Appdata editor"])
         if m == 0:
@@ -5297,18 +4855,11 @@ def devtools(stdscr):
                 final += f"NAME: {g[0]} VAL: {str(g[1])}\n"
             cursesplus.textview(stdscr,text=final)
         elif m == 4:
-            APPDATA = cursesplus.dictedit(stdscr,APPDATA,"CRSS config")
-            updateappdata()
+            appdata.APPDATA = cursesplus.dictedit(stdscr,appdata.APPDATA,"CRSS config")
+            appdata.updateappdata()
 
 def internet_thread(stdscr):
-    global ADS
-    global SHOW_ADVERT
-    global VERSION_MANIFEST_DATA
-    VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
     init_idata(stdscr)
-    gen_adverts("Upgrade with a product key to remove ads")
-    epprodkey.load_data("https://pastebin.com/raw/8CejUxsY")
-    SHOW_ADVERT = not verifykey(APPDATA["productKey"])
 
 def update_menu(stdscr):
     global UPDATEINSTALLED
@@ -5317,7 +4868,7 @@ def update_menu(stdscr):
         if m == 0:
             break
         elif m == 1:
-            if WINDOWS:
+            if ON_WINDOWS:
                 windows_update_software(stdscr)
                 return
             #OLD UPDATE MAY BE REMOVED IN 0.18.3
@@ -5329,18 +4880,12 @@ def update_menu(stdscr):
 
 def main(stdscr):
     global VERSION_MANIFEST
-    global VERSION_MANIFEST_DATA
     global COLOURS_ACTIVE
-    global APPDATAFILE
     global UPDATEINSTALLED
     global _SCREEN
     global SHOW_ADVERT
-    global UUIDFILE
-    global ADS
-    global UUID_INDEX
-    global UUIDFILE
     _SCREEN = stdscr
-    global DEBUG
+    global IN_SOURCE_TREE
     
     restart_colour()
     curses.curs_set(0)
@@ -5353,12 +4898,11 @@ def main(stdscr):
         if not internet_on():
             cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
         #cursesplus.messagebox.showerror(stdscr,[str(_transndt)])
-        ADS.append(Advertisement("https://ko-fi.com/s/f44efdb343","Support Enderbyte Programs by Buying A CraftServerSetup Product Key"))#Ads are now empty
         if _transndt:
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/src/translations.toml",APPDATADIR+"/translations.toml")
             eptranslate.load(APPDATADIR+"/translations.toml")
         
-        if DEBUG:
+        if IN_SOURCE_TREE:
             stdscr.addstr(0,0,"WARNING: This program is running from its source tree!",cursesplus.set_colour(cursesplus.BLACK,cursesplus.YELLOW))
             stdscr.refresh()
             issue = True
@@ -5370,7 +4914,7 @@ def main(stdscr):
             sleep(3)
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
-        global APPDATA
+        
         stdscr.addstr(0,0,"Initializing application data...                 ")
         stdscr.refresh()
         cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
@@ -5380,39 +4924,14 @@ def main(stdscr):
         urllib.request.install_opener(opener)
         
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
-        APPDATAFILE = APPDATADIR+"/config.json"
-        UUIDFILE = APPDATADIR+"/uuidindex.json.gz"
-        if not os.path.isfile(APPDATAFILE):
-            with open(APPDATAFILE,"w+") as f:
-                f.write(json.dumps(__DEFAULTAPPDATA__))
-            APPDATA = __DEFAULTAPPDATA__
-        else:
-            try:
-                with open(APPDATAFILE) as f:
-                    APPDATA = json.load(f)
-            except:
-                with open(APPDATAFILE,"w+") as f:
-                    f.write(json.dumps(__DEFAULTAPPDATA__))
-                APPDATA = __DEFAULTAPPDATA__
-        APPDATA = compatibilize_appdata(APPDATA)
-        
-        if not os.path.isfile(UUIDFILE):
-            with open(UUIDFILE,"wb+") as f:
-                f.write(gzip.compress(json.dumps({}).encode()))
-        else:
-            try:
-                with open(UUIDFILE,"rb") as f:
-                    UUID_INDEX = json.loads(gzip.decompress(f.read()))
-            except:
-                with open(UUIDFILE,"wb+") as f:
-                    f.write(gzip.compress(json.dumps({}).encode()))
+        appdata.setup_appdata()
 
         #Breakaway point for -m and -s tasks
         _scc = False
-        if manageid != 0:
+        if AUTOMANAGE_ID != 0:
             inc = 0
-            for server in APPDATA["servers"]:
-                if server["id"] == manageid:
+            for server in appdata.APPDATA["servers"]:
+                if server["id"] == AUTOMANAGE_ID:
                     manage_server(stdscr,server["name"],inc)
                     _scc = True
                     break
@@ -5421,10 +4940,10 @@ def main(stdscr):
             if not _scc:
                 cursesplus.messagebox.showerror(stdscr,["Unable to find requested","direct manage ID."])
         
-        if startid != 0:
+        if AUTOSTART_ID != 0:
             inc = 0
-            for server in APPDATA["servers"]:
-                if server["id"] == startid:
+            for server in appdata.APPDATA["servers"]:
+                if server["id"] == AUTOSTART_ID:
                     os.chdir(server["dir"])
                     start_server(stdscr,server["name"],inc,server["dir"])
                     _scc = True
@@ -5435,39 +4954,32 @@ def main(stdscr):
                 cursesplus.messagebox.showerror(stdscr,["Unable to find requested","direct start ID."])
         
         #send_telemetry()
-        if APPDATA["language"] is None:
+        if appdata.APPDATA["language"] is None:
             eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
-            APPDATA["language"] = eptranslate.Config.choice
+            appdata.APPDATA["language"] = eptranslate.Config.choice
             cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         license(stdscr)
         oobe(stdscr)
-        if len(sys.argv) > 1:
-            if os.path.isfile(sys.argv[1]):
-                import_amc_server(stdscr,sys.argv[1])        
+        if arguments.should_run_import_mode():
+            import_amc_server(stdscr,arguments.get_file_to_import())      
         
-        if not APPDATA["pkd"]:
-            if cursesplus.messagebox.askyesno(stdscr,["Have you purchased a product key?","If so, press yes and you will be prompted to enter it."],default=cursesplus.messagebox.MessageBoxStates.NO):
-                
-                product_key_page(stdscr,True)
-        APPDATA["pkd"] = True
-        
-        updateappdata()
+        appdata.updateappdata()
         
         if not os.path.isdir(BACKUPDIR):
             os.mkdir(BACKUPDIR)
         introsuffix = ""
-        if DEBUG:
-            introsuffix=" | SRC DEBUG"
+        if IN_SOURCE_TREE:
+            introsuffix=" | SRC mode"
         threading.Thread(target=send_telemetry).start()
-        if APPDATA["settings"]["showprog"]["value"]:
+        if appdata.APPDATA["settings"]["showprog"]["value"]:
             mx = stdscr.getmaxyx()[1]-1
             md = round(mx//20)
             for i in range(0,20):
                 stdscr.addstr(stdscr.getmaxyx()[0]-1,i*md," "*md,cursesplus.set_colour(cursesplus.GREEN,cursesplus.WHITE))
                 stdscr.refresh()
                 time.sleep(1/40)
-        if APPDATA["settings"]["autoupdate"]["value"]:
-            if WINDOWS:
+        if appdata.APPDATA["settings"]["autoupdate"]["value"]:
+            if ON_WINDOWS:
                 windows_update_software(stdscr,False)
             #OLD UPDATE MAY BE REMOVED IN 0.18.3
             else:
@@ -5479,11 +4991,9 @@ def main(stdscr):
                 stdscr.erase()
                 #lz = ["Set up new server","Manage servers","Quit Craft Server Setup","Manage java installations","Import Server","Update CraftServerSetup","Manage global backups","Report a bug","Settings","Help","Stats and Credits"]
                 lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
-                if APPDATA["productKey"] == "" or not prodkeycheck(APPDATA["productKey"]):
-                    lz += ["Buy/Insert a Product Key"]
                 if DEVELOPER:
                     lz += ["Debug Tools"]
-                m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | Version {APP_UF_VERSION}{introsuffix} | {APPDATA['idata']['MOTD']}",True)
+                m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | {appdata.APPDATA['idata']['MOTD']}",f"Version {APP_UF_VERSION}{introsuffix} on {platform.system()} {platform.release()} (Python {platform.python_version()})")
                 if m == 7:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                     if len(SERVER_INITS.items()):
@@ -5517,11 +5027,9 @@ def main(stdscr):
                     devtools(stdscr)
                 elif m == 8:
                     webbrowser.open("https://enderbyteprograms.net")
-                elif m == 9:
-                    product_key_page(stdscr)
             except Exception as e2:
                 safe_error_handling(e2)
-        if APPDATA["settings"]["transitions"]["value"]:
+        if appdata.APPDATA["settings"]["transitions"]["value"]:
             cursesplus.transitions.horizontal_bars(stdscr)
     except Exception as e:
         error_handling(e,"A serious error has occured")

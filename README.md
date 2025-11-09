@@ -63,3 +63,7 @@ popd
 popd
 echo "Installation finished with no errors."
 ```
+
+## Other Important Things
+
+ATTENTION - If you use an old version of this software, it might ask you for a "product key." This system has been retired, so it may confuse you. Please paste the code `4p6jgtnatqj5svb4` if it asks you for one.

@@ -4,6 +4,9 @@
     - Move self-made libraries to src
     - Unzip libraries
     - Move other files in src directory to scripts
+- Remove all references to anything monetary
+- Including ads, product keys, etc
+- Fix bug where screen spam would occur if API server was down
 1.52.2:
 - Add the ability to change the server's java installation
 - Fix bugs

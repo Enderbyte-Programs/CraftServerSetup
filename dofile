@@ -61,7 +61,7 @@
     echo "INFO: Shortening source file"
     mkdir dist
     #Copy code and add exec permissions
-    cp src/craftserversetup.py dist/craftserversetup.py
+    cp src/main.py dist/craftserversetup.py
     if [ "$1" = "nominify" ]; then
         echo INFO: Skipping script minification as you requested.
     else
@@ -82,7 +82,7 @@
     echo "INFO: Installing libraries"
     cp -r ./* $LIBDIR
     cp ../src/*.py $LIBDIR
-    rm $LIBDIR/craftserversetup.py
+    rm $LIBDIR/main.py
     #Do not copy executable to library dir
     popd >/dev/null
     if [ ! -d $ICONDIR ]; then
@@ -175,9 +175,9 @@
     mkdir dist
     #Copy code and add exec permissions
     #Shorten using minifier
-    cp src/craftserversetup.py dist/craftserversetup.py
+    cp src/main.py dist/craftserversetup.py
 
-    tar -xf lib/python_minifier.tar.xz -C scripts
+    cp -r lib/python_minifier/ scripts
     python3 scripts/minify.py dist/craftserversetup.py dist/craftserversetup.py.tmp
     rm -rf scripts/python_minifier
     mv dist/craftserversetup.py.tmp dist/craftserversetup.py
@@ -189,11 +189,9 @@
 
     pushd lib >/dev/null
     #Copy prebuilt python library
-    for file in *.xz
-    do
-        tar -xf $file -C "../$DEBLIBFOLDER" #Extract library to custom library path
-    done
-    cp *.py "../$DEBLIBFOLDER" #Copy remaining custom librariespa
+    cp -r ./* ../$DEBLIBFOLDER
+    cp ../src/*.py "../$DEBLIBFOLDER" #Copy remaining custom librariespa
+    rm ../$DEBLIBFOLDER/main.py
     popd >/dev/null
 
     #Move desktop and icon files
@@ -269,7 +267,6 @@
     echo "Copying Files"
     mkdir -p $FDIR
     mkdir $FDIR/installer
-    cp lib/*.py $FDIR
     cp src/*.py $FDIR
     cp assets/mc.ico $FDIR
     cp assets/*.bmp $FDIR
@@ -279,7 +276,7 @@
     
     read -p "Write app version: " version
 
-    cd src
+    cd scripts
     #PARANV="${version//./,}"
     PARANV="$(python3 version_fixer.py $version)"
     #echo "--> SAFE V IS $PARANV"
@@ -297,12 +294,15 @@
     sed -i -e '42d' crss-wine.iss
     sed -i "42iOutputBaseFilename=CraftServerSetup-$version-installer" crss-wine.iss
 
+    
+    cp vf.txt $FDIR
+    cp crss-wine.iss $FDIR
+
     cd ..
-    cp scripts/vf.txt $FDIR
-    cp scripts/crss-wine.iss $FDIR
 
     echo "Compiling stage 1"
     pushd $FDIR
+    mv main.py craftserversetup.py #Dodgy workaround
     wine $PYINSTALLER --icon=mc.ico --version-file=vf.txt -y craftserversetup.py
     echo "Waiting 5 seconds..."
     sleep 5
