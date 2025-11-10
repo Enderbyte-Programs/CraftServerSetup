@@ -7,6 +7,11 @@
 - Remove all references to anything monetary
 - Including ads, product keys, etc
 - Fix bug where screen spam would occur if API server was down
+- Remove showprog setting as it was completely useless
+- Add autorestart
+    - Add autorestarttimeout setting, which defaults to 30 seconds timeout
+    - This means you have 30s to abort the autorestart after it triggers.
+    - Autorestart settings are found in advanced config -> startup options -> Autorestart options
 1.52.2:
 - Add the ability to change the server's java installation
 - Fix bugs

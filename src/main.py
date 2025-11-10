@@ -34,7 +34,6 @@ import io                       #File streams
 import shlex                    #Data parsing
 import re                       #Pattern matching
 import typing                   #HArd types
-import importlib                #For import reloading
 
 WINDOWS = platform.system() == "Windows"
 DEBUG = False#Some constants need to be loaded before library startup... It's a bad system, but this is what is needed to split up this 7000 line file
@@ -89,6 +88,9 @@ staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
 staticflags.setup_early_load(WINDOWS,DEBUG)
 from staticflags import * #Static flags are locked at this time
 import appdata
+import autorestart
+import timedexec
+import uicomponents
 
 del WINDOWS
 del DEBUG
@@ -402,7 +404,7 @@ def manage_whitelist(stdscr,whitefile:str):
     except:
         dat = []#Fix bug number 18: Running this before setup finish causes crash
     while True:
-        dop = crss_custom_ad_menu(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove or choose bolded options")
+        dop = uicomponents.menu(stdscr,["ADD PLAYER","FINISH"]+[p["name"] for p in dat],"Choose a player to remove or choose bolded options")
         if dop == 1:
             with open(whitefile,"w+") as f:
                 f.write(json.dumps(dat))
@@ -496,7 +498,7 @@ def download_vanilla_software(stdscr,serverdir) -> dict|None:
     VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
     stdscr.clear()
     stdscr.erase()
-    downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+    downloadversion = uicomponents.menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
     if downloadversion == 0:
         return
     else:
@@ -560,7 +562,7 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
 def download_paper_software(stdscr,serverdir) -> dict:
     VMAN = requests.get("https://api.papermc.io/v2/projects/paper").json()
     stdscr.erase()
-    pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+    pxver = list(reversed(VMAN["versions"]))[uicomponents.menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
     BMAN = requests.get(f"https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds").json()
     buildslist = list(reversed(BMAN["builds"]))
     
@@ -568,7 +570,7 @@ def download_paper_software(stdscr,serverdir) -> dict:
         builddat = buildslist[0]
     else:
         stdscr.erase()
-        builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+        builddat = buildslist[uicomponents.menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
     bdownload = f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
     #cursesplus.displaymsg(stdscr,[f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     cursesplus.displaymsg(stdscr,["Downloading server file"],False)
@@ -579,12 +581,12 @@ def download_paper_software(stdscr,serverdir) -> dict:
 
 def download_purpur_software(stdscr,serverdir) -> dict:
     verlist = list(reversed(requests.get("https://api.purpurmc.org/v2/purpur").json()["versions"]))
-    verdn = verlist[crss_custom_ad_menu(stdscr,verlist,"Choose a version")]
+    verdn = verlist[uicomponents.menu(stdscr,verlist,"Choose a version")]
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to install the latest build?","This is highly recommended"]):
         bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/latest/download"
     else:
         dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
-        builddn = crss_custom_ad_menu(stdscr,dz)
+        builddn = uicomponents.menu(stdscr,dz)
         bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
     cursesplus.displaymsg(stdscr,["Downloading file..."],False)
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
@@ -716,7 +718,7 @@ def bedrock_whitelist(stdscr,serverdir:str):
         with open(allowfile) as f:
             data:list = json.load(f)
         while True:
-            wtd = crss_custom_ad_menu(stdscr,["FINISH","Add new player",f"{uf_toggle_conv(pdata['allow-list'])} Allowlist"]+["[-] "+d["name"] for d in data],"Managing allowlist",footer="Add a player or delete an existing player from the allowlist.")
+            wtd = uicomponents.menu(stdscr,["FINISH","Add new player",f"{uf_toggle_conv(pdata['allow-list'])} Allowlist"]+["[-] "+d["name"] for d in data],"Managing allowlist",footer="Add a player or delete an existing player from the allowlist.")
             if wtd == 0:
                 break
             elif wtd == 1:
@@ -740,7 +742,7 @@ def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
 
     while True:
         availableworlds = bedrock_enum_worlds(serverdir)
-        op = crss_custom_ad_menu(stdscr,["FINISH","Create New World"]+[a.name for a in availableworlds],footer="Choose a world to select or delete, or create a world",title=f"Current world: {data['level-name']}")
+        op = uicomponents.menu(stdscr,["FINISH","Create New World"]+[a.name for a in availableworlds],footer="Choose a world to select or delete, or create a world",title=f"Current world: {data['level-name']}")
         if op == 0:
             break
         elif op == 1:
@@ -789,12 +791,12 @@ def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
 
 def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["FINISH","Basic options","World settings","Advanced options"])
+        wtd = uicomponents.menu(stdscr,["FINISH","Basic options","World settings","Advanced options"])
         if wtd == 0:
             return data
         elif wtd == 1:
             data["server-name"] = crssinput(stdscr,"What is the public name of the server?")
-            data["gamemode"] = ["survival","creative","adventure"][crss_custom_ad_menu(stdscr,["Survival","Creative","Adventure"],"Choose gamemode for server")]
+            data["gamemode"] = ["survival","creative","adventure"][uicomponents.menu(stdscr,["Survival","Creative","Adventure"],"Choose gamemode for server")]
             cd = cursesplus.checkboxlist(stdscr,[
                 CheckBoxItem("fg","Force Gamemode"),
                 CheckBoxItem("cheat","Allow Cheats / commands"),
@@ -807,7 +809,7 @@ def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
             data["allow-list"] = cd["al"]
             data["view-distance"] = cursesplus.numericinput(stdscr,"What view distance do you want?",minimum=5,maximum=48,prefillnumber=32)
             data["tick-distance"] = cursesplus.numericinput(stdscr,"What simulation distance do you want?",minimum=4,maximum=12,prefillnumber=4)
-            data["default-player-permission-level"] = ["visitor","member","operator"][crss_custom_ad_menu(stdscr,["Visitor (very limited access)","Member (Normal player)","Operator (Admin)"],"Select default permissions")]
+            data["default-player-permission-level"] = ["visitor","member","operator"][uicomponents.menu(stdscr,["Visitor (very limited access)","Member (Normal player)","Operator (Admin)"],"Select default permissions")]
             data["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed on the server?")
         elif wtd == 2:
             data = bedrock_world_settings(stdscr,directory,data)
@@ -822,7 +824,7 @@ def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
                 cursesplus.CheckBoxItem("content-log-file-enabled","Enable content error logging",True)
             ])
             data = merge_dicts(data,ii)
-            data["compression-algorithm"] = ["zlib","snappy"][crss_custom_ad_menu(stdscr,["zlib","snappy"],"Choose compression algorith")]
+            data["compression-algorithm"] = ["zlib","snappy"][uicomponents.menu(stdscr,["zlib","snappy"],"Choose compression algorith")]
             data["server-authoritative-movement"] = crss_option_retr_str(stdscr,["client-auth - No anticheat","server-auth - Weak anticheat","server-auth-with-rewind - Strong anticheat"],"Choose anticheat")
             data["chat-restriction"] = crss_option_retr_str(stdscr,["None - Allow chat","Dropped - Disallow chat","Disabled - Silently hide chat"],"Choose chat restriction")
             iii = cursesplus.checkboxlist(stdscr,[
@@ -838,10 +840,10 @@ def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
 
 def crss_option_retr_str(stdscr,options:list,header:str) -> str:
     """Strips based on  - : Use as splitter"""
-    return options[crss_custom_ad_menu(stdscr,options,header)].split(" - ")[0]
+    return options[uicomponents.menu(stdscr,options,header)].split(" - ")[0]
 
 def bedrock_config_server(stdscr,chosenserver):
-    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Rename Server","Startup Options"])#Todo rename server, memory
+    __l = uicomponents.menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Rename Server","Startup Options"])#Todo rename server, memory
     if __l == 0:
         return
     elif __l == 1:
@@ -901,7 +903,7 @@ def setup_bedrock_server(stdscr):
     else:
         availablelinks = [link_lx_normal,link_lx_preview]
     
-    l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
+    l2d = availablelinks[uicomponents.menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
     p.step("Downloading server file")
     urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
     p.step("Extracting server file")
@@ -949,7 +951,7 @@ def setup_bedrock_server(stdscr):
     bedrock_manage_server(stdscr,servername,appdata.APPDATA["servers"].index(sd)+1)
 
 def bedrock_do_update(stdscr,chosenserver,availablelinks):
-    l2d = availablelinks[crss_custom_ad_menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
+    l2d = availablelinks[uicomponents.menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
     #Remember: Don't overwrite server.properties or allowlist.json
     p = cursesplus.ProgressBar(stdscr,5)
     cursesplus.displaymsg(stdscr,["Updating server","Please be patient."],False)
@@ -1016,7 +1018,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             
     svrd = appdata.APPDATA["servers"][chosenserver-1]["dir"]       
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["RETURN TO MAIN MENU","Start Server","Server Settings","Delete Server","Configure Allowlist","Export Server","World Settings","Re/change install","FILE MANAGER"],f"Managing {servername}")
+        wtd = uicomponents.menu(stdscr,["RETURN TO MAIN MENU","Start Server","Server Settings","Delete Server","Configure Allowlist","Export Server","World Settings","Re/change install","FILE MANAGER"],f"Managing {servername}")
         if wtd == 0:
             os.chdir("/")
             return
@@ -1051,32 +1053,51 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
         elif wtd == 4:
             bedrock_whitelist(stdscr,svrd)
         elif wtd == 1:
-            os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
-            os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])           
-            stdscr.clear()
-            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
-            stdscr.refresh()
-            if not ON_WINDOWS:
-                curses.curs_set(1)
-                curses.reset_shell_mode()
-                lretr = os.system(appdata.APPDATA["servers"][chosenserver-1]["script"])
-                #child = pexpect.spawn(appdata.APPDATA["servers"][chosenserver-1]["script"])
-                #child.expect("Finished")
-                curses.reset_prog_mode()
-                curses.curs_set(0)
-            else:
-                curses.curs_set(1)
-                curses.reset_shell_mode()
-                #COLOURS_ACTIVE = False
-                lretr = os.system("cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")")
-                curses.reset_prog_mode()
-                curses.curs_set(0)
-                #restart_colour()
-            os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
-            if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
-                cursesplus.messagebox.showwarning(stdscr,["Oh No! Your server crashed"])
-            stdscr.clear()
-            stdscr.refresh()
+            while True:
+                os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
+                os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])           
+                stdscr.clear()
+                stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
+                stdscr.refresh()
+                if not ON_WINDOWS:
+                    curses.curs_set(1)
+                    curses.reset_shell_mode()
+                    lretr = os.system(appdata.APPDATA["servers"][chosenserver-1]["script"])
+                    #child = pexpect.spawn(appdata.APPDATA["servers"][chosenserver-1]["script"])
+                    #child.expect("Finished")
+                    curses.reset_prog_mode()
+                    curses.curs_set(0)
+                else:
+                    curses.curs_set(1)
+                    curses.reset_shell_mode()
+                    #COLOURS_ACTIVE = False
+                    lretr = os.system("cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")")
+                    curses.reset_prog_mode()
+                    curses.curs_set(0)
+                    #restart_colour()
+                os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+                hascrashed = lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130
+                willgoagain = False
+                #Handle autorestart
+                recommended_action = autorestart.get_recommended_action(appdata.APPDATA["servers"][chosenserver-1],True)
+                match recommended_action:
+                    case autorestart.AutoRestartOptions.ALWAYS:
+                        willgoagain = True
+                    case autorestart.AutoRestartOptions.SAFEEXIT:
+                        if not hascrashed:
+                            willgoagain = True
+                    
+                if willgoagain:
+                    execagain = timedexec.timeout_askyesno(stdscr,["Unless you interrupt by saying no","This server will auto-restart when","the timer runs out"],True,appdata.get_setting_value("autorestarttimeout"))
+                    if execagain:
+                        continue
+
+                if hascrashed:
+                    cursesplus.messagebox.showwarning(stdscr,["Oh no!","Your server has crashed."])
+
+                stdscr.clear()
+                stdscr.refresh()
+                break
 
 def choose_server_name(stdscr) -> str:
     """Prompt the user to create new name, not allowing duplicates found in SERVERSDIR"""
@@ -1103,7 +1124,7 @@ def setup_proxy_server(stdscr):
     if not cursesplus.messagebox.askokcancel(stdscr,["Proxy servers are DIFFERENT from normal servers!","A proxy server connects to existing normal servers to distribute them.","Proxy servers are more difficult to configure.","Be sure you know what server type you are making"]):
         return
     
-    proxytype = crss_custom_ad_menu(stdscr,["Cancel","Bungeecord (by spigot)"])
+    proxytype = uicomponents.menu(stdscr,["Cancel","Bungeecord (by spigot)"])
     if proxytype == 0:
         return
     else:
@@ -1117,13 +1138,13 @@ def setup_proxy_server(stdscr):
 def setupnewserver(stdscr):
     stdscr.erase()
     
-    wtd = crss_custom_ad_menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
+    wtd = uicomponents.menu(stdscr,["Cancel","Create a new server","Import a server from this computer"],"What would you like to do?")
     if wtd == 0:
         return
     elif wtd == 2:
         import_server(stdscr)
         return
-    bigserverblock = crss_custom_ad_menu(stdscr,["Cancel","Java (Computer, PC)","Bedrock (Console, Tablet, etc)","Java Proxy"],"Choose Minecraft kind to install")
+    bigserverblock = uicomponents.menu(stdscr,["Cancel","Java (Computer, PC)","Bedrock (Console, Tablet, etc)","Java Proxy"],"Choose Minecraft kind to install")
     if bigserverblock == 0:
         return
     elif bigserverblock == 2:
@@ -1135,7 +1156,7 @@ def setupnewserver(stdscr):
         
     while True:
         
-        serversoftware = crss_custom_ad_menu(stdscr,["Cancel","Help me choose","Vanilla","Spigot","Paper","Purpur"],"Please choose your server software")
+        serversoftware = uicomponents.menu(stdscr,["Cancel","Help me choose","Vanilla","Spigot","Paper","Purpur"],"Please choose your server software")
         if serversoftware != 1:
             break
         else:
@@ -1181,12 +1202,34 @@ This is apparently even more optimized. It also supports plugins. It can configu
 
     njavapath = njavapath.replace("//","/")
     serverid = random.randint(1111,9999)
-    sd = {"name":servername,"javapath":njavapath,"memory":memorytoall,"dir":S_INSTALL_DIR,"version":PACKAGEDATA["id"],"moddable":serversoftware!=1,"software":serversoftware,"id":serverid,"settings":{"legacy":True,"launchcommands":[],"exitcommands":[],"flags" : ""}}
+    sd = {
+        "name":servername,
+        "javapath":njavapath,
+        "memory":memorytoall,
+        "dir":S_INSTALL_DIR,
+        "version":PACKAGEDATA["id"],
+        "moddable":serversoftware!=1,
+        "software":serversoftware,
+        "id":serverid,
+        "settings":{
+            "legacy":True,
+            "launchcommands":[],
+            "exitcommands":[],
+            "flags" : "",
+            "restartsource" : 0,
+            "autorestart" : 0
+        }
+        }
     #_space = "\\ "
     #__SCRIPT__ = f"{njavapath.replace(' ',_space)} -jar -Xms{memorytoall} -Xmx{memorytoall} \"{S_INSTALL_DIR}/server.jar\" nogui"
     __SCRIPT__ = generate_script(sd)
     sd["script"] = __SCRIPT__
     
+    if cursesplus.messagebox.askyesno(stdscr,["Would you like to enable automatic restarts?"]):
+        sd["settings"]["restartsource"] = 1#Allow file, but fall through to CRSS
+        sd["settings"]["autorestart"] = 1#Only auto restart if the server has not crashed
+        cursesplus.messagebox.showinfo(stdscr,["You may change this at any time by going to","Advanced configuration -> Startup Options -> Autorestart options"])
+
     appdata.APPDATA["servers"].append(sd)
     appdata.updateappdata()
     bdir = os.getcwd()
@@ -1200,6 +1243,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
         data = setup_server_properties(stdscr)
         with open("server.properties","w+") as f:
             f.write(PropertiesParse.dump(data))
+
     try:
         shutil.copyfile(ASSETSDIR+"/defaulticon.png",S_INSTALL_DIR+"/server-icon.png")
     except:
@@ -1231,7 +1275,7 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
             break
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to use a custom seed?","Answer no for a random seed"]):
         dpp["level-seed"] = crssinput(stdscr,"What should the seed be?")
-    wtype = crss_custom_ad_menu(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
+    wtype = uicomponents.menu(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
     if wtype == 7:
         wname = crssinput(stdscr,"Please type the full name of the custom world type")
     elif wtype == 0:
@@ -1262,8 +1306,8 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         #dpp["allow-nether"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable the nether on this world?"])
         #dpp["generate-structures"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable structure generation on this world?"])
         #dpp["hardcore"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable hardcore mode on this world?"])
-        dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your world"))
-        dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of this world"))
+        dpp["difficulty"] = str(uicomponents.menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your world"))
+        dpp["gamemode"] = str(uicomponents.menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of this world"))
         #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on this world?"])
         #dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
         #dpp["spawn-animals"] = cursesplus.messagebox.askyesno(stdscr,["Spawn animals?"])
@@ -1287,7 +1331,7 @@ def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROP
     dpp = data
     cursesplus.utils.showcursor()
     while True:
-        lssl = crss_custom_ad_menu(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
+        lssl = uicomponents.menu(stdscr,["Basic Settings","World Settings","Advanced Settings","Network Settings","FINISH","Setup Resource pack"],"Server Configuration Setup")
         #Go through all of the properties 1 by 1...
         if lssl == 4:
             cursesplus.utils.hidecursor()
@@ -1322,7 +1366,7 @@ def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROP
             dpp["broadcast-console-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable verbose output to operators?"])
             dpp["entity-broadcast-range-percentage"] = cursesplus.numericinput(stdscr,"What distance percentage should entities be sent to the client?",minimum=10,maximum=1000,prefillnumber=100)
             #dpp["enforce-secure-profile"] = not cursesplus.messagebox.askyesno(stdscr,["Do you want to allow cracked accounts to join?"])
-            seclevel = crss_custom_ad_menu(stdscr,["Maximum (reccommended) - Secure profile and valid account","Moderate - Valid account, secure profile not required","Minimum - Cracked / illegal accounts permitted"],"Please choose a security option")
+            seclevel = uicomponents.menu(stdscr,["Maximum (reccommended) - Secure profile and valid account","Moderate - Valid account, secure profile not required","Minimum - Cracked / illegal accounts permitted"],"Please choose a security option")
             if seclevel == 0:
                 dpp["enforce-secure-profile"] = True
                 dpp["online-mode"] = True
@@ -1338,7 +1382,7 @@ def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROP
                 if cursesplus.messagebox.askyesno(stdscr,["Do you want to enfore the white list?"]):
                     dpp["enforce-whitelist"] = True
             dpp["force-gamemode"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to force players to use the default game mode?"])
-            dpp["function-permission-level"] = crss_custom_ad_menu(stdscr,["1 (Bypass spawn protection)","2 (Singleplayer commands)","3 (Player management (ban/kick))","4 (Manage server)"],"Please choose the default op admin level") + 1
+            dpp["function-permission-level"] = uicomponents.menu(stdscr,["1 (Bypass spawn protection)","2 (Singleplayer commands)","3 (Player management (ban/kick))","4 (Manage server)"],"Please choose the default op admin level") + 1
             dpp["max-chained-neighbor-updates"] = cursesplus.numericinput(stdscr,"Please input maximum chained neighboue updates",allownegatives=True,minimum=-1,prefillnumber=1000000)
             dpp["max-tick-time"] = cursesplus.numericinput(stdscr,"How many milliseconds should watchdog wait?",False,True,-1,2**32,60000)
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to enable anti-afk?"]):
@@ -1346,7 +1390,7 @@ def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROP
             else:
                 dpp["player-idle-timeout"] = 0
             dpp["accept-transfers"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow people to automatically transfer to this server?"])
-            dpp["region-file-compression"] = ["deflate","lz4","none"][crss_custom_ad_menu(
+            dpp["region-file-compression"] = ["deflate","lz4","none"][uicomponents.menu(
                 stdscr,
                 ["Deflate (old algorithm, small size, high cpu)","LZ4 (more space, low cpu)","No compression (slow, huge space, no cpu)"],
                 "What compression should the world files use?"
@@ -1354,8 +1398,8 @@ def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROP
             
         elif lssl == 0:
             #basic
-            dpp["difficulty"] = str(crss_custom_ad_menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
-            dpp["gamemode"] = str(crss_custom_ad_menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
+            dpp["difficulty"] = str(uicomponents.menu(stdscr,["Peaceful","Easy","Normal","Hard"],"Please select the difficulty of your server"))
+            dpp["gamemode"] = str(uicomponents.menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
             #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
             dpp["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed? (max players)",minimum=1,maximum=1000000,prefillnumber=20)
             dpp["motd"] = "\\n".join(crssinput(stdscr,"What should your server message say?",2,59).splitlines())
@@ -1384,7 +1428,7 @@ def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROP
 
 def resource_pack_setup(stdscr,dpp:dict) -> dict:
     while True:
-        z = crss_custom_ad_menu(stdscr,["Done","Set Resource pack URL","Change resource pack settings","Disable resource pack"])
+        z = uicomponents.menu(stdscr,["Done","Set Resource pack URL","Change resource pack settings","Disable resource pack"])
         if z == 0:
             return dpp
         elif z == 1:
@@ -1426,7 +1470,7 @@ def servermgrmenu(stdscr):
     prune_servers()
     stdscr.clear()
     
-    chosenserver = crss_custom_ad_menu(stdscr,["Back"]+[a["name"] for a in appdata.APPDATA["servers"]],"Please choose a server")
+    chosenserver = uicomponents.menu(stdscr,["Back"]+[a["name"] for a in appdata.APPDATA["servers"]],"Please choose a server")
     if chosenserver == 0:
         return
     else:
@@ -1518,7 +1562,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
     oldinres = copy.deepcopy(inres)
     inres = process_modrinth_api_return_with_config(inres,lenset)
     while True:
-        modch = crss_custom_ad_menu(stdscr,["Cancel","Leniency Settings","Help I can't find what I'm looking for"]+[ikl["title"] for ikl in inres],f"Search results for {searchq}")
+        modch = uicomponents.menu(stdscr,["Cancel","Leniency Settings","Help I can't find what I'm looking for"]+[ikl["title"] for ikl in inres],f"Search results for {searchq}")
         if modch == 0:
             break
         elif modch == 1:
@@ -1534,7 +1578,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
         else:
             chmod = inres[modch-3]
             while True:
-                mocho = crss_custom_ad_menu(stdscr,["Cancel","Plugin Info","Download"])
+                mocho = uicomponents.menu(stdscr,["Cancel","Plugin Info","Download"])
                 if mocho == 0:
                     break
                 elif mocho == 1:
@@ -1586,7 +1630,7 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
     api_base = "https://api.modrinth.com/v2"
     headers = {"User-Agent":MODRINTH_USER_AGENT,"content-type":"application/json"}
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["FINISH","Search for plugins","View most popular plugins"])
+        wtd = uicomponents.menu(stdscr,["FINISH","Search for plugins","View most popular plugins"])
         if wtd == 0:
             break
         elif wtd == 1:
@@ -1658,7 +1702,7 @@ def spigot_api_manager(stdscr,modfolder:str,serverversion:str,serverdir:str):
     activesearch = ""
     display = process_spigot_api_entries(final,activesearch)
     while True:
-        #wtd = crss_custom_ad_menu(stdscr,["FINISH","New Search"]+[chop_str_with_limit(z["name"],40) for z in display],f"Searching for {activesearch} from Spigot")
+        #wtd = uicomponents.menu(stdscr,["FINISH","New Search"]+[chop_str_with_limit(z["name"],40) for z in display],f"Searching for {activesearch} from Spigot")
         wtd = cursesplus.searchable_option_menu(stdscr,[d["name"] for d in display],"Choose a plugin",["Finish"])
         if wtd == 0:
             break
@@ -1697,7 +1741,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
         os.mkdir(modsforlder)
     while True:
         PLUGSLIST = retr_jplug(modsforlder)
-        spldi = crss_custom_ad_menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" (v"+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
+        spldi = uicomponents.menu(stdscr,["BACK","ADD PLUGIN"]+[f["name"]+" (v"+f["version"]+")" for f in PLUGSLIST],"Choose a plugin to manage")
         if spldi == 0:
             return
         elif spldi == 1:
@@ -1727,7 +1771,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
             chosenplug = spldi - 2
 
             while True:
-                wtd = crss_custom_ad_menu(stdscr,["BACK","View Plugin Info","Delete Plugin","Reset Plugin","Edit config.yml"])
+                wtd = uicomponents.menu(stdscr,["BACK","View Plugin Info","Delete Plugin","Reset Plugin","Edit config.yml"])
                 if wtd == 0:
                     break
                 elif wtd == 1:
@@ -1810,7 +1854,7 @@ def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
 def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     stdscr.erase()
-    downloadversion = crss_custom_ad_menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+    downloadversion = uicomponents.menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
     if downloadversion == 0:
         return
     else:
@@ -1873,7 +1917,7 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     stdscr.erase()
     VMAN = requests.get("https://api.papermc.io/v2/projects/paper").json()
     stdscr.erase()
-    pxver = list(reversed(VMAN["versions"]))[crss_custom_ad_menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
+    pxver = list(reversed(VMAN["versions"]))[uicomponents.menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
     BMAN = requests.get(f"https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds").json()
     buildslist = list(reversed(BMAN["builds"]))
     
@@ -1881,7 +1925,7 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
         builddat = buildslist[0]
     else:
         stdscr.erase()
-        builddat = buildslist[crss_custom_ad_menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
+        builddat = buildslist[uicomponents.menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
     bdownload = f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
     #cursesplus.displaymsg(stdscr,[f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     stdscr.clear()
@@ -1896,12 +1940,12 @@ def update_paper_software(stdscr,serverdir:str,chosenserver:int):
 def update_purpur_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     verlist = list(reversed(requests.get("https://api.purpurmc.org/v2/purpur").json()["versions"]))
-    verdn = verlist[crss_custom_ad_menu(stdscr,verlist,"Choose a version")]
+    verdn = verlist[uicomponents.menu(stdscr,verlist,"Choose a version")]
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to install the latest build?","This is highly recommended"]):
         bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/latest/download"
     else:
         dz = list(reversed(requests.get(f"https://api.purpurmc.org/v2/purpur/{verdn}").json()["builds"]["all"]))
-        builddn = crss_custom_ad_menu(stdscr,dz)
+        builddn = uicomponents.menu(stdscr,dz)
         bdownload = bdownload = f"https://api.purpurmc.org/v2/purpur/{verdn}/{dz[builddn]}/download"
     cursesplus.displaymsg(stdscr,["Downloading file..."],False)
     rm_server_jar()
@@ -1946,7 +1990,7 @@ def command_execution_auditing(stdscr,serverdir:str):
             finalcmds.append(CommandExecution.fromraw(entry))
             
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["BACK","View Command History","Commands by Player","Commands by Text","Find command discrepancies","Graph by Player","Graph by command","Player command profile"])
+        wtd = uicomponents.menu(stdscr,["BACK","View Command History","Commands by Player","Commands by Text","Find command discrepancies","Graph by Player","Graph by command","Player command profile"])
         match wtd:
             case 0:
                 break
@@ -2021,7 +2065,7 @@ def view_server_logs(stdscr,server_dir:str):
     pushd(logsdir)
     
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["BACK","View whole log history","View by file","Chat History & Utilities","Command Execution Audits"])
+        wtd = uicomponents.menu(stdscr,["BACK","View whole log history","View by file","Chat History & Utilities","Command Execution Audits"])
         if wtd == 0:
             popd()
             return
@@ -2035,7 +2079,7 @@ def view_server_logs(stdscr,server_dir:str):
         elif wtd == 2:
             while True:
                 availablelogs = list(reversed(sorted([l for l in os.listdir(logsdir) if os.path.isfile(l)])))
-                chosenlog = crss_custom_ad_menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
+                chosenlog = uicomponents.menu(stdscr,["BACK"]+availablelogs,"Please choose a log to view")
                 if chosenlog == 0:
                     break
                 else:
@@ -2046,7 +2090,7 @@ def view_server_logs(stdscr,server_dir:str):
                     else:
                         with open(cl) as f:
                             data = f.read()
-                    wtd = crss_custom_ad_menu(stdscr,["Cancel","View all of log","Chat logs only"])
+                    wtd = uicomponents.menu(stdscr,["Cancel","View all of log","Chat logs only"])
                     if wtd == 1:
                         cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
                     elif wtd == 3:
@@ -2083,7 +2127,7 @@ def xdg_open_file(file:str) -> int:
 
 def manage_server_icon(stdscr):
     while True:
-        ssx = crss_custom_ad_menu(stdscr,["BACK","Change icon","Reset icon","Delete icon","View icon"])
+        ssx = uicomponents.menu(stdscr,["BACK","Change icon","Reset icon","Delete icon","View icon"])
         if ssx == 0:
             break
         elif ssx == 4:
@@ -2117,7 +2161,7 @@ def manage_server_icon(stdscr):
                     pass
 
 def config_server(stdscr,chosenserver):
-    __l = crss_custom_ad_menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options","Change Java Installation"])#Todo rename server, memory
+    __l = uicomponents.menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options","Change Java Installation"])#Todo rename server, memory
     if __l == 0:
         appdata.updateappdata()
         return
@@ -2151,7 +2195,7 @@ def config_server(stdscr,chosenserver):
         else:
             while True:
                 lkz = [os.path.split(z)[1] for z in glob.glob(dt["dir"]+"/*.yml")]
-                dz = crss_custom_ad_menu(stdscr,["Quit"]+lkz)
+                dz = uicomponents.menu(stdscr,["Quit"]+lkz)
                 if dz == 0:
                     break
                 else:
@@ -2179,7 +2223,7 @@ def config_server(stdscr,chosenserver):
 
 
 def change_software(stdscr,directory,data) -> dict:
-    zxc = crss_custom_ad_menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
+    zxc = uicomponents.menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose the new software for the server")
     if zxc == 0:
         return data
     elif zxc == 1:
@@ -2234,7 +2278,7 @@ def text_editor(text:str,headmessage="edit") -> str:
 
 def startup_options(stdscr,serverdata:dict):
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Edit startup commands","Edit shutdown commands","Set startup mode","Command Line Arguments","View server script"])
+        wtd = uicomponents.menu(stdscr,["Back","Edit startup commands","Edit shutdown commands","Set startup mode","Command Line Arguments","View server script","Autorestart options"])
         if wtd == 0:
             return serverdata
         elif wtd == 1:
@@ -2242,11 +2286,13 @@ def startup_options(stdscr,serverdata:dict):
         elif wtd == 2:
             serverdata["settings"]["exitcommands"] = text_editor("\n".join(serverdata["settings"]["exitcommands"]),"Edit Exit Commands").splitlines()
         elif wtd == 3:
-            serverdata["settings"]["legacy"] = crss_custom_ad_menu(stdscr,["New Startups (fancy)","Old Startups (legacy)"],"Choose startup mode") == 1
+            serverdata["settings"]["legacy"] = uicomponents.menu(stdscr,["New Startups (fancy)","Old Startups (legacy)"],"Choose startup mode") == 1
         elif wtd == 4:
             serverdata["settings"]["flags"] = crssinput(stdscr,"Custom flags for your server",prefiltext=serverdata['settings']["flags"])
         elif wtd == 5:
             cursesplus.textview(stdscr,text=serverdata["script"],message="Server startup script")
+        elif wtd == 6:
+            serverdata = autorestart.autorestart_settings(stdscr,serverdata)
             
 
 def strict_word_search(haystack:str,needle:str) -> bool:
@@ -2349,7 +2395,7 @@ def who_said_what(stdscr,serverdir):
     #Not needed after LSL does sorting
     #allentries.reverse()
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server","View Chat Bar Graph"])
+        wtd = uicomponents.menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server","View Chat Bar Graph"])
         if wtd == 0:
             break
         elif wtd == 1:
@@ -2486,11 +2532,11 @@ def ip_lookup(stdscr,serverdir):
         f.write(gzip.compress(json.dumps([f.todict() for f in formattedips]).encode()))
     p.done()
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country","Show bar graph","Reset Cache"])
+        wtd = uicomponents.menu(stdscr,["BACK","View All","Lookup by Player","Lookup by IP","Lookup by Country","Show bar graph","Reset Cache"])
         if wtd == 0:
             break
         elif wtd == 1:
-            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            sorting = uicomponents.menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
             if sorting == 1 or sorting == 2:
                 formattedips.sort(key= lambda x:x.address)
             elif sorting == 3 or sorting == 4:
@@ -2504,7 +2550,7 @@ def ip_lookup(stdscr,serverdir):
                 final += f"{fi.address.rjust(16)} ({fi.country.rjust(20)}) - {' '.join(fi.players)}\n"
             cursesplus.textview(stdscr,text=final,message="All IPs")
         elif wtd == 2:
-            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            sorting = uicomponents.menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
             if sorting == 1 or sorting == 2:
                 formattedips.sort(key= lambda x:x.address)
             elif sorting == 3 or sorting == 4:
@@ -2521,7 +2567,7 @@ def ip_lookup(stdscr,serverdir):
             cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
     
         elif wtd == 3:
-            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            sorting = uicomponents.menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
             if sorting == 1 or sorting == 2:
                 formattedips.sort(key= lambda x:x.address)
             elif sorting == 3 or sorting == 4:
@@ -2538,7 +2584,7 @@ def ip_lookup(stdscr,serverdir):
             cursesplus.textview(stdscr,text=final,message=f"Searching for {psearch}")
             
         elif wtd == 4:
-            sorting = crss_custom_ad_menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
+            sorting = uicomponents.menu(stdscr,["No Sorting","IP Address 1 -> 9","IP Address 9 -> 1","Country A -> Z","Country Z -> A","Players A -> Z","Players Z -> A"],"How do you wish to sort the results?")
             if sorting == 1 or sorting == 2:
                 formattedips.sort(key= lambda x:x.address)
             elif sorting == 3 or sorting == 4:
@@ -2767,7 +2813,7 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
             else:
                 offset = list(data.keys()).index(nmid)
         elif ch == "t":
-            currentzoomlevel = list(zoomlevels.keys())[crss_custom_ad_menu(stdscr,list(zoomlevels.values()),"Choose a zoom level")]
+            currentzoomlevel = list(zoomlevels.keys())[uicomponents.menu(stdscr,list(zoomlevels.values()),"Choose a zoom level")]
             cursesplus.displaymsg(stdscr,["Generating Data"],False)
             #This will use ogdat because data may have been used for hour or day, which will screw it up
             offset = 0
@@ -2798,7 +2844,7 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
             datasize = len(data)-1
                 
         elif ch == "d":
-            currentdatatype = list(datatypes.keys())[crss_custom_ad_menu(stdscr,list(datatypes.values()),"Choose a data type")]
+            currentdatatype = list(datatypes.keys())[uicomponents.menu(stdscr,list(datatypes.values()),"Choose a data type")]
             maxval = max([p.get_data(currentdatatype) for p in list(data.values())])
             #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
             #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
@@ -2954,7 +3000,7 @@ def sanalytics(stdscr,serverdir):
         for k in list(final.keys()):
             if k >= minminid and k <= maxminid:
                 workingdata[k] = final[k]
-        wtd = crss_custom_ad_menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time","Last Seen","First Join","Reset Cache"],"Server Analytics Manager")
+        wtd = uicomponents.menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time","Last Seen","First Join","Reset Cache"],"Server Analytics Manager")
         if wtd == 0:
             return
         elif  wtd == 1:
@@ -2968,7 +3014,7 @@ def sanalytics(stdscr,serverdir):
                         playminutes[p] = 0
                     playminutes[p] += 1
             while True:
-                #swtd = crss_custom_ad_menu(stdscr,["Back","VIEW GRAPH"]+list(playminutes.keys()),"Choose a player to view their playtime information")
+                #swtd = uicomponents.menu(stdscr,["Back","VIEW GRAPH"]+list(playminutes.keys()),"Choose a player to view their playtime information")
                 swtd = cursesplus.searchable_option_menu(stdscr,list(playminutes.keys()),"Choose a player to view their playtime information",["Back","View Total Graph"])
                 if swtd == 0:
                     break
@@ -2977,7 +3023,7 @@ def sanalytics(stdscr,serverdir):
                     cursesplus.bargraph(stdscr,playminutes,"Player Minute Information","minutes")
                 else:
                     plstudy = list(playminutes.keys())[swtd-2]
-                    zwtd = crss_custom_ad_menu(stdscr,["Total Playtime Minutes","Playtime History","Time of Day analyzers"])
+                    zwtd = uicomponents.menu(stdscr,["Total Playtime Minutes","Playtime History","Time of Day analyzers"])
                     match zwtd:
                         case 0:
                             cursesplus.messagebox.showinfo(stdscr,["Playtime Minutes: "+str(playminutes[list(playminutes.keys())[swtd-2]])])
@@ -3055,7 +3101,7 @@ def sanalytics(stdscr,serverdir):
                     f.write(finalstr)
                 cursesplus.messagebox.showinfo(stdscr,["Exported successfully"])
         elif wtd == 9:
-            tan = crss_custom_ad_menu(stdscr,["Total Player-minutes","Unique Players","Average Online Players","Average Online Players (active time)"],"Select Data to examine",footer="(active time) shows only data that is not zero")
+            tan = uicomponents.menu(stdscr,["Total Player-minutes","Unique Players","Average Online Players","Average Online Players (active time)"],"Select Data to examine",footer="(active time) shows only data that is not zero")
             gd:dict[str,object] = {}
             unit = "player-minutes"
             cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
@@ -3096,7 +3142,7 @@ def sanalytics(stdscr,serverdir):
         elif wtd == 10:
             plf = 0
             cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-            sortop = crss_custom_ad_menu(stdscr,["Alphabetically","Recent -> Old"],"Choose search option")
+            sortop = uicomponents.menu(stdscr,["Alphabetically","Recent -> Old"],"Choose search option")
             fjblock:dict[str,datetime.datetime] = {}
             for line in reversed(list(workingdata.values())):
                 for pl in line.onlineplayers:
@@ -3117,7 +3163,7 @@ def sanalytics(stdscr,serverdir):
         elif wtd == 11:
             plf = 0
             cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-            sortop = crss_custom_ad_menu(stdscr,["Alphabetically","Oldest to newest"],"Choose search option")
+            sortop = uicomponents.menu(stdscr,["Alphabetically","Oldest to newest"],"Choose search option")
             fjblock:dict[str,datetime.datetime] = {}
             for line in list(workingdata.values()):
                 for pl in line.onlineplayers:
@@ -3152,33 +3198,52 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
         appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"] = True
     os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["launchcommands"]))
     if appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
-        os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])           
-        stdscr.clear()
-        stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
-        stdscr.refresh()
-        if not ON_WINDOWS:
-            curses.curs_set(1)
-            curses.reset_shell_mode()
-            lretr = os.system(appdata.APPDATA["servers"][chosenserver-1]["script"])
-            #child = pexpect.spawn(appdata.APPDATA["servers"][chosenserver-1]["script"])
-            #child.expect("Finished")
-            curses.reset_prog_mode()
-            curses.curs_set(0)
-        else:
-            curses.curs_set(1)
-            curses.reset_shell_mode()
-            #COLOURS_ACTIVE = False
-            lretr = os.system("cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")")
-            curses.reset_prog_mode()
-            curses.curs_set(0)
-            #restart_colour()
-        os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
-        if lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130:
-            displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
-            if displog:
-                view_server_logs(stdscr,SERVER_DIR)
-        stdscr.clear()
-        stdscr.refresh()
+        while True:
+            os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])           
+            stdscr.clear()
+            stdscr.addstr(0,0,f"STARTING {str(datetime.datetime.now())[0:-5]}\n\r")
+            stdscr.refresh()
+            if not ON_WINDOWS:
+                curses.curs_set(1)
+                curses.reset_shell_mode()
+                lretr = os.system(appdata.APPDATA["servers"][chosenserver-1]["script"])
+                #child = pexpect.spawn(appdata.APPDATA["servers"][chosenserver-1]["script"])
+                #child.expect("Finished")
+                curses.reset_prog_mode()
+                curses.curs_set(0)
+            else:
+                curses.curs_set(1)
+                curses.reset_shell_mode()
+                #COLOURS_ACTIVE = False
+                lretr = os.system("cmd /c ("+appdata.APPDATA["servers"][chosenserver-1]["script"]+")")
+                curses.reset_prog_mode()
+                curses.curs_set(0)
+                #restart_colour()
+            os.system(";".join(appdata.APPDATA["servers"][chosenserver-1]["settings"]["exitcommands"]))
+            hascrashed = lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130
+            willgoagain = False
+            #Handle autorestart
+            recommended_action = autorestart.get_recommended_action(appdata.APPDATA["servers"][chosenserver-1],True)
+            match recommended_action:
+                case autorestart.AutoRestartOptions.ALWAYS:
+                    willgoagain = True
+                case autorestart.AutoRestartOptions.SAFEEXIT:
+                    if not hascrashed:
+                        willgoagain = True
+                
+            if willgoagain:
+                execagain = timedexec.timeout_askyesno(stdscr,["Unless you interrupt by saying no","This server will auto-restart when","the timer runs out"],True,appdata.get_setting_value("autorestarttimeout"))
+                if execagain:
+                    continue
+
+            if hascrashed:
+                displog = cursesplus.messagebox.askyesno(stdscr,["Oh No! Your server crashed","Would you like to view the logs?"])
+                if displog:
+                    view_server_logs(stdscr,SERVER_DIR)
+
+            stdscr.clear()
+            stdscr.refresh()
+            break
     else:
         if not _sname in SERVER_INITS:
             truecommand = appdata.APPDATA["servers"][chosenserver-1]["script"]
@@ -3310,8 +3375,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
         if _sname in SERVER_INITS and not appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
             x__ops[1] = "Server is running >>"
-        #w = crss_custom_ad_menu(stdscr,x__ops)
-        w = crss_custom_ad_menu(stdscr,x__ops,"Please choose a server management option")
+        #w = uicomponents.menu(stdscr,x__ops)
+        w = uicomponents.menu(stdscr,x__ops,"Please choose a server management option")
         if w == 0:
             stdscr.erase()
             os.chdir(_ODIR)
@@ -3361,7 +3426,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
 
             while True:
                 po = find_world_folders(SERVER_DIR)
-                n = crss_custom_ad_menu(stdscr,["BACK","CREATE NEW WORLD"]+po)
+                n = uicomponents.menu(stdscr,["BACK","CREATE NEW WORLD"]+po)
                 if n == 0:
                     with open("server.properties","w+") as f:
                         f.write(PropertiesParse.dump(dpp))   
@@ -3386,7 +3451,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 cursesplus.messagebox.showwarning(stdscr,["This type of server can't be upgraded."])
         elif w == 7:
             while True:
-                mmwtd = crss_custom_ad_menu(stdscr,["Back","Plugins and Mods","Datapacks","Resource Pack"],"CONTENT MANAGER | What would you like to edit?")
+                mmwtd = uicomponents.menu(stdscr,["Back","Plugins and Mods","Datapacks","Resource Pack"],"CONTENT MANAGER | What would you like to edit?")
                 if mmwtd == 0:
                     break
                 elif mmwtd == 1:
@@ -3395,7 +3460,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         continue
                     svr_mod_mgr(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1]["version"],appdata.APPDATA["servers"][chosenserver-1]["software"])
                 elif mmwtd == 2:
-                    world = crss_custom_ad_menu(stdscr,find_world_folders(SERVER_DIR),"Choose a world to apply datapacks to")
+                    world = uicomponents.menu(stdscr,find_world_folders(SERVER_DIR),"Choose a world to apply datapacks to")
                     manage_datapacks(stdscr,find_world_folders(SERVER_DIR)[world]+"/datapacks")
                 elif mmwtd == 3:
                     if not os.path.isfile("server.properties"):
@@ -3439,7 +3504,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.getch()
         elif w == 11:
             while True:
-                abkwtd = crss_custom_ad_menu(stdscr,["Back","Whitelist","Backups","Admins","Banned Players"],"ADMIN MENU | What do you want to edit?")
+                abkwtd = uicomponents.menu(stdscr,["Back","Whitelist","Backups","Admins","Banned Players"],"ADMIN MENU | What do you want to edit?")
                 if abkwtd == 0:
                     break
                 elif abkwtd == 1:
@@ -3464,7 +3529,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
             appdata.updateappdata()
         elif w == 14:
-            w2 = crss_custom_ad_menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics"],"Additional Utilities")
+            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
@@ -3575,7 +3640,7 @@ def create_uuid_index(stdscr) -> None:
 
 def playerstat(stdscr,serverdir):
     worlds = find_world_folders(serverdir)
-    selworld = crss_custom_ad_menu(stdscr,["Cancel"]+worlds,"Choose a world to search statistics for")
+    selworld = uicomponents.menu(stdscr,["Cancel"]+worlds,"Choose a world to search statistics for")
     if selworld == 0:
         return
     else:
@@ -3803,7 +3868,7 @@ def file_manager(stdscr,directory:str,header:str):
                 yoffset = 0
                 selected = 0
         elif kkx == "n":
-            whattpmake = crss_custom_ad_menu(stdscr,["Cancel","New File","New Directory"])
+            whattpmake = uicomponents.menu(stdscr,["Cancel","New File","New Directory"])
             if whattpmake == 1:
                 newname = crssinput(stdscr,"Name of new file")
                 try:
@@ -3874,7 +3939,7 @@ def find_world_datapacks(datadir) -> list[list[str,str]]:
 def manage_datapacks(stdscr,datapackdir:str):
     while True:
         fz = find_world_datapacks(datapackdir)
-        wtd = crss_custom_ad_menu(stdscr,["Back","Add Datapack"]+[collapse_datapack_description(f[0]) for f in fz])
+        wtd = uicomponents.menu(stdscr,["Back","Add Datapack"]+[collapse_datapack_description(f[0]) for f in fz])
         
         if wtd == 0:
             return
@@ -3893,7 +3958,7 @@ def manage_datapacks(stdscr,datapackdir:str):
 
 def manage_a_world(stdscr,SERVER_DIR,svrx:str):
     while True:
-        wtd = crss_custom_ad_menu(stdscr,["Back","Manage datapacks","View world info"])
+        wtd = uicomponents.menu(stdscr,["Back","Manage datapacks","View world info"])
         if wtd == 0:
             return
         elif wtd == 1:
@@ -3925,7 +3990,7 @@ def manage_ops(stdscr,serverdir):
             data = json.load(f)
         
         while True:
-            dz = crss_custom_ad_menu(stdscr,["BACK","ADD ADMIN"]+[d["name"] for d in data])
+            dz = uicomponents.menu(stdscr,["BACK","ADD ADMIN"]+[d["name"] for d in data])
             if dz == 0:
                 with open(opdir,"w+") as f:
                     f.write(json.dumps(data))
@@ -3938,7 +4003,7 @@ def manage_ops(stdscr,serverdir):
                     cursesplus.messagebox.showerror(stdscr,["This player does not exist."])
                 else:
                     bypass = cursesplus.messagebox.askyesno(stdscr,["Should this player be able","to bypass player limits?"])
-                    oplevel = crss_custom_ad_menu(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
+                    oplevel = uicomponents.menu(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
                     data.append(
                         {
                             "name" : player,
@@ -3970,7 +4035,7 @@ def manage_ops(stdscr,serverdir):
                         break
                     elif ch == 99:
                         bypass = cursesplus.messagebox.askyesno(stdscr,["Should this player be able","to bypass player limits?"])
-                        oplevel = crss_custom_ad_menu(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
+                        oplevel = uicomponents.menu(stdscr,["Bypass spawn protection only","Singleplayer commands","Moderation (kick/ban)","All commands (/stop)"])+1
                         activel["level"] = oplevel
                         activel["bypassesPlayerLimit"] = bypass
                         data[dz-2] = activel
@@ -4004,7 +4069,7 @@ def manage_bans(stdscr,serverdir):
             data = json.load(f)
         
         while True:
-            dz = crss_custom_ad_menu(stdscr,["BACK","ADD BAN"]+[d["name"] for d in data])
+            dz = uicomponents.menu(stdscr,["BACK","ADD BAN"]+[d["name"] for d in data])
             if dz == 0:
                 with open(opdir,"w+") as f:
                     f.write(json.dumps(data))
@@ -4072,7 +4137,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
     #if not os.path.isdir(LBKDIR):
     #    os.mkdir(LBKDIR)
     while True:
-        z = crss_custom_ad_menu(stdscr,["Back","Create a Backup","Load a Backup",f"Choose backup directory ({LBKDIR})","Delete all backups"])
+        z = uicomponents.menu(stdscr,["Back","Create a Backup","Load a Backup",f"Choose backup directory ({LBKDIR})","Delete all backups"])
         if z == 0:
             popd()
             break
@@ -4081,7 +4146,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
                 continue
             with open(serverdir+"/crss.json","w+") as f:
                 f.write(json.dumps(serverdata))
-            useprofile = appdata.APPDATA["backupprofiles"][list(appdata.APPDATA["backupprofiles"].keys())[crss_custom_ad_menu(stdscr,list(appdata.APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
+            useprofile = appdata.APPDATA["backupprofiles"][list(appdata.APPDATA["backupprofiles"].keys())[uicomponents.menu(stdscr,list(appdata.APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
             cursesplus.displaymsg(stdscr,["Calculating backup size..."],False)
             totalbackupsize = 0
             filestoindex = []
@@ -4171,7 +4236,7 @@ def choose_java_install(stdscr) -> str:
     #Return path of selected java- Smart java?
     while True:
         stdscr.erase()
-        jsl = crss_custom_ad_menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]],"Please choose a Java installation from the list")
+        jsl = uicomponents.menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]],"Please choose a Java installation from the list")
         if jsl == 0:
             managejavainstalls(stdscr)
         else:
@@ -4188,7 +4253,7 @@ def managejavainstalls(stdscr):
         stdscr.clear()
     while True:
         stdscr.erase()
-        jmg = crss_custom_ad_menu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]])
+        jmg = uicomponents.menu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]])
         if jmg == 0:
             njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
             if os.system(njavapath.replace("\\","/")+" -help") != 0:
@@ -4340,17 +4405,14 @@ def import_amc_server(stdscr,chlx):
             
         nwait.stop()
         nwait.destroy()
+
+        #Make sure data is up to date
+        appdata.self_compatibilize()
+
         cursesplus.messagebox.showinfo(stdscr,["Server is imported"])
     except Exception as e:
-        raise e
-        cursesplus.messagebox.showerror(stdscr,["An error occured importing your server."])
-
-def str_contains_word(s:str,string:str) -> bool:
-    d = s.lower().split(" ")
-    return string in d
-
-def list_get_maxlen(l:list) -> int:
-    return max([len(s) for s in l])
+        #raise e
+        cursesplus.messagebox.showerror(stdscr,["An error occured importing your server.",str(e)])
 
 def crssinput(stdscr,
     prompt: str,
@@ -4364,76 +4426,6 @@ def crssinput(stdscr,
     r = cursesplus.cursesinput(stdscr,prompt,lines,maxlen,passwordchar,retremptylines,prefiltext,bannedcharacters)
     cursesplus.utils.hidecursor()
     return r
-
-def crss_custom_ad_menu(stdscr,options:list[str],title="Please choose an option from the list below",footer="") -> int:
-    """An alternate optionmenu that will be used in primary areas. The only difference from Curses Plus is that it has some colour presets"""
-    try:
-        uselegacy = appdata.APPDATA["settings"]["oldmenu"]["value"]
-    except:
-        uselegacy = True
-    
-    if uselegacy:
-        return cursesplus.optionmenu(stdscr,options,title)
-    selected = 0
-    offset = 0
-
-    maxl = list_get_maxlen(options)
-    while True:
-        stdscr.clear()
-        mx,my = os.get_terminal_size()
-        
-        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        cursesplus.utils.fill_line(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        stdscr.addstr(0,0,title,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        stdscr.addstr(1,0,"Use the up and down arrow keys to navigate and enter to select",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-        oi = 0
-        for op in options[offset:offset+my-7]:
-            if str_contains_word(op,"back") or str_contains_word(op,"quit") or str_contains_word(op,"cancel") or str_contains_word(op,"delete") or str_contains_word(op,"disable") or str_contains_word(op,"reset") or str_contains_word(op,"[-]"):
-                col = cursesplus.RED
-            elif str_contains_word(op,"start") or str_contains_word(op,"new") or str_contains_word(op,"add") or str_contains_word(op,"enable") or str_contains_word(op,"create") or str_contains_word(op,"[+]") or str_contains_word(op,"finish"):
-                col = cursesplus.GREEN
-            elif op.upper() == op:
-                col = cursesplus.CYAN
-            elif str_contains_word(op,"update") or str_contains_word(op,"help"):
-                col = cursesplus.MAGENTA
-            else:
-                col = cursesplus.WHITE
-            if not oi == selected-offset:
-                stdscr.addstr(oi+3,7,op,cursesplus.set_colour(cursesplus.BLACK,col))
-            else:
-                stdscr.addstr(oi+3,7,op,cursesplus.set_colour(cursesplus.BLACK,col) | curses.A_UNDERLINE | curses.A_BOLD)
-            oi += 1
-        stdscr.addstr(selected+3-offset,1,"-->")
-        stdscr.addstr(selected+3-offset,maxl+9,"<--")
-        stdscr.addstr(oi+3,0,"━"*(mx-1))
-        if offset > 0:
-            stdscr.addstr(3,maxl+15,f"{offset} options above")
-        if len(options) > offset+my-7:
-            stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+7} options below")
-        
-        stdscr.addstr(oi+4,0,footer)#Add footer
-
-        stdscr.refresh()
-        ch = stdscr.getch()
-        if ch == curses.KEY_DOWN and selected < len(options)-1:
-            
-            selected += 1
-            if selected > my-8:
-                offset += 1
-        elif ch == curses.KEY_UP and selected > 0:
-            
-            selected -= 1
-            if selected < offset:
-                offset -= 1
-        elif ch == 10 or ch == 13 or ch == curses.KEY_ENTER:
-            return selected
-        elif ch == curses.KEY_HOME:
-            selected = 0
-            offset = 0
-        elif ch == curses.KEY_END:
-            selected = len(options)-1
-            if selected > my-8+offset:
-                offset = selected-my+8
 
 def choose_server_memory_amount(stdscr) -> str:
     chop = cursesplus.coloured_option_menu(
@@ -4473,7 +4465,7 @@ def choose_server_memory_amount(stdscr) -> str:
             return mtoal
 
 def import_server(stdscr):
-    umethod = crss_custom_ad_menu(stdscr,["Import from .amc file","Import from folder","Cancel (Go Back)"])
+    umethod = uicomponents.menu(stdscr,["Import from .amc file","Import from folder","Cancel (Go Back)"])
     if umethod == 0:
         chlx = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a file",filter=[["*.amc","Minecraft Server file"],["*.xz","xz archive"],["*.tar","tar archive"]])
         import_amc_server(stdscr,chlx)
@@ -4511,7 +4503,7 @@ def import_server(stdscr):
             xdat["memory"] = memorytoall
             xdat["version"] = crssinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?","That is, Can it be changed with plugins/mods"])
-            xdat["software"] = crss_custom_ad_menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
+            xdat["software"] = uicomponents.menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
             xdat["settings"] = {"legacy":True,"launchcommands":[],"exitcommands":[],"flags" : ""}
             xdat["id"] = random.randint(1111,9999)
             xdat["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(xdat["id"])
@@ -4543,7 +4535,7 @@ def edit_backup_profile(stdscr,backupname: str) :
     bname = backupname
     while True:
         lditems = parse_bp_ielist(bdata)
-        m = crss_custom_ad_menu(stdscr,["FINISH","CHANGE PROFILE NAME","Delete Profile","Create Rule"]+lditems,f"Editing backup profile {bname}")
+        m = uicomponents.menu(stdscr,["FINISH","CHANGE PROFILE NAME","Delete Profile","Create Rule"]+lditems,f"Editing backup profile {bname}")
         if m == 0:
             del appdata.APPDATA["backupprofiles"][backupname]
             appdata.APPDATA["backupprofiles"][bname] = bdata
@@ -4562,11 +4554,11 @@ def edit_backup_profile(stdscr,backupname: str) :
                 del appdata.APPDATA["backupprofiles"][bname]
                 return
         elif m == 3:
-            wtype = crss_custom_ad_menu(stdscr,["Cancel","Include (files to include)","Exclude (files to not include)"],"What type of rule should this be?")
+            wtype = uicomponents.menu(stdscr,["Cancel","Include (files to include)","Exclude (files to not include)"],"What type of rule should this be?")
             if wtype == 0:
                 continue
             isexclude = wtype == 2
-            imethod = crss_custom_ad_menu(stdscr,["Handwrite a Glob pattern","Select Files/Folders"],"How would you like to input this rule?")
+            imethod = uicomponents.menu(stdscr,["Handwrite a Glob pattern","Select Files/Folders"],"How would you like to input this rule?")
             pattern = [""]
             if imethod == 0:
                 cursesplus.displaymsg(stdscr,[
@@ -4576,7 +4568,7 @@ def edit_backup_profile(stdscr,backupname: str) :
                 ])
                 pattern[0] = crssinput(stdscr,"Write the GLOB pattern to match. Use #SD/ for the server directory.")
             else:
-                itype = crss_custom_ad_menu(stdscr,["Choose a directory","Choose file(s)"])
+                itype = uicomponents.menu(stdscr,["Choose a directory","Choose file(s)"])
                 if itype == 0:
                     idir = cursesplus.filedialog.openfolderdialog(stdscr,"Choose a directory to match.")
                     pattern[0] = idir + "/**"
@@ -4616,7 +4608,7 @@ def new_backup_profile(stdscr) -> str:
     
 def backup_manager(stdscr):
     while True:
-        co = crss_custom_ad_menu(stdscr,["Quit","Create backup profile"]+list(appdata.APPDATA["backupprofiles"].keys()),"Backup Profile Manager")
+        co = uicomponents.menu(stdscr,["Quit","Create backup profile"]+list(appdata.APPDATA["backupprofiles"].keys()),"Backup Profile Manager")
         if co == 0:
             appdata.updateappdata()
             return
@@ -4629,18 +4621,18 @@ def settings_mgr(stdscr):
     global COLOURS_ACTIVE
     
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(appdata.APPDATA["settings"].values())],"Please choose a setting to modify")
+        m = uicomponents.menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(appdata.APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
             appdata.updateappdata()
             return
         elif m == 1:
             while True:
-                n = crss_custom_ad_menu(stdscr,["BACK","Reset settings","Reset all app data","Clear temporary directory"])
+                n = uicomponents.menu(stdscr,["BACK","Reset settings","Reset all app data","Clear temporary directory"])
                 if n == 0:
                     break
                 elif n == 1:
                     del appdata.APPDATA["settings"]
-                    appdata.APPDATA = compatibilize_appdata(appdata.APPDATA)
+                    appdata.self_compatibilize()
                     appdata.updateappdata()
                 elif n == 2:
                     if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
@@ -4665,7 +4657,7 @@ def settings_mgr(stdscr):
             selm = list(appdata.APPDATA["settings"].values())[m-5]
             selk = list(appdata.APPDATA["settings"].keys())[m-5]
             if selm["type"] == "bool":
-                selm["value"] = crss_custom_ad_menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
+                selm["value"] = uicomponents.menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":
                 selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
             elif selm["type"] == "str":
@@ -4674,7 +4666,7 @@ def settings_mgr(stdscr):
 
 def doc_system(stdscr):
     while True:
-        z = crss_custom_ad_menu(stdscr,["BACK","View documentation","Help on using text-based software","CONTACT SUPPORT"])
+        z = uicomponents.menu(stdscr,["BACK","View documentation","Help on using text-based software","CONTACT SUPPORT"])
         if z == 0:
             break
         elif z == 1:
@@ -4686,7 +4678,7 @@ def doc_system(stdscr):
         elif z == 2:
             usertutorial(stdscr)
         elif z == 3:
-            source = crss_custom_ad_menu(stdscr,["Cancel","Via E-mail","Via Discord"],"How do you wish to contact support?")
+            source = uicomponents.menu(stdscr,["Cancel","Via E-mail","Via Discord"],"How do you wish to contact support?")
             if source == 1:
                 webbrowser.open("mailto:?to=enderbyte09@gmail.com&subject=Craft Server Setup Support", new=1)
             elif source == 2:
@@ -4724,7 +4716,7 @@ def usertutorial(stdscr):
     cursesplus.messagebox.showinfo(stdscr,["This is a messagebox","Press enter to dismiss it"])
     cursesplus.messagebox.showinfo(stdscr,["This software has no mouse","You will never have to use your mouse, only your keyboard"])
     cursesplus.messagebox.askyesno(stdscr,["This is a question","Use the right and left arrows to change the highlighted options","or use Y and N on your keyboard.","Choose NO"])
-    crss_custom_ad_menu(stdscr,["Don't choose this","Don't Choose this","Choose this!"],"This is a vertical option menu. Choose the third option using the up and down arrow keys!")
+    uicomponents.menu(stdscr,["Don't choose this","Don't Choose this","Choose this!"],"This is a vertical option menu. Choose the third option using the up and down arrow keys!")
     cursesplus.messagebox.showinfo(stdscr,["Hit Ctrl-C to open up the quit menu"])
 
 def stats_and_credits(stdscr):
@@ -4825,7 +4817,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
 def devtools(stdscr):
     
     while True:
-        m = crss_custom_ad_menu(stdscr,["BACK","Python debug prompt","Test exception handling","Global variable dump","Appdata editor"])
+        m = uicomponents.menu(stdscr,["BACK","Python debug prompt","Test exception handling","Global variable dump","Appdata editor"])
         if m == 0:
             return
         elif m == 1:
@@ -4864,7 +4856,7 @@ def internet_thread(stdscr):
 def update_menu(stdscr):
     global UPDATEINSTALLED
     while True:
-        m = crss_custom_ad_menu(stdscr,["Back","Check for Updates","View Changelog"])
+        m = uicomponents.menu(stdscr,["Back","Check for Updates","View Changelog"])
         if m == 0:
             break
         elif m == 1:
@@ -4971,13 +4963,7 @@ def main(stdscr):
         if IN_SOURCE_TREE:
             introsuffix=" | SRC mode"
         threading.Thread(target=send_telemetry).start()
-        if appdata.APPDATA["settings"]["showprog"]["value"]:
-            mx = stdscr.getmaxyx()[1]-1
-            md = round(mx//20)
-            for i in range(0,20):
-                stdscr.addstr(stdscr.getmaxyx()[0]-1,i*md," "*md,cursesplus.set_colour(cursesplus.GREEN,cursesplus.WHITE))
-                stdscr.refresh()
-                time.sleep(1/40)
+
         if appdata.APPDATA["settings"]["autoupdate"]["value"]:
             if ON_WINDOWS:
                 windows_update_software(stdscr,False)
@@ -4993,7 +4979,7 @@ def main(stdscr):
                 lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
                 if DEVELOPER:
                     lz += ["Debug Tools"]
-                m = crss_custom_ad_menu(stdscr,lz,f"{t('title.welcome')} | {appdata.APPDATA['idata']['MOTD']}",f"Version {APP_UF_VERSION}{introsuffix} on {platform.system()} {platform.release()} (Python {platform.python_version()})")
+                m = uicomponents.menu(stdscr,lz,f"{t('title.welcome')} | {appdata.APPDATA['idata']['MOTD']}",f"Version {APP_UF_VERSION}{introsuffix} on {platform.system()} {platform.release()} (Python {platform.python_version()})")
                 if m == 7:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                     if len(SERVER_INITS.items()):

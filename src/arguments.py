@@ -70,4 +70,4 @@ def get_file_to_import() -> str:
     return _file_to_import
 
 def should_run_import_mode() -> bool:
-    return _file_to_import != ""
+    return _file_to_import != "" and os.path.isfile(_file_to_import)

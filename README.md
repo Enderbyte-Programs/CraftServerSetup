@@ -67,3 +67,27 @@ echo "Installation finished with no errors."
 ## Other Important Things
 
 ATTENTION - If you use an old version of this software, it might ask you for a "product key." This system has been retired, so it may confuse you. Please paste the code `4p6jgtnatqj5svb4` if it asks you for one.
+
+## Integrating Third Party Software
+
+If you would like to make your application work with CRSS, here is how to do so
+
+### Server automatic restarts
+
+You can control whether or not CRSS automatically restarts a server by writing a file in the server's root directory named `autorestart`
+
+** Requirements **
+- CRSS v1.53 or newer
+- User must set Autorestart Source to allow external file
+
+This `autorestart` must contain some certain recognized words, in any case, seperated by a space. Recognized words include:
+- `never` - Never automatically restart the server (May not be used with safe/unsafe) *Optional - if neither safe nor unsafe are provided, this is the default behaviour*
+- `safe` - Automatically restart the server if it exited safely (may not be used with never)
+- `unsafe` - Automatically restart the server if it did not exit safely. (may not be used with never)
+- `disposable` - "Consume" this autorestart file so that it may be only read once. (may not be used with persistent) *Optional - if persistent is not provided, this is the default behaviour*
+- `persistent` - Keep this file (do not delete it when it is read)
+
+**For example**
+
+`safe persistent` - Autorestart the server if it doesn't crash. This file may be used multiple times.
+`safe unsafe` - Autorestart the server all the time, no matter what.

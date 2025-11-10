@@ -2,6 +2,7 @@ from staticflags import *
 import random
 import json
 import gzip
+import typing
 
 def compatibilize_appdata(data:dict) -> dict:
     """This function ensures that appdata is brought up to the latest version. It is compatible to the beginning."""
@@ -19,7 +20,7 @@ def compatibilize_appdata(data:dict) -> dict:
         "transitions":{
             "display" : "Show Transitions?",
             "type" : "bool",
-            "value" : True
+            "value" : False
         },
         "oldmenu":{
             "name" : "oldmenu",
@@ -32,25 +33,18 @@ def compatibilize_appdata(data:dict) -> dict:
         #Update data
         data["settings"] = {
 
-        "transitions":{
-            "display" : "Show Transitions?",
-            "type" : "bool",
-            "value" : data["settings"][1]["value"]
-        },
-        "oldmenu":{
-            "name" : "oldmenu",
-            "display" : "Use legacy style menus?",
-            "type" : "bool",
-            "value" : data["settings"][2]["value"]
-        }
+            "transitions":{
+                "display" : "Show Transitions?",
+                "type" : "bool",
+                "value" : data["settings"][1]["value"]
+            },
+            "oldmenu":{
+                "name" : "oldmenu",
+                "display" : "Use legacy style menus?",
+                "type" : "bool",
+                "value" : data["settings"][2]["value"]
+            }
 
-        }
-    if not "showprog" in data["settings"]:
-        data["settings"]["showprog"] = {
-            "name" : "showprog",
-            "display" : "Show progress bar startup?",
-            "type" : "bool",
-            "value":False
         }
     if not "editor" in data["settings"]:
         data["settings"]["editor"] = {
@@ -85,13 +79,21 @@ def compatibilize_appdata(data:dict) -> dict:
         if not "settings" in svr:
             data["servers"][svri]["settings"] = {}#New empty settings
         if data["servers"][svri]["settings"] == {}:
-            data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[]}
+            data["servers"][svri]["settings"] = {"launchcommands":[],"exitcommands":[],"restartsource" : 0,"autorestart" : 0,"legacy" : True,"flags":""}#0 - disabled, 1 - file-controlled, 2 - crss-controlled. 
         if not "legacy" in data["servers"][svri]["settings"]:
             data['servers'][svri]["settings"]["legacy"] = True
         if not "backupdir" in svr:
             data['servers'][svri]["backupdir"] = SERVERS_BACKUP_DIR + os.sep + str(data['servers'][svri]["id"])
         if data["servers"][svri]["software"] == 0:
             data["servers"][svri]["software"] = 5#v1.48
+
+        if not "autorestart" in data["servers"][svri]["settings"]:
+            data["servers"][svri]["settings"]["autorestart"] = 0
+            data["servers"][svri]["settings"]["restartsource"] = 0
+
+        if not "flags" in data["servers"][svri]["settings"]:
+            data["servers"][svri]["settings"]["flags"] = ""
+
             
         #1.49.1
         if not "flags" in svr["settings"]:
@@ -134,6 +136,17 @@ def compatibilize_appdata(data:dict) -> dict:
         del data["productKey"]
         del data["pkd"]
 
+    if "showprog" in data["settings"]:
+        del data["settings"]["showprog"]
+
+    if not "autorestarttimeout" in data["settings"]:
+        data["settings"]["autorestarttimeout"] = {
+            "name" : "autorestarttimeout",
+            "display" : "Autorestart timeout in seconds",
+            "type" : "int",
+            "value" : 30
+        }
+
     return data
 
 __DEFAULTAPPDATA__ = {
@@ -158,17 +171,29 @@ __DEFAULTAPPDATA__ = {
             "type" : "bool",
             "value" : False
         },
-        "showprog" : {
-            "name" : "showprog",
-            "display" : "Show progress bar on startup?",
-            "type" : "bool",
-            "value" : False
-        },
         "reswarn" : {
             "name" :"reswarn",
-            "display" : "Give warnings for high-resource operations",
+            "display" : "Give warnings for high-resource operations?",
             "type" : "bool",
             "value" : True
+        },
+        "autorestarttimeout" : {
+            "name" : "autorestarttimeout",
+            "display" : "Autorestart timeout in seconds",
+            "type" : "int",
+            "value" : 30
+        },
+            "editor": {
+            "name": "editor",
+            "display": "Text Editor",
+            "type": "str",
+            "value": "/usr/bin/editor %s"
+        },
+            "autoupdate": {
+            "name": "autoupdate",
+            "display": "Update automatically",
+            "type": "bool",
+            "value": True
         }
     },
     "idata" : {
@@ -185,6 +210,7 @@ __DEFAULTAPPDATA__ = {
 UUID_INDEX:dict = {}
 
 def setup_appdata():
+    """Load appdata from the file and populate the appdata.APPDATA variable."""
     global APPDATA
     global APPDATAFILE
     global UUIDFILE
@@ -217,7 +243,14 @@ def setup_appdata():
             with open(UUIDFILE,"wb+") as f:
                 f.write(gzip.compress(json.dumps({}).encode()))
 
+def self_compatibilize():
+    """Execute a compatibilization and repair routine on appdata.APPDATA"""
+    global APPDATA
+
+    APPDATA = compatibilize_appdata(APPDATA)
+
 def updateappdata():
+    """Write in-memory appdata and UUID cache to the disk"""
     
     global APPDATAFILE
     global UUID_INDEX
@@ -226,3 +259,6 @@ def updateappdata():
         f.write(json.dumps(APPDATA,indent=2))
     with open(UUIDFILE,"wb+") as f:
         f.write(gzip.compress(json.dumps(UUID_INDEX).encode()))#Write compressed file
+
+def get_setting_value(key:str) -> typing.Any:
+    return APPDATA["settings"][key]["value"]
