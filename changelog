@@ -1,3 +1,5 @@
+1.54:
+- Remove the minifier
 1.53:
 - MAJOR RESTRUCTURING. Source tree
     - Add tree-based-source system

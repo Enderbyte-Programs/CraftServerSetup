@@ -62,16 +62,6 @@
     mkdir dist
     #Copy code and add exec permissions
     cp src/main.py dist/craftserversetup.py
-    if [ "$1" = "nominify" ]; then
-        echo INFO: Skipping script minification as you requested.
-    else
-        cp -r lib/python_minifier scripts/
-        python3 scripts/minify.py dist/craftserversetup.py dist/craftserversetup.py.tmp
-        rm -rf scripts/python_minifier
-        mv dist/craftserversetup.py.tmp dist/craftserversetup.py
-        
-        
-    fi
     chmod +x dist/craftserversetup.py
     mv dist/craftserversetup.py dist/craftserversetup
     cp dist/craftserversetup "$INSTALLDIR/craftserversetup"
@@ -174,13 +164,8 @@
 
     mkdir dist
     #Copy code and add exec permissions
-    #Shorten using minifier
     cp src/main.py dist/craftserversetup.py
 
-    cp -r lib/python_minifier/ scripts
-    python3 scripts/minify.py dist/craftserversetup.py dist/craftserversetup.py.tmp
-    rm -rf scripts/python_minifier
-    mv dist/craftserversetup.py.tmp dist/craftserversetup.py
     chmod +x dist/craftserversetup.py
     mv dist/craftserversetup.py deb/usr/bin/craftserversetup
     chmod +x deb/usr/bin/craftserversetup
@@ -223,7 +208,7 @@
     cp universalwindowsinstaller/bin/Debug/CraftServerSetup-Universal-Installer.exe.exe output/WindowsUniversalInstaller.exe
     !execute wbuild
 !def run:private
-    !execute install nominify
+    !execute install
     crss -d
 !def commit:private
     set -e
