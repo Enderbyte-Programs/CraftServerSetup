@@ -1,5 +1,10 @@
 1.54:
 - Remove the minifier
+- Create new submenu of server manager - Configuration.
+    - Move icon and MOTD inside configuration
+- Move change server software to advanced configuration
+- Update default server properties to 1.21.10
+- Move propertiesparse class to propertiesfiles.py
 1.53:
 - MAJOR RESTRUCTURING. Source tree
     - Add tree-based-source system

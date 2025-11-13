@@ -91,6 +91,7 @@ import appdata
 import autorestart
 import timedexec
 import uicomponents
+import propertiesfiles
 
 del WINDOWS
 del DEBUG
@@ -425,47 +426,6 @@ def manage_whitelist(stdscr,whitefile:str):
         else:
             del dat[dop-2]
 
-class PropertiesParse:
-    @staticmethod
-    def load(s: str) -> dict:
-        dat = s.splitlines()
-        dat = [d for d in dat if d.replace(" ","") != ""]
-        dat = [d for d in dat if d[0] != "#"]
-        final = {}
-        for d in dat:
-            key = d.split("=")[0]
-            val = "=".join(d.split("=")[1:])
-            try:
-                val = float(val)# Convert to int if you can
-            except:
-                pass
-            else:
-                try:
-                    val = int(str(val))
-                except:
-                    if val == int(val):
-                        val = int(val)
-                    pass
-            if val == "true" or val == "false":
-                val = val == "true"# Convert to bool if you can
-            final[key] = val
-        return final
-    @staticmethod
-    def dump(d: dict) -> str:
-        l = ""
-        for f in d.items():
-            lout = f[1]
-            if isinstance(lout,float):
-                if int(lout) == lout:
-                    lout = int(lout)#Prevent unnescendsary decimals
-            if isinstance(lout,bool):
-                if lout:
-                    lout = "true"
-                else:
-                    lout = "false"
-            l += f[0] + "=" + str(lout) + "\n"
-        return l
-
 def trail(ind,maxlen:int):
     if maxlen < 1:
         return ""
@@ -714,7 +674,7 @@ def bedrock_whitelist(stdscr,serverdir:str):
     else:
         with open(serverdir+"/server.properties") as f:
             r = f.read()
-        pdata = PropertiesParse.load(r)
+        pdata = propertiesfiles.load(r)
         with open(allowfile) as f:
             data:list = json.load(f)
         while True:
@@ -736,7 +696,7 @@ def bedrock_whitelist(stdscr,serverdir:str):
             json.dump(data,f)
 
         with open(serverdir+"/server.properties","w+") as f:
-            f.write(PropertiesParse.dump(pdata))
+            f.write(propertiesfiles.dump(pdata))
 
 def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
 
@@ -851,11 +811,11 @@ def bedrock_config_server(stdscr,chosenserver):
             cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
         else:
             with open("server.properties") as f:
-                config = PropertiesParse.load(f.read())
+                config = propertiesfiles.load(f.read())
 
             config = cursesplus.dictedit(stdscr,config,"Editing Server Properties",True)
             with open("server.properties","w+") as f:
-                f.write(PropertiesParse.dump(config))
+                f.write(propertiesfiles.dump(config))
     elif __l == 2:
         dt = appdata.APPDATA["servers"][chosenserver-1]
         dt = cursesplus.dictedit(stdscr,dt,"More Server Properties")
@@ -867,7 +827,7 @@ def bedrock_config_server(stdscr,chosenserver):
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
                 sd = setup_server_properties(stdscr)
                 with open("server.properties","w+") as f:
-                    f.write(PropertiesParse.dump(sd))
+                    f.write(propertiesfiles.dump(sd))
     elif __l == 4:
         newname = crssinput(stdscr,"Choose a new name for this server")
         appdata.APPDATA["servers"][chosenserver-1]["name"] = newname
@@ -945,7 +905,7 @@ def setup_bedrock_server(stdscr):
     appdata.updateappdata()
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to configure your server's settings now?"]):
         with open(S_INSTALL_DIR+"/server.properties","w+") as f:
-            f.write(PropertiesParse.dump(configure_bedrock_server(stdscr,S_INSTALL_DIR,PropertiesParse.load(BEDROCK_DEFAULT_SERVER_PROPERTIES))))
+            f.write(propertiesfiles.dump(configure_bedrock_server(stdscr,S_INSTALL_DIR,propertiesfiles.load(BEDROCK_DEFAULT_SERVER_PROPERTIES))))
     popd()
     p.done()
     bedrock_manage_server(stdscr,servername,appdata.APPDATA["servers"].index(sd)+1)
@@ -1042,10 +1002,10 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             try:
                 with open(svrd+"/server.properties") as f:
                     r = f.read()
-                data = PropertiesParse.load(r)
+                data = propertiesfiles.load(r)
                 data = bedrock_world_settings(stdscr,svrd,data)
                 with open(svrd+"/server.properties","w+") as f:
-                    f.write(PropertiesParse.dump(data))
+                    f.write(propertiesfiles.dump(data))
             except Exception as e:
                 cursesplus.messagebox.showerror(stdscr,["There was an error managing worlds.",str(e),"A world may be corrupt."])
         elif wtd == 5:
@@ -1242,7 +1202,7 @@ This is apparently even more optimized. It also supports plugins. It can configu
     else:
         data = setup_server_properties(stdscr)
         with open("server.properties","w+") as f:
-            f.write(PropertiesParse.dump(data))
+            f.write(propertiesfiles.dump(data))
 
     try:
         shutil.copyfile(ASSETSDIR+"/defaulticon.png",S_INSTALL_DIR+"/server-icon.png")
@@ -1327,7 +1287,7 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         dpp = merge_dicts(dpp,sslxdd)
 
     return dpp
-def setup_server_properties(stdscr,data=PropertiesParse.load(DEFAULT_SERVER_PROPERTIES)) -> dict:
+def setup_server_properties(stdscr,data=propertiesfiles.load(DEFAULT_SERVER_PROPERTIES)) -> dict:
     dpp = data
     cursesplus.utils.showcursor()
     while True:
@@ -2161,7 +2121,7 @@ def manage_server_icon(stdscr):
                     pass
 
 def config_server(stdscr,chosenserver):
-    __l = uicomponents.menu(stdscr,["Cancel","Modify server.properties","Modify CRSS Server options","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options","Change Java Installation"])#Todo rename server, memory
+    __l = uicomponents.menu(stdscr,["Cancel","Modify server.properties (raw)","Modify CRSS Server options (raw)","Reset server configuration","Extra configuration","Rename Server","Change Server Memory","Startup Options","Change Java Installation","Change server software"])#Todo rename server, memory
     if __l == 0:
         appdata.updateappdata()
         return
@@ -2170,11 +2130,11 @@ def config_server(stdscr,chosenserver):
             cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
         else:
             with open("server.properties") as f:
-                config = PropertiesParse.load(f.read())
+                config = propertiesfiles.load(f.read())
 
             config = cursesplus.dictedit(stdscr,config,"Editing Server Properties",True)
             with open("server.properties","w+") as f:
-                f.write(PropertiesParse.dump(config))
+                f.write(propertiesfiles.dump(config))
     elif __l == 2:
         dt = appdata.APPDATA["servers"][chosenserver-1]
         dt = cursesplus.dictedit(stdscr,dt,"More Server Properties")
@@ -2187,7 +2147,7 @@ def config_server(stdscr,chosenserver):
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to set up some more server configuration"]):
                 sd = setup_server_properties(stdscr)
                 with open("server.properties","w+") as f:
-                    f.write(PropertiesParse.dump(sd))
+                    f.write(propertiesfiles.dump(sd))
     elif __l == 4:
         dt = appdata.APPDATA["servers"][chosenserver-1]
         if not dt["moddable"]:
@@ -2220,6 +2180,10 @@ def config_server(stdscr,chosenserver):
         njavapath = choose_java_install(stdscr)
         appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
         appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(appdata.APPDATA["servers"][chosenserver-1])#Regen script
+
+    elif __l == 9:
+        appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,appdata.APPDATA["servers"][chosenserver-1]["dir"],appdata.APPDATA["servers"][chosenserver-1])
+        appdata.updateappdata()
 
 
 def change_software(stdscr,directory,data) -> dict:
@@ -3355,6 +3319,33 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
             
         stdscr.nodelay(0)
 
+def light_config_server(stdscr,chosenserver:int) -> None:
+    while True:
+        wtd = uicomponents.menu(stdscr,["Back","Change MOTD","Manage server icon","Code of Conduct"])
+        if wtd == 0:
+            break
+        elif wtd == 1:
+            if not os.path.isfile("server.properties"):
+                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
+            else:
+                with open("server.properties") as f:
+                    config = propertiesfiles.load(f.read())
+                if not "motd" in config:
+                    cursesplus.messagebox.showwarning(stdscr,["For some reason, an old motd could not be found.","You will be prompted to choose one anyway."])
+                    config["motd"] = ""
+                else:
+                    cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
+                curses.curs_set(1)
+                newmotd = crssinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
+                curses.curs_set(0)
+                config["motd"] = newmotd.replace("\n","\\n")
+                with open("server.properties","w+") as f:
+                    f.write(propertiesfiles.dump(config))
+        elif wtd == 2:
+            manage_server_icon(stdscr)
+        elif wtd == 3:
+            pass
+
 def manage_server(stdscr,_sname: str,chosenserver: int):
     
     global COLOURS_ACTIVE
@@ -3369,10 +3360,13 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         return
     #Manager server
     while True:
+
+        #TODO - Make new: Server configuration. Inside put server icon and change MOTD. Put change server software in advanced configuration
+
         os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])#Fix bug where running a sub-option that changes dir would screw with future operations
-        x__ops = ["RETURN TO MAIN MENU","Start Server","Change MOTD","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
-        x__ops += ["Server Logs >>","Export server","View server info","Administration and Backups >>","Manage server icon"]
-        x__ops += ["Change server software","More Utilities >>","FILE MANAGER"]
+        x__ops = ["RETURN TO MAIN MENU","Start Server","Configuration >>","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
+        x__ops += ["Server Logs >>","Export server","View server info","Administration and Backups >>"]
+        x__ops += ["Utilities >>","FILE MANAGER"]
         if _sname in SERVER_INITS and not appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
             x__ops[1] = "Server is running >>"
         #w = uicomponents.menu(stdscr,x__ops)
@@ -3387,22 +3381,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 1:
             start_server(stdscr,_sname,chosenserver,SERVER_DIR)
         elif w == 2:
-            if not os.path.isfile("server.properties"):
-                cursesplus.displaymsg(stdscr,["ERROR","server.properties could not be found","Try starting your sever to generate one"])
-            else:
-                with open("server.properties") as f:
-                    config = PropertiesParse.load(f.read())
-                if not "motd" in config:
-                    cursesplus.messagebox.showwarning(stdscr,["For some reason, an old motd could not be found.","You will be prompted to choose one anyway."])
-                    config["motd"] = ""
-                else:
-                    cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
-                curses.curs_set(1)
-                newmotd = crssinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
-                curses.curs_set(0)
-                config["motd"] = newmotd.replace("\n","\\n")
-                with open("server.properties","w+") as f:
-                    f.write(PropertiesParse.dump(config))
+            light_config_server(stdscr,chosenserver)
         elif w == 3:
             
             config_server(stdscr,chosenserver)
@@ -3422,14 +3401,14 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 continue
             with open("server.properties") as f:
 
-                dpp = PropertiesParse.load(f.read())
+                dpp = propertiesfiles.load(f.read())
 
             while True:
                 po = find_world_folders(SERVER_DIR)
                 n = uicomponents.menu(stdscr,["BACK","CREATE NEW WORLD"]+po)
                 if n == 0:
                     with open("server.properties","w+") as f:
-                        f.write(PropertiesParse.dump(dpp))   
+                        f.write(propertiesfiles.dump(dpp))   
                     break
                 elif n == 1:
                     dppx = setup_new_world(stdscr,dpp,SERVER_DIR,False)
@@ -3468,11 +3447,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                         continue
                     with open("server.properties") as f:
 
-                        dpp = PropertiesParse.load(f.read())
+                        dpp = propertiesfiles.load(f.read())
                     
                     dpp = resource_pack_setup(stdscr,dpp)
                     with open("server.properties","w+") as f:
-                        f.write(PropertiesParse.dump(dpp))
+                        f.write(propertiesfiles.dump(dpp))
         elif w == 8:
             view_server_logs(stdscr,SERVER_DIR)
         elif w == 9:
@@ -3515,20 +3494,10 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                     manage_ops(stdscr,SERVER_DIR)
                 elif abkwtd == 4:
                     manage_bans(stdscr,SERVER_DIR)
-        # elif w == 11:
-        #     manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
-        # elif w == 12:
-        #     server_backups(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
-        # elif w == 13:
-        #     manage_ops(stdscr,SERVER_DIR)
-        # elif w == 14:
-        #     manage_bans(stdscr,SERVER_DIR)
+        #elif w == 12:
+        #    appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
+        #    appdata.updateappdata()
         elif w == 12:
-            manage_server_icon(stdscr)
-        elif w == 13:
-            appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
-            appdata.updateappdata()
-        elif w == 14:
             w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
@@ -3540,7 +3509,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 sanalytics(stdscr,SERVER_DIR)
             elif w2 == 4:
                 playerstat(stdscr,SERVER_DIR)
-        elif w == 15:
+        elif w == 13:
             file_manager(stdscr,SERVER_DIR,f"Files of {appdata.APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN:typing.Any = None
 

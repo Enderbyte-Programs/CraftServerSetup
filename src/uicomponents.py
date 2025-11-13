@@ -1,8 +1,11 @@
+"""Custom UI components for CRSS"""
+
 import cursesplus
 import appdata
 import os
 import curses
 import utils
+
 
 def menu(stdscr,options:list[str],title="Please choose an option from the list below",footer="") -> int:
     """An alternate optionmenu that will be used in primary areas. The only difference from Curses Plus is that it has some colour presets"""
