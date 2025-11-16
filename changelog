@@ -5,6 +5,10 @@
 - Move change server software to advanced configuration
 - Update default server properties to 1.21.10
 - Move propertiesparse class to propertiesfiles.py
+- Split out dirstack.py, tempdir.py, and texteditor.py
+- Add the ability to manage server code of conduct (Won't work on 1.21.10+)
+- Note that a future update plans to fix this
+- Remove some nasty old icon in the windows installer from the 1.0 days
 1.53:
 - MAJOR RESTRUCTURING. Source tree
     - Add tree-based-source system

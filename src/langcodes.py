@@ -1,6 +1,6 @@
 """Control RFC 4656 codes which are used in Minecraft"""
 
-raw_langcodes = {
+__raw_langcodes = {
       'af': 'Afrikaans',
   'af-ZA': 'Afrikaans (South Africa)',
   'ar': 'Arabic',
@@ -238,10 +238,10 @@ raw_langcodes = {
 
 #Convert from JS format to Java format
 langcodes = {}
-for item in list(raw_langcodes.items()):
+for item in list(__raw_langcodes.items()):
     langcodes[item[0].replace("-","_").lower()] = item[1]
 
-del raw_langcodes
+del __raw_langcodes
 
 reversed_langcodes = {}
 for item in list(langcodes.items()):

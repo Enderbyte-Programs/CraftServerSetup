@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.53"
+APP_UF_VERSION = "1.54"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025, some rights reserved")
 
@@ -87,11 +87,15 @@ import arguments
 staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
 staticflags.setup_early_load(WINDOWS,DEBUG)
 from staticflags import * #Static flags are locked at this time
+import utils
 import appdata
 import autorestart
 import timedexec
 import uicomponents
 import propertiesfiles
+import codeofconduct
+import tempdir
+import dirstack
 
 del WINDOWS
 del DEBUG
@@ -227,10 +231,10 @@ SERVER_INITS:dict[str,ServerRunWrapper] = {}
 
 def package_server_script(indir:str,outfile:str) -> int:
     try:
-        pushd(indir)
+        dirstack.pushd(indir)
         with tarfile.open(outfile,"w:xz") as tar:
             tar.add(".")
-        popd()
+        dirstack.popd()
     except:
         return 1
     return 0
@@ -239,10 +243,10 @@ def unpackage_server(infile:str,outdir:str) -> int:
     try:
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
-        pushd(outdir)
+        dirstack.pushd(outdir)
         with tarfile.open(infile,"r:xz") as tar:
             tar.extractall(".")
-        popd()
+        dirstack.popd()
     except:
         return 1
     return 0
@@ -380,15 +384,6 @@ def safe_error_handling(e:Exception):
             cursesplus.displaymsg(_SCREEN,["In your bug report, please make sure to include","the contents of the","error in the previous screen.","You can see the error again by pressing any key."])
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
         
-__DIR_LIST__ = [os.getcwd()]
-def pushd(directory:str):
-    global __DIR_LIST__
-    os.chdir(directory)
-    __DIR_LIST__.insert(0,directory)
-def popd():
-    global __DIR_LIST__
-    __DIR_LIST__.pop(0)
-    os.chdir(__DIR_LIST__[0])
 def get_java_version(file="java") -> str:
     try:
         if not ON_WINDOWS:
@@ -867,7 +862,7 @@ def setup_bedrock_server(stdscr):
     p.step("Downloading server file")
     urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
     p.step("Extracting server file")
-    pushd(S_INSTALL_DIR)#Make install easier
+    dirstack.pushd(S_INSTALL_DIR)#Make install easier
     zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
     zf.extractall(S_INSTALL_DIR)
     zf.close()
@@ -906,7 +901,7 @@ def setup_bedrock_server(stdscr):
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to configure your server's settings now?"]):
         with open(S_INSTALL_DIR+"/server.properties","w+") as f:
             f.write(propertiesfiles.dump(configure_bedrock_server(stdscr,S_INSTALL_DIR,propertiesfiles.load(BEDROCK_DEFAULT_SERVER_PROPERTIES))))
-    popd()
+    dirstack.popd()
     p.done()
     bedrock_manage_server(stdscr,servername,appdata.APPDATA["servers"].index(sd)+1)
 
@@ -916,7 +911,7 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
     p = cursesplus.ProgressBar(stdscr,5)
     cursesplus.displaymsg(stdscr,["Updating server","Please be patient."],False)
     p.step("Making backup")
-    safetydir = generate_temp_dir()
+    safetydir = tempdir.generate_temp_dir()
     safefiles = ["server.properties","allowlist.json"]
     safemap = {}
     for sf in safefiles:
@@ -929,7 +924,7 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
     #p.step("Downloading server file")
     urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
     #p.step("Extracting server file")
-    pushd(S_INSTALL_DIR)#Make install easier
+    dirstack.pushd(S_INSTALL_DIR)#Make install easier
     p.step("Extracting new server")
     zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
     zf.extractall(S_INSTALL_DIR)
@@ -1414,7 +1409,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
 
 def prune_servers():
     
-    pushd(SERVERSDIR)
+    dirstack.pushd(SERVERSDIR)
     appdata.APPDATA["servers"] = [a for a in appdata.APPDATA["servers"] if os.path.isdir(a["dir"])]
     #Look for unregistered directories
     serverdirs = [f for f in os.listdir(SERVERSDIR) if os.path.isdir(f)]
@@ -1423,7 +1418,7 @@ def prune_servers():
         if not serverdir in registereddirs:
             if not os.path.isfile(serverdir+"/exdata.json") and not os.path.isfile(serverdir+"/server.properties"):
                 shutil.rmtree(serverdir)
-    popd()
+    dirstack.popd()
     appdata.updateappdata()
 
 def servermgrmenu(stdscr):
@@ -1799,7 +1794,7 @@ def generate_script(svrdict: dict) -> str:
     return __SCRIPT__
 
 def update_s_software_preinit(serverdir:str):
-    pushd(serverdir)
+    dirstack.pushd(serverdir)
 
 def rm_server_jar():
     if os.path.isfile("server.jar"):
@@ -1809,7 +1804,7 @@ def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
     appdata.APPDATA["servers"][chosenserver-1]["version"] = PACKAGEDATA["id"]#Update new version
     generate_script(appdata.APPDATA["servers"][chosenserver-1])
     appdata.updateappdata()
-    popd()
+    dirstack.popd()
 
 def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
@@ -2022,12 +2017,12 @@ def view_server_logs(stdscr,server_dir:str):
     if not os.path.isdir(logsdir):
         cursesplus.messagebox.showwarning(stdscr,["This server has no logs."])
         return
-    pushd(logsdir)
+    dirstack.pushd(logsdir)
     
     while True:
         wtd = uicomponents.menu(stdscr,["BACK","View whole log history","View by file","Chat History & Utilities","Command Execution Audits"])
         if wtd == 0:
-            popd()
+            dirstack.popd()
             return
         elif wtd == 1:
             logs = load_server_logs(stdscr,server_dir)
@@ -2224,22 +2219,6 @@ def change_software(stdscr,directory,data) -> dict:
         ndata = merge_dicts(data,ppr)
     return ndata
 
-def text_editor(text:str,headmessage="edit") -> str:
-    tmpdir = generate_temp_dir()
-    pushd(tmpdir)
-    with open(tmpdir+"/"+headmessage,"w+") as f:
-        f.write(text)
-    editcmd = (appdata.APPDATA["settings"]["editor"]["value"] % "\""+headmessage+"\"")
-    curses.reset_shell_mode()
-    os.system(editcmd)#Wait for finish
-    curses.reset_prog_mode()
-    with open(tmpdir+"/"+headmessage) as f:
-        newdata = f.read()
-    cursesplus.utils.hidecursor()
-    popd()
-    return newdata
-
-
 def startup_options(stdscr,serverdata:dict):
     while True:
         wtd = uicomponents.menu(stdscr,["Back","Edit startup commands","Edit shutdown commands","Set startup mode","Command Line Arguments","View server script","Autorestart options"])
@@ -2269,7 +2248,7 @@ def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
     logfile = serverdir + "/logs"
     if not os.path.isdir(logfile):
         return []
-    pushd(logfile)
+    dirstack.pushd(logfile)
     logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
     final:list[str] = []
@@ -2289,7 +2268,7 @@ def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datet
     if not os.path.isdir(logfile):
         cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
         return []
-    pushd(logfile)
+    dirstack.pushd(logfile)
     logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
     #cursesplus.messagebox.showinfo(stdscr,[f"F {len(logs)}"])
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
@@ -2396,7 +2375,7 @@ def who_said_what(stdscr,serverdir):
                 else:
                     sdata[entry.playername] = 1
             cursesplus.bargraph(stdscr,sdata,"Most Talkative Players","Messages")
-    popd()
+    dirstack.popd()
 
 class FormattedIP:
     def __init__(self,a,c,p,d=datetime.datetime.now()):
@@ -3344,7 +3323,7 @@ def light_config_server(stdscr,chosenserver:int) -> None:
         elif wtd == 2:
             manage_server_icon(stdscr)
         elif wtd == 3:
-            pass
+            codeofconduct.codeofconductmenu(stdscr,appdata.APPDATA["servers"][chosenserver - 1]["dir"])
 
 def manage_server(stdscr,_sname: str,chosenserver: int):
     
@@ -3869,7 +3848,7 @@ def collapse_datapack_description(desc):
         return desc["translate"].splitlines()[0]
 
 def datapack_is_valid(datapackfile):
-    tmpx = generate_temp_dir()
+    tmpx = tempdir.generate_temp_dir()
     try:
         with zipfile.ZipFile(datapackfile) as zf:
             zf.extract("pack.mcmeta",tmpx)
@@ -3880,14 +3859,9 @@ def datapack_is_valid(datapackfile):
     else:
         return True
 
-def generate_temp_dir() -> str:
-    flx = f"{TEMPDIR}/{hex(round(random.random()*2**64))[2:]}"
-    os.mkdir(flx)
-    return flx#Random int between 0 and 2^64
-
 def find_world_datapacks(datadir) -> list[list[str,str]]:
     #datadir = worlddir+"/datapacks"
-    tmpx = generate_temp_dir()
+    tmpx = tempdir.generate_temp_dir()
     final = []
     if not os.path.isdir(datadir):
         os.mkdir(datadir)
@@ -4102,13 +4076,13 @@ def manage_bans(stdscr,serverdir):
                         
 def server_backups(stdscr,serverdir:str,serverdata:dict):
     LBKDIR = serverdata["backupdir"]
-    pushd(serverdir)#Just in case some super weird bug
+    dirstack.pushd(serverdir)#Just in case some super weird bug
     #if not os.path.isdir(LBKDIR):
     #    os.mkdir(LBKDIR)
     while True:
         z = uicomponents.menu(stdscr,["Back","Create a Backup","Load a Backup",f"Choose backup directory ({LBKDIR})","Delete all backups"])
         if z == 0:
-            popd()
+            dirstack.popd()
             break
         elif z == 1:
             if resource_warning(stdscr):
@@ -4479,7 +4453,7 @@ def import_server(stdscr):
             xdat["script"] = generate_script(xdat)
             
             appdata.APPDATA["servers"].append(xdat)
-            pushd(xdat["dir"])
+            dirstack.pushd(xdat["dir"])
             with open("exdata.json","w+") as f:
                 f.write(json.dumps(xdat))
             try:
@@ -4744,7 +4718,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
                     if unpackage_server("/tmp/crssupdate/craftserversetup.tar.xz","/tmp/crssupdate") == 1:
                         cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
                         return False
-                    pushd("/tmp/crssupdate")
+                    dirstack.pushd("/tmp/crssupdate")
                     if os.path.isfile("/usr/bin/craftserversetup"):
                         #admin
                         spassword = crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
@@ -4753,7 +4727,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
                     else:
                         with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
                             r = subprocess.call(["python3","/tmp/crssupdate/installer","install"],stdout=std0,stderr=std0)
-                    popd()
+                    dirstack.popd()
                     if r == 0:
                         return True
                     else:
