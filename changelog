@@ -1,3 +1,10 @@
+1.54.1:
+- Add rename handle support to all log-related things.
+- Chat utilities accepts ANY name from history
+- Analytics will accept only the NEWEST name
+- Command audits will accept ANY name from history
+- Add player name history search so that you can find the newest recoginzed name
+- IP lookups propagate all old names to the new name
 1.54:
 - Remove the minifier
 - Create new submenu of server manager - Configuration.

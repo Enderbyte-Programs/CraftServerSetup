@@ -76,3 +76,16 @@ def menu(stdscr,options:list[str],title="Please choose an option from the list b
             selected = len(options)-1
             if selected > my-8+offset:
                 offset = selected-my+8
+
+def crssinput(stdscr,
+    prompt: str,
+    lines: int = 1,
+    maxlen: int = 0,
+    passwordchar: str = None,
+    retremptylines: bool = False,
+    prefiltext: str = "",
+    bannedcharacters: str = "") -> str:
+    cursesplus.utils.showcursor()
+    r = cursesplus.cursesinput(stdscr,prompt,lines,maxlen,passwordchar,retremptylines,prefiltext,bannedcharacters)
+    cursesplus.utils.hidecursor()
+    return r

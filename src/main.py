@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54"
+APP_UF_VERSION = "1.54.1"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025, some rights reserved")
 
@@ -34,6 +34,7 @@ import io                       #File streams
 import shlex                    #Data parsing
 import re                       #Pattern matching
 import typing                   #HArd types
+import itertools                #Useful things for working with lists
 
 WINDOWS = platform.system() == "Windows"
 DEBUG = False#Some constants need to be loaded before library startup... It's a bad system, but this is what is needed to split up this 7000 line file
@@ -82,20 +83,23 @@ import pngdim                   #Calculate dimensions of a PNG file
 import eptranslate              #Translations
 from eptranslate import t       #Shorthand
 import staticflags              #Constants and urls
-import arguments
+import arguments                #CLI arguments
 #Setup static flags
 staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
 staticflags.setup_early_load(WINDOWS,DEBUG)
-from staticflags import * #Static flags are locked at this time
-import utils
-import appdata
-import autorestart
-import timedexec
-import uicomponents
-import propertiesfiles
-import codeofconduct
-import tempdir
-import dirstack
+from staticflags import *       #Static flags are locked at this time
+import utils                    #Textural utilities
+import appdata                  #Application data
+import autorestart              #Server auto restart
+import timedexec                #Cursesplus timeout
+import uicomponents             #Custom UI components
+import propertiesfiles          #Tools for .properties files
+import codeofconduct            #Tools for code of conduct
+import tempdir                  #Temp dir maker
+import dirstack                 #pushd/popd
+import renaminghandler          #MC rename namdler
+import texteditor               #Text editor handler
+import logutils                 #Load logs
 
 del WINDOWS
 del DEBUG
@@ -407,7 +411,7 @@ def manage_whitelist(stdscr,whitefile:str):
             return
         elif dop == 0:
             cursesplus.utils.showcursor()
-            name = crssinput(stdscr,"Name(s) of players allowed: (Seperate with commas)")
+            name = uicomponents.crssinput(stdscr,"Name(s) of players allowed: (Seperate with commas)")
             cursesplus.utils.hidecursor()
             names = name.split(",")
             for player in names:
@@ -476,7 +480,7 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
         p = cursesplus.ProgressBar(stdscr,13000,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,message="Building Spigot")
         if not build_lver:
             curses.curs_set(1)
-            xver = crssinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            xver = uicomponents.crssinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
             curses.curs_set(0)
         else:
             xver = "latest"
@@ -565,72 +569,6 @@ def list_recursive_contains_inverse(s:str,searches:list[str]) -> bool:
 def get_by_list_contains(lst: list,item:str):
     return lst[list_recursive_contains(lst,item)]
 
-class LogEntry:
-    def __init__(self,file:str,date:datetime.date,data:str,indict=None):
-        if indict is not None:
-            self.data = indict["rawdata"]
-            self.file = indict["fromfile"]
-            self.logdate = datetime.datetime.strptime(indict["date"],"%Y-%m-%d").date()
-            self.playername = indict["player"]
-        else:
-            self.data = data
-            self.file = file
-            self.logdate = date
-            if is_log_line_a_chat_line(data):
-                if "[Server]" in data:
-                    self.playername = "[Server]"
-                elif "issued server command" in data:
-                    #Handle targetted chat
-                    self.playername = data.split(" issued server")[0].split(" ")[-1]
-                else:
-                    self.playername = data.split("<")[1].split(">")[0]
-            else:
-                self.playername = ""
-            
-    def __str__(self):
-        return f"{self.logdate} {self.data}"
-    
-    def todict(self):
-        return {
-            "rawdata" : self.data,
-            "date" : str(self.logdate),
-            "fromfile" : self.file,
-            "player" : self.playername
-        }
-        
-    def fromdict(indict:dict):
-        return LogEntry(None,None,None,indict)
-    
-    def get_full_log_time(self) -> datetime.datetime:
-        timestr = self.data.split("]")[0].replace("[","")
-        try:
-            return datetime.datetime(self.logdate.year,self.logdate.month,self.logdate.day,int(timestr.split(":")[0]),int(timestr.split(":")[1]),int(timestr.split(":")[2]))
-        except:
-            return datetime.datetime(self.logdate.year,self.logdate.month,self.logdate.day,0,0,0)
-
-def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
-    if "latest" in fromfilename:
-        ld = datetime.datetime.now().date()
-    else:
-        ld = datetime.date(
-            int(fromfilename.split("-")[0]),
-            int(fromfilename.split("-")[1]),
-            int(fromfilename.split("-")[2])
-        )
-    final = []
-    for le in data.splitlines():
-        final.append(LogEntry(fromfilename,ld,le))
-    return final
-        
-def is_log_line_a_chat_line(line:str) -> bool:
-    if ((("INFO" in line and "<" in line and ">" in line) or "[Server]" in line) and "chat" in line.lower()) or "issued server command: /msg" in line or "issued server command: /w " in line or "issued server command: /tell" in line:
-        return True
-    else:
-        return False
-    
-def is_log_entry_a_chat_line(le:LogEntry) -> bool:
-    return is_log_line_a_chat_line(le.data)
-
 class BedrockWorld:
     def __init__(self,path,name):
         self.path = path
@@ -677,8 +615,8 @@ def bedrock_whitelist(stdscr,serverdir:str):
             if wtd == 0:
                 break
             elif wtd == 1:
-                plname = crssinput(stdscr,"What is the player's Xbox/Minecraft username?")
-                plxuid = crssinput(stdscr,"If you know it, what is the user's XUID? (Press enter if unknown)")
+                plname = uicomponents.crssinput(stdscr,"What is the player's Xbox/Minecraft username?")
+                plxuid = uicomponents.crssinput(stdscr,"If you know it, what is the user's XUID? (Press enter if unknown)")
                 data.append({
                     "name" : plname,
                     "xuid" : plxuid
@@ -701,9 +639,9 @@ def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
         if op == 0:
             break
         elif op == 1:
-            levelname = crssinput(stdscr,"Choose a name for the world")
+            levelname = uicomponents.crssinput(stdscr,"Choose a name for the world")
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to choose a custom seed?","If you answer no, a random seed will be chosen."],default=cursesplus.messagebox.MessageBoxStates.NO):
-                newseed = crssinput(stdscr,"Choose a seed")
+                newseed = uicomponents.crssinput(stdscr,"Choose a seed")
             else:
                 newseed = ""
             os.mkdir(serverdir+"/worlds/"+levelname)
@@ -750,7 +688,7 @@ def configure_bedrock_server(stdscr,directory:str,data:dict) -> dict:
         if wtd == 0:
             return data
         elif wtd == 1:
-            data["server-name"] = crssinput(stdscr,"What is the public name of the server?")
+            data["server-name"] = uicomponents.crssinput(stdscr,"What is the public name of the server?")
             data["gamemode"] = ["survival","creative","adventure"][uicomponents.menu(stdscr,["Survival","Creative","Adventure"],"Choose gamemode for server")]
             cd = cursesplus.checkboxlist(stdscr,[
                 CheckBoxItem("fg","Force Gamemode"),
@@ -824,7 +762,7 @@ def bedrock_config_server(stdscr,chosenserver):
                 with open("server.properties","w+") as f:
                     f.write(propertiesfiles.dump(sd))
     elif __l == 4:
-        newname = crssinput(stdscr,"Choose a new name for this server")
+        newname = uicomponents.crssinput(stdscr,"Choose a new name for this server")
         appdata.APPDATA["servers"][chosenserver-1]["name"] = newname
         #appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 5:
@@ -832,7 +770,7 @@ def bedrock_config_server(stdscr,chosenserver):
 
 def setup_bedrock_server(stdscr):
     while True:
-        servername = crssinput(stdscr,"Please choose a name for your server").strip()
+        servername = uicomponents.crssinput(stdscr,"Please choose a name for your server").strip()
         if not os.path.isdir(SERVERSDIR):
             os.mkdir(SERVERSDIR)
         if os.path.isdir(SERVERSDIR+"/"+servername):
@@ -1058,7 +996,7 @@ def choose_server_name(stdscr) -> str:
     """Prompt the user to create new name, not allowing duplicates found in SERVERSDIR"""
     while True:
         curses.curs_set(1)
-        servername = crssinput(stdscr,"Please choose a name for your server").strip()
+        servername = uicomponents.crssinput(stdscr,"Please choose a name for your server").strip()
         curses.curs_set(0)
         if not os.path.isdir(SERVERSDIR):
             os.mkdir(SERVERSDIR)
@@ -1222,17 +1160,17 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
         if not cursesplus.messagebox.askyesno(stdscr,["This will modify your world settings. Are you sure you wish to proceed?"]):
             return
     while True:
-        dpp["level-name"] = crssinput(stdscr,"What should your world be called")
+        dpp["level-name"] = uicomponents.crssinput(stdscr,"What should your world be called")
         if os.path.isdir(serverdir+"/"+dpp["level-name"]):
             if cursesplus.messagebox.showwarning(stdscr,["This world may already exist.","Are you sure you want to edit its settings?"]):
                 break
         else:
             break
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to use a custom seed?","Answer no for a random seed"]):
-        dpp["level-seed"] = crssinput(stdscr,"What should the seed be?")
+        dpp["level-seed"] = uicomponents.crssinput(stdscr,"What should the seed be?")
     wtype = uicomponents.menu(stdscr,["Normal","Flat","Large Biome","Amplified","Single Biome","Buffet (1.15 and before)","Customized (1.12 and before)","Other (custom namespace)"],"Please choose the type of world.")
     if wtype == 7:
-        wname = crssinput(stdscr,"Please type the full name of the custom world type")
+        wname = uicomponents.crssinput(stdscr,"Please type the full name of the custom world type")
     elif wtype == 0:
         wname = "minecraft:normal"
     elif wtype == 1:
@@ -1251,9 +1189,9 @@ def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) ->
     if wtype == 1 or wtype == 4 or wtype == 5 or wtype == 6:
         if wtype == 1:
             if cursesplus.messagebox.askyesno(stdscr,["Do you want to customize the flat world?"]):
-               dpp["generator-settings"] = crssinput(stdscr,f"Please type generator settings for {wname}") 
+               dpp["generator-settings"] = uicomponents.crssinput(stdscr,f"Please type generator settings for {wname}") 
         else:
-            dpp["generator-settings"] = crssinput(stdscr,f"Please type generator settings for {wname}")
+            dpp["generator-settings"] = uicomponents.crssinput(stdscr,f"Please type generator settings for {wname}")
 
     if not initialconfig:
         #Provide more settings
@@ -1313,7 +1251,7 @@ def setup_server_properties(stdscr,data=propertiesfiles.load(DEFAULT_SERVER_PROP
 
             if dpp["enable-rcon"]:
                 dpp["broadcast-rcon-to-ops"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable RCON (Remote CONtrol) output to operators?"])
-                dpp["rcon.password"] = crssinput(stdscr,"Please input RCON password",passwordchar="*")
+                dpp["rcon.password"] = uicomponents.crssinput(stdscr,"Please input RCON password",passwordchar="*")
                 dpp["rcon.port"] = cursesplus.numericinput(stdscr,"Please input the RCON port: (default 25575)",False,False,1,65535,25575)
 
         elif lssl == 2:
@@ -1357,7 +1295,7 @@ def setup_server_properties(stdscr,data=propertiesfiles.load(DEFAULT_SERVER_PROP
             dpp["gamemode"] = str(uicomponents.menu(stdscr,["survival","creative","adventure","spectator"],"Please select the gamemode of your server"))
             #dpp["enable-command-block"] = cursesplus.messagebox.askyesno(stdscr,["Would you like to enable command blocks on your server?"])
             dpp["max-players"] = cursesplus.numericinput(stdscr,"How many players should be allowed? (max players)",minimum=1,maximum=1000000,prefillnumber=20)
-            dpp["motd"] = "\\n".join(crssinput(stdscr,"What should your server message say?",2,59).splitlines())
+            dpp["motd"] = "\\n".join(uicomponents.crssinput(stdscr,"What should your server message say?",2,59).splitlines())
             #dpp["pvp"] = cursesplus.messagebox.askyesno(stdscr,["Do you want to allow PVP?"])
             dpp["simulation-distance"] = cursesplus.numericinput(stdscr,"What should the maximum simulation distance on the server be?",False,False,2,32,10)
             dpp["view-distance"] = cursesplus.numericinput(stdscr,"What should the maximum view distance on the server be?",False,False,2,32,10)
@@ -1387,7 +1325,7 @@ def resource_pack_setup(stdscr,dpp:dict) -> dict:
         if z == 0:
             return dpp
         elif z == 1:
-            uurl = crssinput(stdscr,"Input the URI to your resource pack (Direct download link)")
+            uurl = uicomponents.crssinput(stdscr,"Input the URI to your resource pack (Direct download link)")
             cursesplus.displaymsg(stdscr,["Testing link"],False)
             try:
                 lzdir = TEMPDIR+"/rp"+str(random.randint(11111,99999))
@@ -1589,7 +1527,7 @@ def modrinth_api_download_system(stdscr,modfolder,serverversion):
         if wtd == 0:
             break
         elif wtd == 1:
-            searchq = crssinput(stdscr,"What is the name of the mod you are looking for?")
+            searchq = uicomponents.crssinput(stdscr,"What is the name of the mod you are looking for?")
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq)
         elif wtd == 2:
             modrinth_api_seach_and_download(stdscr,modfolder,serverversion,"",100)
@@ -1843,7 +1781,7 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
         build_lver = cursesplus.messagebox.askyesno(stdscr,["Do you want to build the latest version of Spigot?","YES: Latest version","NO: different version"])
         if not build_lver:
             curses.curs_set(1)
-            xver = crssinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
+            xver = uicomponents.crssinput(stdscr,"Please type the version you want to build (eg: 1.19.2)")
             curses.curs_set(0)
         else:
             xver = "latest"
@@ -1916,7 +1854,7 @@ class CommandExecution:
         self.issuer = i
         self.when = w
         self.commandstr = c
-    def fromraw(line:LogEntry):
+    def fromraw(line:logutils.LogEntry):
         selsection = re.findall(r"[a-zA-Z0-9_]+\sissued server command: .*",line.data)[0]
         i = selsection.split(" ")[0]
         w = line.get_full_log_time()
@@ -1925,7 +1863,7 @@ class CommandExecution:
     def __str__(self):
         return f"{self.when} {self.issuer}{' '*(16-len(self.issuer))} {self.commandstr}"
     
-def is_logentry_command(l:LogEntry) -> bool:
+def is_logentry_a_command(l:logutils.LogEntry) -> bool:
     return len(re.findall(r"[a-zA-Z0-9_]+\sissued server command: .*",l.data)) > 0
 
 def recursive_list_startswith(searcher:str,items:list[str]) -> bool:
@@ -1937,11 +1875,13 @@ def recursive_list_startswith(searcher:str,items:list[str]) -> bool:
 def command_execution_auditing(stdscr,serverdir:str):
     if resource_warning(stdscr):
         return
-    orderedlogs = load_server_logs(stdscr,serverdir)
+    renaminghandler.autoupdate_cache(stdscr,serverdir)
+    
+    orderedlogs = logutils.load_server_logs(stdscr,serverdir)
     finalcmds:list[CommandExecution] = []
     cursesplus.displaymsg(stdscr,["Finding Commands"],False)
     for entry in orderedlogs:
-        if is_logentry_command(entry):
+        if is_logentry_a_command(entry):
             finalcmds.append(CommandExecution.fromraw(entry))
             
     while True:
@@ -1952,10 +1892,11 @@ def command_execution_auditing(stdscr,serverdir:str):
             case 1:
                 cursesplus.textview(stdscr,text="\n".join([str(s) for s in finalcmds]),message="Every command ever executed")
             case 2:
-                whatplayer = crssinput(stdscr,"What player do you want to audit?")
-                cursesplus.textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.issuer]),message=f"Commands from {whatplayer}")
+                whatplayer = uicomponents.crssinput(stdscr,"What player do you want to audit?")
+                cursesplus.textview(stdscr,text="\n".join(
+                    list(itertools.chain.from_iterable([[str(s) for s in finalcmds if whatplayer_indiv in s.issuer.lower()] for whatplayer_indiv in renaminghandler.get_aliases_of(whatplayer)]))),message=f"Commands from {whatplayer}")
             case 3:
-                whatplayer = crssinput(stdscr,"What commands do you want to find?")
+                whatplayer = uicomponents.crssinput(stdscr,"What commands do you want to find?")
                 cursesplus.textview(stdscr,text="\n".join([str(s) for s in finalcmds if whatplayer in s.commandstr]),message=f"Commands including {whatplayer}")
             case 4:
                 cursesplus.messagebox.showinfo(stdscr,["This will show when","Players have been running commands","on other players."])
@@ -1994,7 +1935,7 @@ def command_execution_auditing(stdscr,serverdir:str):
                 cursesplus.bargraph(stdscr,dat,"Commands issued by type","times")
                 
             case 7:
-                forwhichplayer = crssinput(stdscr,"Player name?")
+                forwhichplayer = uicomponents.crssinput(stdscr,"Player name?")
                 commands = {}
                 totalcommands = 0
                 for cmd in finalcmds:
@@ -2025,7 +1966,7 @@ def view_server_logs(stdscr,server_dir:str):
             dirstack.popd()
             return
         elif wtd == 1:
-            logs = load_server_logs(stdscr,server_dir)
+            logs = logutils.load_server_logs(stdscr,server_dir)
             
             finaltext = ""
             for entry in logs:
@@ -2051,7 +1992,7 @@ def view_server_logs(stdscr,server_dir:str):
                     elif wtd == 3:
                         who_said_what(stdscr,server_dir)
                     else:
-                        cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if is_log_line_a_chat_line(d)]))
+                        cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if logutils.is_log_line_a_chat_line(d)]))
         elif wtd == 3:
             who_said_what(stdscr,server_dir)
         elif wtd == 4:
@@ -2160,7 +2101,7 @@ def config_server(stdscr,chosenserver):
                     with open(lkz[dz-1],"w+") as f:
                         f.write(yaml.dump(data,default_flow_style=False))
     elif __l == 5:
-        newname = crssinput(stdscr,"Choose a new name for this server")
+        newname = uicomponents.crssinput(stdscr,"Choose a new name for this server")
         appdata.APPDATA["servers"][chosenserver-1]["name"] = newname
         #appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(dt)
     elif __l == 6:
@@ -2225,13 +2166,13 @@ def startup_options(stdscr,serverdata:dict):
         if wtd == 0:
             return serverdata
         elif wtd == 1:
-            serverdata["settings"]["launchcommands"] = text_editor("\n".join(serverdata["settings"]["launchcommands"]),"Edit Launch Commands").splitlines()
+            serverdata["settings"]["launchcommands"] = texteditor.text_editor("\n".join(serverdata["settings"]["launchcommands"]),"Edit Launch Commands").splitlines()
         elif wtd == 2:
             serverdata["settings"]["exitcommands"] = text_editor("\n".join(serverdata["settings"]["exitcommands"]),"Edit Exit Commands").splitlines()
         elif wtd == 3:
             serverdata["settings"]["legacy"] = uicomponents.menu(stdscr,["New Startups (fancy)","Old Startups (legacy)"],"Choose startup mode") == 1
         elif wtd == 4:
-            serverdata["settings"]["flags"] = crssinput(stdscr,"Custom flags for your server",prefiltext=serverdata['settings']["flags"])
+            serverdata["settings"]["flags"] = uicomponents.crssinput(stdscr,"Custom flags for your server",prefiltext=serverdata['settings']["flags"])
         elif wtd == 5:
             cursesplus.textview(stdscr,text=serverdata["script"],message="Server startup script")
         elif wtd == 6:
@@ -2262,38 +2203,7 @@ def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
                 final.extend(re.findall(tofind,f.read()))
     return final
 
-def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datetime.datetime=None) -> list[LogEntry]:
-    cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
-    logfile = serverdir + "/logs"
-    if not os.path.isdir(logfile):
-        cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
-        return []
-    dirstack.pushd(logfile)
-    logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
-    #cursesplus.messagebox.showinfo(stdscr,[f"F {len(logs)}"])
-    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    allentries:list[LogEntry] = []
-    for lf in logs:
-        log_lastwrite_dates = lf.replace("\\","/").split("/")[-1]
-        if "latest" in lf:
-            loglastwrite = datetime.datetime.now().date()
-        else:
-            loglastwrite = datetime.date(int(log_lastwrite_dates.split("-")[0]),int(log_lastwrite_dates.split("-")[1]),int(log_lastwrite_dates.split("-")[2]))
-        if load_no_earlier_than is not None and load_no_earlier_than.date() > loglastwrite:
-            continue
-        p.step(lf)
-        if lf.endswith(".gz"):
-            with open(lf,'rb') as f:
-                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
-        else:
-            with open(lf) as f:
-                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
-    if dosort:
-        #allentries.reverse()
-        cursesplus.displaymsg(stdscr,["Sorting Logs..."],False)
-        allentries.sort(key=lambda x: x.get_full_log_time())
-        #p.done()
-    return allentries
+
 
 class ChatEntry:
     logtime:datetime.datetime
@@ -2304,10 +2214,11 @@ class ChatEntry:
     def __init__(self):
         pass
 
-    def from_logentry(l:LogEntry):
+    @staticmethod
+    def from_logentry(l:logutils.LogEntry):
         r = ChatEntry()
         r.logtime = l.get_full_log_time()
-        r.playername = l.playername
+        r.playername = l.playername.lower()
         rawmessage:str = l.data
 
         is_targetted = "issued server command" in rawmessage.lower()#Spigot/paper servers only
@@ -2332,8 +2243,9 @@ class ChatEntry:
 def who_said_what(stdscr,serverdir):
     if resource_warning(stdscr):
         return
-    allentries = load_server_logs(stdscr,serverdir)
-    allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries if is_log_entry_a_chat_line(a)]
+    renaminghandler.autoupdate_cache(stdscr,serverdir)
+    allentries = logutils.load_server_logs(stdscr,serverdir)
+    allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries if logutils.is_log_entry_a_chat_line(a)]
     #allentries.sort(key=lambda x: x.logdate,reverse=False)
     #Not needed after LSL does sorting
     #allentries.reverse()
@@ -2342,7 +2254,7 @@ def who_said_what(stdscr,serverdir):
         if wtd == 0:
             break
         elif wtd == 1:
-            wws = crssinput(stdscr,"What message would you like to search for?")
+            wws = uicomponents.crssinput(stdscr,"What message would you like to search for?")
             strict = cursesplus.messagebox.askyesno(stdscr,["Do you want to search strictly?","(Full words only)"])
             cassen = cursesplus.messagebox.askyesno(stdscr,["Do you want to be case sensitive?"])
             if not strict and cassen:
@@ -2355,12 +2267,19 @@ def who_said_what(stdscr,serverdir):
                 ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if strict_word_search(a.message.lower(),wws.lower())])
             cursesplus.textview(stdscr,text=ft,message="Search Results")
         elif wtd == 2:
-            wws = crssinput(stdscr,"What player would you like to search for?")
+            wws = uicomponents.crssinput(stdscr,"What player would you like to search for?").lower()
             cursesplus.textview(stdscr,text=
                                 "\n".join(
-                                [
-                                    f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws in a.playername
-                                ]),message="Search Results")
+                                list(
+                                    itertools.chain.from_iterable([
+                                            [
+                                            f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws_indiv in a.playername
+                                            ] for wws_indiv in renaminghandler.get_aliases_of(wws)
+                                        ]
+                                            
+                                        )
+                                    )
+                                ),message="Search Results")
         elif wtd == 3:
             cursesplus.textview(stdscr,text=
                                 "\n".join(
@@ -2405,8 +2324,10 @@ def formattediplist_getindexbyip(search:str,haystack:list[FormattedIP]):
 def ip_lookup(stdscr,serverdir):
     if resource_warning(stdscr):
         return
+    renaminghandler.autoupdate_cache(stdscr,serverdir)
+    
     ipdir = serverdir+"/.ipindex.json.gz"
-    allentries = load_server_logs(stdscr,serverdir,False)
+    allentries = logutils.load_server_logs(stdscr,serverdir,False)
                 
     IPS:dict[str,list] = {}
     formattedips:list[FormattedIP] = []
@@ -2471,6 +2392,17 @@ def ip_lookup(stdscr,serverdir):
                 
                 country = "Unknown Country"
             formattedips.append(FormattedIP(uniqueip,country,IPS[uniqueip]))
+
+    cursesplus.displaymsg(stdscr,["Fixing player names..."],False)
+    ki = 0
+    for k in formattedips:
+        new_ls = []
+        for pl in k.players:
+            new_ls += renaminghandler.get_aliases_of(pl)
+        formattedips[ki].players = remove_duplicates_from_list(new_ls)
+
+        ki += 1
+
     with open(ipdir,'wb+') as f:
         f.write(gzip.compress(json.dumps([f.todict() for f in formattedips]).encode()))
     p.done()
@@ -2502,7 +2434,7 @@ def ip_lookup(stdscr,serverdir):
                 formattedips.sort(key=lambda x: [l.lower() for l in x.players])
             if sorting == 2 or sorting == 4 or sorting == 6:
                 formattedips.reverse()#You have selected Z->A, which reverses sorting
-            psearch = crssinput(stdscr,"What player do you want to search for?")
+            psearch = uicomponents.crssinput(stdscr,"What player do you want to search for?")
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
                 if psearch in fi.players:
@@ -2519,7 +2451,7 @@ def ip_lookup(stdscr,serverdir):
                 formattedips.sort(key=lambda x: [l.lower() for l in x.players])
             if sorting == 2 or sorting == 4 or sorting == 6:
                 formattedips.reverse()#You have selected Z->A, which reverses sorting
-            psearch = crssinput(stdscr,"What IP do you want to look for?")
+            psearch = uicomponents.crssinput(stdscr,"What IP do you want to look for?")
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
                 if psearch in fi.address:
@@ -2536,7 +2468,7 @@ def ip_lookup(stdscr,serverdir):
                 formattedips.sort(key=lambda x: [l.lower() for l in x.players])
             if sorting == 2 or sorting == 4 or sorting == 6:
                 formattedips.reverse()#You have selected Z->A, which reverses sorting
-            psearch = crssinput(stdscr,"What country do you want to look for?")
+            psearch = uicomponents.crssinput(stdscr,"What country do you want to look for?")
             final = "IP ADDRESS       COUNTRY                  PLAYERS\n"
             for fi in formattedips:
                 if psearch.lower() in fi.country.lower():
@@ -2577,7 +2509,7 @@ def get_datetime_from_minute_id(t:int) -> datetime.datetime:
 class JLLogFrame:
     data:str
     ext:datetime.datetime
-    def __init__(self,lowerdata:LogEntry):
+    def __init__(self,lowerdata:logutils.LogEntry):
         rtime = lowerdata.data.split(" ")[0].strip()
         rdate = lowerdata.logdate
         
@@ -2813,7 +2745,7 @@ def sanalytics(stdscr,serverdir):
     
     if resource_warning(stdscr):
         return
-    
+    renaminghandler.autoupdate_cache(stdscr,serverdir)
     analytics_file_path = serverdir + os.sep + "anacache.json.gz"
     cursesplus.displaymsg(stdscr,["Loading from cache..."],False)
     readfrom = None
@@ -2823,7 +2755,7 @@ def sanalytics(stdscr,serverdir):
         if cachefile["end"] is not None:
             readfrom = get_datetime_from_minute_id(cachefile["end"])#Stores the last minuteid that it successfully processed.
     
-    allentries:list[LogEntry] = load_server_logs(stdscr,serverdir,False,readfrom)
+    allentries:list[logutils.LogEntry] = logutils.load_server_logs(stdscr,serverdir,False,readfrom)
     earliestentrydt:datetime.date = allentries[0].logdate
     cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
     eventslist:list[JLLogFrame] = []
@@ -2848,7 +2780,8 @@ def sanalytics(stdscr,serverdir):
             plname = rs.split(" ")[0].lower()
             action = rs.split(" ")[1]
             #Remove special characters from plname
-            plname = plname.replace("(","")
+            plname = plname.replace("(","").replace(")","")
+            plname = renaminghandler.get_current_name_of(plname)
             mid = get_minute_id_from_datetime(eventslist[-1].ext)
             if "joined" in action:
                 if not mid in joins:
@@ -3283,7 +3216,7 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
                 break
             elif ch == 99:
                 stdscr.nodelay(0)
-                svrstat.send(crssinput(stdscr,"Enter a command to run"))
+                svrstat.send(uicomponents.crssinput(stdscr,"Enter a command to run"))
                 stdscr.nodelay(1)
             elif ch == 115:
                 svrstat.send("stop")
@@ -3315,7 +3248,7 @@ def light_config_server(stdscr,chosenserver:int) -> None:
                 else:
                     cursesplus.displaymsg(stdscr,["Current Message Is",config["motd"]])
                 curses.curs_set(1)
-                newmotd = crssinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
+                newmotd = uicomponents.crssinput(stdscr,"Please input a new MOTD",2,59,prefiltext=config["motd"].replace("\\n","\n"))
                 curses.curs_set(0)
                 config["motd"] = newmotd.replace("\n","\\n")
                 with open("server.properties","w+") as f:
@@ -3477,7 +3410,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         #    appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
         #    appdata.updateappdata()
         elif w == 12:
-            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics"],"Additional Utilities")
+            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics","Player name history"],"Additional Utilities")
             if w2 == 1:
                 who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
@@ -3488,6 +3421,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 sanalytics(stdscr,SERVER_DIR)
             elif w2 == 4:
                 playerstat(stdscr,SERVER_DIR)
+            elif w2 == 5:
+                renaminghandler.player_naming_history(stdscr)
         elif w == 13:
             file_manager(stdscr,SERVER_DIR,f"Files of {appdata.APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN:typing.Any = None
@@ -3818,14 +3753,14 @@ def file_manager(stdscr,directory:str,header:str):
         elif kkx == "n":
             whattpmake = uicomponents.menu(stdscr,["Cancel","New File","New Directory"])
             if whattpmake == 1:
-                newname = crssinput(stdscr,"Name of new file")
+                newname = uicomponents.crssinput(stdscr,"Name of new file")
                 try:
                     with open(adir+"/"+newname,"x") as f:
                         f.write("")
                 except:
                     cursesplus.messagebox.showerror(stdscr,["Failed to create file"])
             elif whattpmake == 2:
-                newname = crssinput(stdscr,"Name of new directory")
+                newname = uicomponents.crssinput(stdscr,"Name of new directory")
                 try:
                     os.mkdir(adir+"/"+newname)
                 except:
@@ -3833,7 +3768,7 @@ def file_manager(stdscr,directory:str,header:str):
             elif whattpmake == 2:
                 pass
         elif kkx == "m":
-            newname = crssinput(stdscr,"New name?")
+            newname = uicomponents.crssinput(stdscr,"New name?")
             try:
                 os.rename(activefile[selected].path,adir+"/"+newname)
             except:
@@ -3939,7 +3874,7 @@ def manage_ops(stdscr,serverdir):
                     f.write(json.dumps(data))
                 break
             elif dz == 1:
-                player = crssinput(stdscr,"Please input the player's name")
+                player = uicomponents.crssinput(stdscr,"Please input the player's name")
                 try:
                     uuid = get_player_uuid(player)
                 except:
@@ -4018,7 +3953,7 @@ def manage_bans(stdscr,serverdir):
                     f.write(json.dumps(data))
                 break
             elif dz  == 1:
-                player = crssinput(stdscr,"Please input the player's name")
+                player = uicomponents.crssinput(stdscr,"Please input the player's name")
                 try:
                     uuid = get_player_uuid(player)
                 except:
@@ -4029,10 +3964,10 @@ def manage_bans(stdscr,serverdir):
                     if cursesplus.messagebox.askyesno(stdscr,["Should this ban be forever?"]):
                         dend = "forever"
                     else:
-                        ddate = crssinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
-                        dtime = crssinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
+                        ddate = uicomponents.crssinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
+                        dtime = uicomponents.crssinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
                         dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
-                    reason = crssinput(stdscr,"What is the reason for this ban?")
+                    reason = uicomponents.crssinput(stdscr,"What is the reason for this ban?")
                     data.append(
                         {
                             "name" : player,
@@ -4068,8 +4003,8 @@ def manage_bans(stdscr,serverdir):
                         del data[dz-2]
                         break
                     elif ch == 99:
-                        ddate = crssinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
-                        dtime = crssinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
+                        ddate = uicomponents.crssinput(stdscr,"What date should the ban end? (example: 2023-09-22)",maxlen=10)
+                        dtime = uicomponents.crssinput(stdscr,"What time should the ban end? (example: 10:00:00)",maxlen=8)
                         dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
                         active["expires"] = dend
                         data[dz-2] = active
@@ -4206,7 +4141,7 @@ def managejavainstalls(stdscr):
                     stdscr.erase()
                     ndict = {"path":njavapath.replace("\\","/"),"ver":"Unknown"}
                     if cursesplus.messagebox.askyesno(stdscr,["Do you know what java version this is?"]):
-                        ndict["ver"] = crssinput(stdscr,"Java version?",maxlen=10)
+                        ndict["ver"] = uicomponents.crssinput(stdscr,"Java version?",maxlen=10)
                         appdata.APPDATA["javainstalls"].append(ndict)
             else:
                 fver = get_java_version(njavapath.replace("\\","/"))
@@ -4312,7 +4247,7 @@ def import_amc_server(stdscr,chlx):
             if nname in [l["name"] for l in appdata.APPDATA["servers"]]:
                 #cursesplus.utils.showcursor()
                 
-                nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
+                nname = uicomponents.crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=xdat["name"])
                 #cursesplus.utils.hidecursor()
             else:
                 xdat["name"] = nname
@@ -4357,19 +4292,6 @@ def import_amc_server(stdscr,chlx):
         #raise e
         cursesplus.messagebox.showerror(stdscr,["An error occured importing your server.",str(e)])
 
-def crssinput(stdscr,
-    prompt: str,
-    lines: int = 1,
-    maxlen: int = 0,
-    passwordchar: str = None,
-    retremptylines: bool = False,
-    prefiltext: str = "",
-    bannedcharacters: str = "") -> str:
-    cursesplus.utils.showcursor()
-    r = cursesplus.cursesinput(stdscr,prompt,lines,maxlen,passwordchar,retremptylines,prefiltext,bannedcharacters)
-    cursesplus.utils.hidecursor()
-    return r
-
 def choose_server_memory_amount(stdscr) -> str:
     chop = cursesplus.coloured_option_menu(
         stdscr,
@@ -4391,7 +4313,7 @@ def choose_server_memory_amount(stdscr) -> str:
         return "8G"
     elif chop == 4:
         while True:
-            mtoal = crssinput(stdscr,"How much memory should your server get? (for example 1024M or 5G)")
+            mtoal = uicomponents.crssinput(stdscr,"How much memory should your server get? (for example 1024M or 5G)")
             if not (mtoal.endswith("M") or mtoal.endswith("G")):
                 cursesplus.messagebox.showerror(stdscr,["Memory strings must end with M for megabytes","or G for gigabytes,","For example 3G or 1600M"])
                 continue
@@ -4421,11 +4343,11 @@ def import_server(stdscr):
             ffile = cursesplus.filedialog.openfiledialog(stdscr,"Please choose the server JAR file",[["*.jar","Java Archive files"],["*","All Files"]],ddir)
             fpl = os.path.split(ffile)[1]
             delaftercomplete = cursesplus.messagebox.askyesno(stdscr,["Delete original folder after import?"])
-            nname = crssinput(stdscr,"Please enter the name of this server")
+            nname = uicomponents.crssinput(stdscr,"Please enter the name of this server")
             while True:
                 if nname in [l["name"] for l in appdata.APPDATA["servers"]]:
                     cursesplus.utils.showcursor()
-                    nname = crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
+                    nname = uicomponents.crssinput(stdscr,"The name already exists. Please input a new name",prefiltext=nname)
                     cursesplus.utils.hidecursor()
                 else:
                     xdat["name"] = nname
@@ -4444,7 +4366,7 @@ def import_server(stdscr):
             xdat["javapath"] = choose_java_install(stdscr)
             memorytoall = choose_server_memory_amount(stdscr)
             xdat["memory"] = memorytoall
-            xdat["version"] = crssinput(stdscr,"What version is your server?")
+            xdat["version"] = uicomponents.crssinput(stdscr,"What version is your server?")
             xdat["moddable"] = cursesplus.messagebox.askyesno(stdscr,["Is this server moddable?","That is, Can it be changed with plugins/mods"])
             xdat["software"] = uicomponents.menu(stdscr,["Other/Unknown","Vanilla","Spigot","Paper","Purpur"],"What software is this server running")
             xdat["settings"] = {"legacy":True,"launchcommands":[],"exitcommands":[],"flags" : ""}
@@ -4485,7 +4407,7 @@ def edit_backup_profile(stdscr,backupname: str) :
             return
         elif m == 1:
             while True:
-                bname = crssinput(stdscr,"Name the backup profile")
+                bname = uicomponents.crssinput(stdscr,"Name the backup profile")
                 if bname in appdata.APPDATA["backupprofiles"] and bname != backupname:
                     #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
                     if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Do you want to over-write it?"]):
@@ -4509,7 +4431,7 @@ def edit_backup_profile(stdscr,backupname: str) :
                     "Use * for wildcard, ** for recursive wildcard",
                     "Do not end with a / for a folder, use /* or /** instead."
                 ])
-                pattern[0] = crssinput(stdscr,"Write the GLOB pattern to match. Use #SD/ for the server directory.")
+                pattern[0] = uicomponents.crssinput(stdscr,"Write the GLOB pattern to match. Use #SD/ for the server directory.")
             else:
                 itype = uicomponents.menu(stdscr,["Choose a directory","Choose file(s)"])
                 if itype == 0:
@@ -4536,7 +4458,7 @@ def edit_backup_profile(stdscr,backupname: str) :
 
 def new_backup_profile(stdscr) -> str:
     while True:
-        name = crssinput(stdscr,"Name the backup profile")
+        name = uicomponents.crssinput(stdscr,"Name the backup profile")
         if name in appdata.APPDATA["backupprofiles"]:
             if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Would you like to over-write it?"],default=cursesplus.messagebox.MessageBoxStates.NO):
                 return name
@@ -4604,7 +4526,7 @@ def settings_mgr(stdscr):
             elif selm["type"] == "int":
                 selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
             elif selm["type"] == "str":
-                selm["value"] = crssinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
+                selm["value"] = uicomponents.crssinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
             appdata.APPDATA["settings"][selk] = selm
 
 def doc_system(stdscr):
@@ -4651,7 +4573,7 @@ def oobe(stdscr):
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
         
         if cursesplus.messagebox.askyesno(stdscr,["Would you like to change your default text editor?","YES: Choose a custom command","NO: use the default editor (usually nano)"],default=cursesplus.messagebox.MessageBoxStates.NO):
-            appdata.APPDATA["settings"]["editor"]["value"] = crssinput(stdscr,"Please type a custom command: use %s to represent the file name")
+            appdata.APPDATA["settings"]["editor"]["value"] = uicomponents.crssinput(stdscr,"Please type a custom command: use %s to represent the file name")
         appdata.APPDATA["hasCompletedOOBE"] = True
         appdata.updateappdata()
 
@@ -4721,7 +4643,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
                     dirstack.pushd("/tmp/crssupdate")
                     if os.path.isfile("/usr/bin/craftserversetup"):
                         #admin
-                        spassword = crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
+                        spassword = uicomponents.crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                         with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
                             r = subprocess.call(f"echo -e \"{spassword}\" | sudo -S -k python3 /tmp/crssupdate/installer install",stdout=std0,stderr=std0,shell=True)
                     else:
@@ -4743,7 +4665,7 @@ def do_linux_update(stdscr,interactive=True) -> bool:
                     os.mkdir("/tmp/crssupdate")
                     urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.deb")
                     cursesplus.displaymsg(stdscr,["Installing update"],False)
-                    spassword = crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
+                    spassword = uicomponents.crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
                     with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
                         r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k dpkg -i /tmp/crssupdate/craftserversetup.deb",stdout=std0,stderr=std0,shell=True)
 
