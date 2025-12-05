@@ -17,18 +17,8 @@ def startup():
     global _manageid
     global _file_to_import
     ogpath = sys.argv[0]
-    execdir = os.path.split(ogpath)[0]
+    execdir = os.path.dirname(os.path.abspath(ogpath))
     _isportable = False
-    #Read startup flag
-    if os.path.isdir(execdir):
-        if os.path.isfile(execdir+"/startupflags.txt"):
-            with open(execdir+"/startupflags.txt") as f:
-                sfd = f.read().lower()
-            
-            if "portable" in sfd :
-                _isportable = True
-            if "developer" in sfd:
-                _isdev = True
 
     argparser = argparse.ArgumentParser("CraftServerSetup",description="A TUI Minecraft Server maker and manager. Run without arguments for a standard interactive experience.",epilog="(c) 2023-2025 Enderbyte programs, some rights reserved. For support, please email enderbyte09@gmail.com")
     argparser.add_argument('importfile',nargs="?",default="",help="An exported server to import if you want to import")
@@ -53,6 +43,19 @@ def startup():
     if _manageid != 0 and _startid != 0:
         print("ARGUMENT ERROR - You may not command a manage and a start at the same time.")
         sys.exit(4)
+
+        #Read startup flag
+    print(execdir)
+    if os.path.isdir(execdir):
+        if os.path.isfile(execdir+"/startupflags.txt"):
+            with open(execdir+"/startupflags.txt") as f:
+                sfd = f.read().lower()
+            
+            if "portable" in sfd :
+                _isportable = True
+            if "developer" in sfd:
+                _isdev = True
+
 
 def is_portable_mode() -> bool:
     return _isportable

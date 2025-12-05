@@ -177,7 +177,7 @@ def setup_early_load(windows:bool,debug:bool):
     AUTOMANAGE_ID = _arguments.get_manage_id()
 
     ogpath = sys.argv[0]
-    execdir = os.path.split(ogpath)[0]
+    execdir = os.path.split(os.path.abspath(ogpath))[0]
     global ON_WINDOWS
     global IN_SOURCE_TREE
     ON_WINDOWS = windows
@@ -186,6 +186,7 @@ def setup_early_load(windows:bool,debug:bool):
         APPDATADIR = os.path.expanduser("~/.local/share/mcserver")
         if PORTABLE:
             APPDATADIR = execdir+"/AppData"
+            os.makedirs(APPDATADIR,exist_ok=True)
         SERVERSDIR = APPDATADIR + "/servers"
         SERVERS_BACKUP_DIR = APPDATADIR + "/backups"
         TEMPDIR = APPDATADIR + "/temp"

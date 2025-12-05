@@ -299,7 +299,7 @@
 
     echo "Packaging and moving"
     cp $FDIR/installer/* $OUTPUTDIR
-    pushd $FDIR/dist
+    pushd $FDIR/dist/craftserversetup
     echo "PORTABLE" >startupflags.txt
     zip -9 -r $OUTPUTDIR/craftserversetup-portable.zip .
 
