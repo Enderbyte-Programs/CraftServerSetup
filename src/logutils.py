@@ -3,6 +3,7 @@ import os
 import cursesplus
 import gzip
 import dirstack
+import re
 
 class LogEntry:
     def __init__(self,file:str,date:datetime.date,data:str,indict=None):
@@ -57,7 +58,7 @@ def is_log_line_a_chat_line(line:str) -> bool:
 def is_log_entry_a_chat_line(le:LogEntry) -> bool:
     return is_log_line_a_chat_line(le.data)
 
-def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datetime.datetime=None) -> list[LogEntry]:#type: ignore
+def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datetime.datetime=None,regex_filter="") -> list[LogEntry]:#type: ignore
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
     logfile = serverdir + "/logs"
     if not os.path.isdir(logfile):
@@ -65,6 +66,8 @@ def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datet
         return []
     dirstack.pushd(logfile)
     logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    if dosort:
+        logs = list(sorted(logs))#Sort the data by sorting the files
     #cursesplus.messagebox.showinfo(stdscr,[f"F {len(logs)}"])
     p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
     allentries:list[LogEntry] = []
@@ -79,15 +82,16 @@ def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datet
         p.step(lf)
         if lf.endswith(".gz"):
             with open(lf,'rb') as f:
-                allentries.extend(load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf))
+                dx = load_log_entries_from_raw_data(gzip.decompress(f.read()).decode(),lf)
+                if regex_filter != "":
+                    dx = [d2 for d2 in dx if bool(re.search(regex_filter,d2.data))]
+                allentries.extend(dx)
         else:
             with open(lf) as f:
-                allentries.extend(load_log_entries_from_raw_data(f.read(),lf))
-    if dosort:
-        #allentries.reverse()
-        cursesplus.displaymsg(stdscr,["Sorting Logs..."],False)
-        allentries.sort(key=lambda x: x.get_full_log_time())
-        #p.done()
+                dx = load_log_entries_from_raw_data(f.read(),lf)
+                if regex_filter != "":
+                    dx = [d2 for d2 in dx if bool(re.search(regex_filter,d2.data))]
+                allentries.extend(dx)
     return allentries
 
 def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:

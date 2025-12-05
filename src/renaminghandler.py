@@ -83,11 +83,9 @@ def update_cache_custom(stdscr,rawentries:list[logutils.LogEntry]):
         json.dump(NC_DATA,f)
 
 def autoupdate_cache(stdscr,serverdir):
-    if NC_DATA["last_updated"] == 0:
-        if not cursesplus.messagebox.askyesno(stdscr,["The name alias cache has not been created.","Creating it will take lots","of memory the first time.","This only needs to be done once.","Would you like to do it now?"]):
-            return
+
     lastupdatetime = datetime.datetime.fromtimestamp(NC_DATA["last_updated"])
-    update_cache_custom(stdscr,logutils.load_server_logs(stdscr,serverdir,True,lastupdatetime))
+    update_cache_custom(stdscr,logutils.load_server_logs(stdscr,serverdir,True,lastupdatetime,r"\S+ \(formerly known as \S+\)"))
 
 def player_naming_history(stdscr):
     srch = uicomponents.crssinput(stdscr,"What player do you want to learn about?").lower()

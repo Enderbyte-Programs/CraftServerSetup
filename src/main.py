@@ -2583,6 +2583,19 @@ def get_chunk_size_from_aezl(s:AnalyticsExplorerZoomLevels):
         AnalyticsExplorerZoomLevels.WEEK:1440*7
         }[s]
 
+def serialize_smf(s:ServerMinuteFrame) -> dict:
+    return {
+        "id" : s.minuteid,
+        "playerminutes" : s.playerminutes,
+        "onlineplayers" : s.onlineplayers
+    }
+
+def deserialize_smf(s:dict) -> ServerMinuteFrame:
+    d = ServerMinuteFrame(s["id"])
+    d.onlineplayers = s["onlineplayers"]
+    d.playerminutes = s["playerminutes"]
+    return d
+
 def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
     cursesplus.displaymsg(stdscr,["Analytics Explorer","Initializing..."],False)
     #This function allows users to explore their analytics
@@ -2601,9 +2614,13 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
         AnalyticsExplorerDataTypes.PLAYERCOUNT: "Online Players (default)"
     }
     ldata = list(data.values())#List representation of data to prevent performance issues?
-    ogdata = copy.deepcopy(data)
-    ogldata = copy.deepcopy(ldata)#For use later
-    maxval = max([len(p.onlineplayers) for p in list(data.values())])
+
+    td = tempdir.generate_temp_dir()
+
+    #ogdata = copy.deepcopy(data)
+    #ogldata = copy.deepcopy(ldata)#For use later
+    JsonGz.write(td+"/data.json.gz",{k:serialize_smf(v) for k,v in list(data.items())})
+    maxval = max([len(p.onlineplayers) for p in ldata])
     while True:
         my,mx = stdscr.getmaxyx()
         xspace = mx-1
@@ -2693,10 +2710,10 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
             #This will use ogdat because data may have been used for hour or day, which will screw it up
             offset = 0
             if currentzoomlevel == AnalyticsExplorerZoomLevels.MINUTE:
-                data = ogdata
-                ldata = ogldata
+                data = {k:deserialize_smf(v) for k,v in list(JsonGz.read(td+"/data.json.gz").items())}
+                ldata = list(data.values())
             else:
-                chunked_data:list[list[ServerMinuteFrame]] = split_list_into_chunks(ogldata,get_chunk_size_from_aezl(currentzoomlevel))
+                chunked_data:list[list[ServerMinuteFrame]] = split_list_into_chunks(list({k:deserialize_smf(v) for k,v in list(JsonGz.read(td+"/data.json.gz").items())}.values()),get_chunk_size_from_aezl(currentzoomlevel))
                 final_data:dict[int,ServerMinuteFrame] = {}
                 for chunk in chunked_data:
                     s:ServerMinuteFrame = ServerMinuteFrame(chunk[0].minuteid)
@@ -2712,6 +2729,8 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                     s.onlineplayers = unique_players
                     final_data[s.minuteid] = s
                 data = final_data
+                del chunked_data
+                del final_data
                 ldata = list(data.values())
             maxval = max([p.get_data(currentdatatype) for p in list(data.values())])
             #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
@@ -2720,7 +2739,7 @@ def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
                 
         elif ch == "d":
             currentdatatype = list(datatypes.keys())[uicomponents.menu(stdscr,list(datatypes.values()),"Choose a data type")]
-            maxval = max([p.get_data(currentdatatype) for p in list(data.values())])
+            maxval = max([p.get_data(currentdatatype) for p in ldata])
             #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
             #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
         if offset > datasize:

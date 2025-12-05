@@ -1,3 +1,8 @@
+1.54.2:
+- Improve efficiency of log sorting
+- Improve memory efficiency of analytics explorer
+- Improve memory efficiency of rename loader
+    - No longer has a resource warning attached to it
 1.54.1:
 - Add rename handle support to all log-related things.
 - Chat utilities accepts ANY name from history
