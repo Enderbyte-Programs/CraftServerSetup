@@ -84,9 +84,12 @@ import eptranslate              #Translations
 from eptranslate import t       #Shorthand
 import staticflags              #Constants and urls
 import arguments                #CLI arguments
+
 #Setup static flags
 staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
 staticflags.setup_early_load(WINDOWS,DEBUG)
+
+
 from staticflags import *       #Static flags are locked at this time
 import utils                    #Textural utilities
 import appdata                  #Application data
@@ -103,19 +106,6 @@ import logutils                 #Load logs
 
 del WINDOWS
 del DEBUG
-
-if not os.path.isdir(APPDATADIR):
-    os.mkdir(APPDATADIR)
-if not os.path.isdir(SERVERSDIR):
-    os.mkdir(SERVERSDIR)
-if not os.path.isdir(TEMPDIR):
-    os.mkdir(TEMPDIR)
-if not os.path.isdir(BACKUPDIR):
-    os.mkdir(BACKUPDIR)
-if not os.path.isdir(SERVERS_BACKUP_DIR):
-    os.mkdir(SERVERS_BACKUP_DIR)
-if not os.path.isdir(ASSETSDIR):
-    os.mkdir(ASSETSDIR)
 
 _transndt = False
 try:
@@ -3118,7 +3108,9 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
             hascrashed = lretr != 0 and lretr != 127 and lretr != 128 and lretr != 130
             willgoagain = False
             #Handle autorestart
+
             recommended_action = autorestart.get_recommended_action(appdata.APPDATA["servers"][chosenserver-1],True)
+
             match recommended_action:
                 case autorestart.AutoRestartOptions.ALWAYS:
                     willgoagain = True

@@ -44,13 +44,13 @@ def get_recommended_action(server_configuration:dict,clear_nonpersistent=True) -
     serverdir:str = server_configuration["dir"]
     startsource = server_configuration["settings"]["restartsource"]
 
-    if startsource == AutoRestartSourceOptions.NOAUTORESTART:
+    if startsource == AutoRestartSourceOptions.NOAUTORESTART.value:
         return AutoRestartOptions.NORESTART
     
-    elif startsource == AutoRestartSourceOptions.CRSSONLY or not does_server_have_autorestart_file(serverdir):#Disregard foreign if startsource is set to or if there is no autorestart file
+    elif startsource == AutoRestartSourceOptions.CRSSONLY.value or not does_server_have_autorestart_file(serverdir):#Disregard foreign if startsource is set to or if there is no autorestart file
         return AutoRestartOptions(server_configuration["settings"]["autorestart"])
     
-    else:
+    elif startsource == AutoRestartSourceOptions.EXTERNALFILE.value:
         with open(serverdir+os.sep+"autorestart") as f:
             rd = f.read()
 
@@ -65,6 +65,8 @@ def get_recommended_action(server_configuration:dict,clear_nonpersistent=True) -
             return AutoRestartOptions.SAFEEXIT
         
         return AutoRestartOptions.NORESTART
+    
+    return AutoRestartOptions.NORESTART
     
 def autorestart_settings(stdscr,serverdata:dict) -> dict:
     """UI portion for configuring autorestart"""

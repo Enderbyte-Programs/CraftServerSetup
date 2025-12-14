@@ -204,3 +204,16 @@ def setup_early_load(windows:bool,debug:bool):
         ASSETSDIR = APPDATADIR + "/assets"
 
     DOCDOWNLOAD = ASSETSDIR + "/craftserversetup.epdoc"
+
+    if not os.path.isdir(APPDATADIR):
+        os.mkdir(APPDATADIR)
+    if not os.path.isdir(SERVERSDIR):
+        os.mkdir(SERVERSDIR)
+    if not os.path.isdir(TEMPDIR):
+        os.mkdir(TEMPDIR)
+    if not os.path.isdir(BACKUPDIR):
+        os.mkdir(BACKUPDIR)
+    if not os.path.isdir(SERVERS_BACKUP_DIR):
+        os.mkdir(SERVERS_BACKUP_DIR)
+    if not os.path.isdir(ASSETSDIR):
+        os.mkdir(ASSETSDIR)

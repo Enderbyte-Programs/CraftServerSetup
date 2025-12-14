@@ -45,7 +45,6 @@ def startup():
         sys.exit(4)
 
         #Read startup flag
-    print(execdir)
     if os.path.isdir(execdir):
         if os.path.isfile(execdir+"/startupflags.txt"):
             with open(execdir+"/startupflags.txt") as f:
