@@ -1,8 +1,34 @@
-- Minor fixes:
-    - Releases, Snapshots, and Experiments are sorted into groups in vanilla version selection menu
+# Todo List
+
+## Planned Updates
+
+### 1.55
+
+- Telemetry overhaul
+    - Four levels
+    - Nothing
+    - Basic Information (software version, os version)
+    - Crash reports (send crash reports)
+    - Detailed information (installation type, number of servers, computer memory amount)
+- Probably have some "telemetry key" to track crashes
+- This will require significant backend web programming
+- Also minor feature, allow the user to launch a shell from java or bedrock server management (bash on Linux, cmd on windows)
+
+### 1.56
+
+- Disk space analyser
+- basic mode - just see plugins %, world%, all customized. Delete option works on all
+- Advanced mode - shows each folder without customization. Delete option for specific files or specific subdirectories
+- For each, it will be a bar chart using a unique character for each subfolder. 
+- Possibly summary view as well which is more visual
+
+### 1.57
+
+- Versioning reform
+- Customized settings screen for each version of Minecraft
+- Sort releases/snapshots/experiments when doing version listings
+
+### Far future / unplanned
+
 - Add bungeecord and Velocity support
 - Add inventory viewer or player data editor
-- Add disk space analyzer
-- Autorestart file
-- Code of conduct manager
-- Backup profiles?
