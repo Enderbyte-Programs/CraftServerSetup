@@ -202,7 +202,7 @@
         rm -rf output
     fi
     mkdir output
-    cp scripts/linux_universal_installer.sh output
+    cp scripts/linux_quick_installer.sh output
     mv craftserversetup.tar.xz output
     mv craftserversetup.deb output
     cp universalwindowsinstaller/bin/Debug/CraftServerSetup-Universal-Installer.exe.exe output/WindowsUniversalInstaller.exe
