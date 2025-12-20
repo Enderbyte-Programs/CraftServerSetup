@@ -2,7 +2,7 @@
 craftserversetup.tar.xz
 *.deb
 *.zst
-deb/usr/
+deb/
 dev/
 dist/
 *.pyc

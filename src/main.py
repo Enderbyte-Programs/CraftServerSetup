@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54.4"
+APP_UF_VERSION = "1.54.5"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025, some rights reserved")
 
@@ -103,6 +103,7 @@ import dirstack                 #pushd/popd
 import renaminghandler          #MC rename namdler
 import texteditor               #Text editor handler
 import logutils                 #Load logs
+import bedrocklinks             #Load bedrock files
 
 del WINDOWS
 del DEBUG
@@ -776,31 +777,10 @@ def setup_bedrock_server(stdscr):
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
     p = cursesplus.ProgressBar(stdscr,10,cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.BOTTOM,message="Setting up bedrock server")
     p.step("Getting download information")
-    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "bedrock" in g]
-    link_win_normal = get_by_list_contains(availablelinks,"win/")
-    link_lx_normal = get_by_list_contains(availablelinks,"linux/")
-    link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
-    link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
-    if ON_WINDOWS:
-        availablelinks = [link_win_normal,link_win_preview]
-    else:
-        availablelinks = [link_lx_normal,link_lx_preview]
+    dlinfo = bedrocklinks.ui_download_bedrock_software(stdscr,p,S_INSTALL_DIR)
     
-    l2d = availablelinks[uicomponents.menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
-    p.step("Downloading server file")
-    urllib.request.urlretrieve(l2d,S_INSTALL_DIR+"/server.zip")
-    p.step("Extracting server file")
-    dirstack.pushd(S_INSTALL_DIR)#Make install easier
-    zf = zipfile.ZipFile(S_INSTALL_DIR+"/server.zip")
-    zf.extractall(S_INSTALL_DIR)
-    zf.close()
-    p.step("Removing excess files")
-    os.remove(S_INSTALL_DIR+"/server.zip")
-    p.step("Preparing exec")
-    if not ON_WINDOWS:
-        os.chmod(S_INSTALL_DIR+"/bedrock_server",0o777)
-    
-    
+    l2d:str = dlinfo[0]
+
     sd = {
         "name" : servername,
         "javapath" : "",
@@ -817,7 +797,7 @@ def setup_bedrock_server(stdscr):
         },
         "script" : S_INSTALL_DIR+"/bedrock_server",
         "linkused" : l2d,
-        "ispreview" : l2d == link_lx_preview or l2d == link_win_preview
+        "ispreview" : dlinfo[1]
     }
     try:
         shutil.copyfile(ASSETSDIR+"/defaulticon.png",S_INSTALL_DIR+"/server-icon.png")
@@ -834,7 +814,7 @@ def setup_bedrock_server(stdscr):
     bedrock_manage_server(stdscr,servername,appdata.APPDATA["servers"].index(sd)+1)
 
 def bedrock_do_update(stdscr,chosenserver,availablelinks):
-    l2d = availablelinks[uicomponents.menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
+    l2d = bedrocklinks.get_links()[uicomponents.menu(stdscr,["Latest Version","Latest Preview Version"],"Please select a version")]
     #Remember: Don't overwrite server.properties or allowlist.json
     p = cursesplus.ProgressBar(stdscr,5)
     cursesplus.displaymsg(stdscr,["Updating server","Please be patient."],False)
@@ -879,15 +859,8 @@ def bedrock_do_update(stdscr,chosenserver,availablelinks):
 def bedrock_manage_server(stdscr,servername,chosenserver):
     curver = appdata.APPDATA["servers"][chosenserver-1]["linkused"]
     cursesplus.displaymsg(stdscr,["Checking for Bedrock updates"],False)
-    availablelinks = [g for g in extract_links_from_page(requests.get("https://www.minecraft.net/en-us/download/server/bedrock",headers={"User-Agent":MODRINTH_USER_AGENT}).text) if "bedrock" in g]
-    link_win_normal = get_by_list_contains(availablelinks,"win/")
-    link_lx_normal = get_by_list_contains(availablelinks,"linux/")
-    link_win_preview = get_by_list_contains(availablelinks,"win-preview/")
-    link_lx_preview = get_by_list_contains(availablelinks,"linux-preview/")
-    if ON_WINDOWS:
-        availablelinks = [link_win_normal,link_win_preview]
-    else:
-        availablelinks = [link_lx_normal,link_lx_preview]
+    
+    availablelinks = bedrocklinks.get_links()
     
     if appdata.APPDATA["servers"][chosenserver-1]["ispreview"]:
         sel = 1
@@ -895,6 +868,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
         sel = 0
         
     latestlink = availablelinks[sel]
+    #cursesplus.messagebox.showinfo(stdscr,[latestlink,curver])
     if curver != latestlink:
         if cursesplus.messagebox.askyesno(stdscr,["A bedrock update has been detected.","If you don't install it, devices can't connect.","Do you want to install this update?"]):
             bedrock_do_update(stdscr,chosenserver,availablelinks)
@@ -1340,12 +1314,6 @@ def prune_servers():
     dirstack.pushd(SERVERSDIR)
     appdata.APPDATA["servers"] = [a for a in appdata.APPDATA["servers"] if os.path.isdir(a["dir"])]
     #Look for unregistered directories
-    serverdirs = [f for f in os.listdir(SERVERSDIR) if os.path.isdir(f)]
-    registereddirs = [a["dir"] for a in appdata.APPDATA["servers"]]
-    for serverdir in serverdirs:
-        if not serverdir in registereddirs:
-            if not os.path.isfile(serverdir+"/exdata.json") and not os.path.isfile(serverdir+"/server.properties"):
-                shutil.rmtree(serverdir)
     dirstack.popd()
     appdata.updateappdata()
 
@@ -1707,7 +1675,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
                         cursesplus.messagebox.showerror(stdscr,["This plugin does not have a config file"])
 
 def generate_script(svrdict: dict) -> str:
-    if svrdict["software"] == 0:
+    if svrdict["software"] == 5:
         if ON_WINDOWS:
             __SCRIPT__ = svrdict["dir"]+"/bedrock_server.exe"
         else:
@@ -3278,7 +3246,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
     
     if appdata.APPDATA["settings"]["transitions"]["value"]:
         cursesplus.transitions.vertical_bars(stdscr)
-    if appdata.APPDATA["servers"][chosenserver-1]["software"] == 0:
+    if appdata.APPDATA["servers"][chosenserver-1]["software"] == 5:
         bedrock_manage_server(stdscr,_sname,chosenserver)
         return
     #Manager server
