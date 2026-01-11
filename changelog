@@ -1,3 +1,5 @@
+1.54.6:
+- Remove telemetry (for now)
 1.54.5:
 - Correct serious bug where some areas would treat server software = 0 to mean bedrock, others Unknown
 - Fix bedrock link getting algorithm

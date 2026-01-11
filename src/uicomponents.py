@@ -41,12 +41,11 @@ def menu(stdscr,options:list[str],title="Please choose an option from the list b
             else:
                 col = cursesplus.WHITE
             if not oi == selected-offset:
-                stdscr.addstr(oi+3,7,op,cursesplus.set_colour(cursesplus.BLACK,col))
+                stdscr.addstr(oi+3,7,utils.smart_trim_text(op,mx - 8),cursesplus.set_colour(cursesplus.BLACK,col))
             else:
-                stdscr.addstr(oi+3,7,op,cursesplus.set_colour(cursesplus.BLACK,col) | curses.A_UNDERLINE | curses.A_BOLD)
+                stdscr.addstr(oi+3,7,utils.smart_trim_text(op,mx - 8),cursesplus.set_colour(cursesplus.BLACK,col) | curses.A_UNDERLINE | curses.A_BOLD)
             oi += 1
         stdscr.addstr(selected+3-offset,1,"-->")
-        stdscr.addstr(selected+3-offset,maxl+9,"<--")
         stdscr.addstr(oi+3,0,"━"*(mx-1))
         if offset > 0:
             stdscr.addstr(3,maxl+15,f"{offset} options above")
@@ -81,7 +80,7 @@ def crssinput(stdscr,
     prompt: str,
     lines: int = 1,
     maxlen: int = 0,
-    passwordchar: str = None,
+    passwordchar: str = None,#type:ignore
     retremptylines: bool = False,
     prefiltext: str = "",
     bannedcharacters: str = "") -> str:

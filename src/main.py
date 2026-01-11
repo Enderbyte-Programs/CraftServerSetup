@@ -2,9 +2,9 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54.5"
+APP_UF_VERSION = "1.54.6"
 #The semver version
-print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2025, some rights reserved")
+print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
 ### Standard Library Imports ###
 
@@ -255,17 +255,7 @@ def safe_exit(code):
     sys.exit(code)
 
 def send_telemetry():
-    rdx = {
-        "OperatingSystem" : platform.platform(),
-        "ServerCount" : len(appdata.APPDATA["servers"]),
-        "IsActivated" : False,#This system has got to go... Some day...
-        "ApplicationVersion" : APP_UF_VERSION
-        }
-    #cursesplus.textview(_SCREEN,text=str(rdx))
-    try:
-        r = requests.post("http://enderbyteprograms.net:11111/craftserversetup/call",data=str(json.dumps(rdx)),headers={"Content-Type":"application/json"})
-    except:
-        pass
+    pass#This feature has been disabled
 
 def parse_size(data: int) -> str:
     result:str = ""
@@ -1461,7 +1451,7 @@ def modrinth_api_seach_and_download(stdscr,modfolder,serverversion,searchq,limit
                         if serverversion in item["game_versions"] or not lenset["enforce-version"]:
                             finald.append(item)
                             final.append(f"{item['name']} ({item['version_type']})")
-                    filed = cursesplus.coloured_option_menu(stdscr,["Cancel"]+final,"Please choose a version to download")
+                    filed = uicomponents.menu(stdscr,["Cancel"]+final,"Please choose a version to download")
                     if filed == 0:
                         continue
                     primad = [d for d in finald[filed-1]["files"] if d["primary"]][0]
@@ -1597,7 +1587,7 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
             return
         elif spldi == 1:
             #add mod
-            minstype = cursesplus.coloured_option_menu(stdscr,["Back","Install from file on this computer","Download from Modrinth","Download from Spigot"])
+            minstype = uicomponents.menu(stdscr,["Back","Install from file on this computer","Download from Modrinth","Download from Spigot"])
             if minstype == 1:
                 modfiles = cursesplus.filedialog.openfilesdialog(stdscr,"Please choose the plugins you would like to add",[["*.jar","JAR Executables"],["*","All files"]])
                 for modfile in modfiles:
@@ -4272,7 +4262,7 @@ def import_amc_server(stdscr,chlx):
         cursesplus.messagebox.showerror(stdscr,["An error occured importing your server.",str(e)])
 
 def choose_server_memory_amount(stdscr) -> str:
-    chop = cursesplus.coloured_option_menu(
+    chop = uicomponents.menu(
         stdscr,
         [
             "1024 Megabytes (1 GB) - This is minimum for vanilla servers only",

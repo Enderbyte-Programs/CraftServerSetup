@@ -20,7 +20,7 @@ def startup():
     execdir = os.path.dirname(os.path.abspath(ogpath))
     _isportable = False
 
-    argparser = argparse.ArgumentParser("CraftServerSetup",description="A TUI Minecraft Server maker and manager. Run without arguments for a standard interactive experience.",epilog="(c) 2023-2025 Enderbyte programs, some rights reserved. For support, please email enderbyte09@gmail.com")
+    argparser = argparse.ArgumentParser("CraftServerSetup",description="A TUI Minecraft Server maker and manager. Run without arguments for a standard interactive experience.",epilog="(c) 2023-2026 Enderbyte programs, some rights reserved. For support, please email enderbyte09@gmail.com")
     argparser.add_argument('importfile',nargs="?",default="",help="An exported server to import if you want to import")
     argparser.add_argument('-p','--portable',action="store_true",required=False,help="Run CraftServerSetup self-contained",dest="p",default=False)
     argparser.add_argument('-d','--developer',action="store_true",required=False,help="Enable debug features",dest="d",default=False)
