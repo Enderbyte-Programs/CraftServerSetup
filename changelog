@@ -2,6 +2,7 @@
 - Bufixes
 - Add server ID to view server info screen
 - Remove direct internet connection requirement
+- Remake windows update system to not be dependent on update.txt. This will be the last update to accept update.txt
 1.54.6:
 - Remove telemetry (for now)
 - bugfix
