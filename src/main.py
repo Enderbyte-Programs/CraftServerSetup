@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54.6"
+APP_UF_VERSION = "1.54.7"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -70,6 +70,7 @@ if not WINDOWS:#Windows edition will package libraries already
         
 else:
     DEBUG = False
+
 #Third party libraries below here
 import cursesplus               #Terminal Display Control
 from cursesplus import CheckBoxItem
@@ -137,13 +138,6 @@ def sigint(signal,frame):
         message.append(f"Your {len(SERVER_INITS.items())} running servers will be stopped")
     if cursesplus.messagebox.askyesno(_SCREEN,message):
         safe_exit(0)
-
-def internet_on():
-    try:
-        urllib.request.urlopen('http://google.com', timeout=10)
-        return True
-    except:
-        return False
 
 def assemble_package_file_path(serverdir:str):
     return TEMPDIR+"/packages-spigot-"+serverdir.replace("\\","/").split("/")[-1]+".json"
@@ -1695,6 +1689,7 @@ def update_s_software_postinit(PACKAGEDATA:dict,chosenserver:int):
 def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     stdscr.erase()
+    VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
     downloadversion = uicomponents.menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
     if downloadversion == 0:
         return
@@ -3347,6 +3342,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.addstr(4,0,"Server Size")
             stdscr.addstr(5,0,"Moddable server?")
             stdscr.addstr(6,0,"Number of Plugins")
+            stdscr.addstr(7,0,"Server ID")
             stdscr.refresh()
             sdat = appdata.APPDATA["servers"][chosenserver-1]
             stdscr.addstr(0,20,sdat["name"])
@@ -3359,7 +3355,8 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.refresh()
             stdscr.addstr(5,20,["Yes" if sdat["moddable"] else "No"][0])
             stdscr.addstr(6,20,str(len(glob.glob(SERVER_DIR+"/plugins/*.jar")) if os.path.isdir(SERVER_DIR+"/plugins") else "N/A"))
-            stdscr.addstr(7,0,"Press any key to continue",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
+            stdscr.addstr(7,20,str(sdat["id"]))
+            stdscr.addstr(8,0,"Press any key to continue",cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
             stdscr.refresh()
             stdscr.getch()
         elif w == 11:
@@ -4161,19 +4158,27 @@ def compare_versions(version1, version2):
     return 0
 
 def windows_update_software(stdscr,interactive=True):
+
     if interactive:
         cursesplus.displaymsg(stdscr,["Checking for updates"],False)
-    td = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/refs/heads/main/update.txt").text
-    tdz = td.split("|")
-    svr = tdz[1]
-    url = tdz[0]
-    if compare_versions(svr,APP_UF_VERSION) == 1:
-        #NUA
-        if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{svr} over {APP_UF_VERSION}","Would you like to install it?"]):
-            cursesplus.displaymsg(stdscr,["Downloading new update..."],False)
-            urllib.request.urlretrieve(url,os.path.expandvars("%TEMP%/crssupdate.exe"))
+    
+    lastreleaseinfo = requests.get("https://api.github.com/repos/Enderbyte-Programs/CraftServerSetup/releases/latest").json()
+    foundurl = None
+    ver = lastreleaseinfo["tag_name"]
+
+    if compare_versions(ver.replace("v",""),APP_UF_VERSION.replace("v","")) == 1:
+
+        for releaseasset in lastreleaseinfo["assets"]:
+
+            url = releaseasset["browser_download_url"]
+            if "installer" in url and url.endswith("exe"):
+                foundurl = url
+
+        if foundurl is not None:
+            urllib.request.urlretrieve(foundurl,os.path.expandvars("%TEMP%/crssupdate.exe"))
             os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
-            sys.exit()
+        else:
+            cursesplus.messagebox.showerror(stdscr,["No suitable release asset could be found.","Please report this to devs AT ONCE"])
     else:
         if interactive:
             cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
@@ -4717,13 +4722,9 @@ def main(stdscr):
     curses.curs_set(0)
     try:
         cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
-        stdscr.addstr(0,0,"Waiting for internet connection...")
-        stdscr.refresh()
         cursesplus.utils.hidecursor()
         issue = False
-        if not internet_on():
-            cursesplus.messagebox.showerror(stdscr,["No internet connection could be found.","An internet connection is required to run this program."],colour=True)
-        #cursesplus.messagebox.showerror(stdscr,[str(_transndt)])
+        
         if _transndt:
             urllib.request.urlretrieve("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/main/src/translations.toml",APPDATADIR+"/translations.toml")
             eptranslate.load(APPDATADIR+"/translations.toml")
@@ -4758,7 +4759,7 @@ def main(stdscr):
             inc = 0
             for server in appdata.APPDATA["servers"]:
                 if server["id"] == AUTOMANAGE_ID:
-                    manage_server(stdscr,server["name"],inc)
+                    manage_server(stdscr,server["name"],inc+1)#chosenserver-1 used... sorry
                     _scc = True
                     break
 
@@ -4771,7 +4772,7 @@ def main(stdscr):
             for server in appdata.APPDATA["servers"]:
                 if server["id"] == AUTOSTART_ID:
                     os.chdir(server["dir"])
-                    start_server(stdscr,server["name"],inc,server["dir"])
+                    start_server(stdscr,server["name"],inc+1,server["dir"])
                     _scc = True
                     break
 
