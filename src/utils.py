@@ -16,3 +16,13 @@ def smart_trim_text(s:str,towhatlength:int) -> str:
     else:
         #Trimming is needed
         return s[0:towhatlength-4]+"..."
+    
+def collapse_list(l:list):
+    t = []
+    for irtem in l:
+        if type(irtem) == list:
+            t.extend(collapse_list(irtem))#type:ignore
+        else:
+            t.append(irtem)
+
+    return t

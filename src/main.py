@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54.7"
+APP_UF_VERSION = "1.54.8"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -494,23 +494,25 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
     return PACKAGEDATA
 
 def download_paper_software(stdscr,serverdir) -> dict:
-    VMAN = requests.get("https://api.papermc.io/v2/projects/paper").json()
+    VMAN = requests.get("https://fill.papermc.io/v3/projects/paper").json()
     stdscr.erase()
-    pxver = list(reversed(VMAN["versions"]))[uicomponents.menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
-    BMAN = requests.get(f"https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds").json()
-    buildslist = list(reversed(BMAN["builds"]))
+    versiongroup = list(VMAN["versions"].values())[uicomponents.menu(stdscr,list(VMAN["versions"]),"Please choose a version group")]
+    pxver = versiongroup[uicomponents.menu(stdscr,versiongroup,"Please choose a version")]
+    buildslist = requests.get(f"https://fill.papermc.io/v3/projects/paper/versions/{pxver}/builds").json()
+    #buildslist = list(BMAN["builds"])
     
-    if cursesplus.messagebox.askyesno(stdscr,["Would you like to install the latest build of Paper","It is highly recommended to do so"]):
+    if cursesplus.messagebox.askyesno(stdscr,["Would you like to update to the latest build of Paper","It is highly recommended to do so"]):
         builddat = buildslist[0]
     else:
         stdscr.erase()
-        builddat = buildslist[uicomponents.menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
-    bdownload = f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
-    #cursesplus.displaymsg(stdscr,[f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+        builddat = buildslist[uicomponents.menu(stdscr,[str(p["id"]) + " ("+p["time"]+")" for p in buildslist])]
+    #bdownload = f'https://fill.papermc.io/v3/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+    bdownload = list(builddat["downloads"].values())[0]["url"]
+    #cursesplus.displaymsg(stdscr,[f'https://fill.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     cursesplus.displaymsg(stdscr,["Downloading server file"],False)
     
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
-    PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
+    PACKAGEDATA = {"id":pxver}
     return PACKAGEDATA
 
 def download_purpur_software(stdscr,serverdir) -> dict:
@@ -1751,25 +1753,27 @@ def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
 def update_paper_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     stdscr.erase()
-    VMAN = requests.get("https://api.papermc.io/v2/projects/paper").json()
+    VMAN = requests.get("https://fill.papermc.io/v3/projects/paper").json()
     stdscr.erase()
-    pxver = list(reversed(VMAN["versions"]))[uicomponents.menu(stdscr,list(reversed(list(VMAN["versions"]))),"Please choose a version")]
-    BMAN = requests.get(f"https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds").json()
-    buildslist = list(reversed(BMAN["builds"]))
+    versiongroup = list(VMAN["versions"].values())[uicomponents.menu(stdscr,list(VMAN["versions"]),"Please choose a version group")]
+    pxver = versiongroup[uicomponents.menu(stdscr,versiongroup,"Please choose a version")]
+    buildslist = requests.get(f"https://fill.papermc.io/v3/projects/paper/versions/{pxver}/builds").json()
+    #buildslist = list(BMAN["builds"])
     
     if cursesplus.messagebox.askyesno(stdscr,["Would you like to update to the latest build of Paper","It is highly recommended to do so"]):
         builddat = buildslist[0]
     else:
         stdscr.erase()
-        builddat = buildslist[uicomponents.menu(stdscr,[str(p["build"]) + " ("+p["time"]+")" for p in buildslist])]
-    bdownload = f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
-    #cursesplus.displaymsg(stdscr,[f'https://api.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
+        builddat = buildslist[uicomponents.menu(stdscr,[str(p["id"]) + " ("+p["time"]+")" for p in buildslist])]
+    #bdownload = f'https://fill.papermc.io/v3/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'
+    bdownload = list(builddat["downloads"].values())[0]["url"]
+    #cursesplus.displaymsg(stdscr,[f'https://fill.papermc.io/v2/projects/paper/versions/{pxver}/builds/{builddat["build"]}/downloads/{builddat["downloads"]["application"]["name"]}'])
     stdscr.clear()
     stdscr.addstr(0,0,"Downloading file...")
     stdscr.refresh()
     rm_server_jar()
     urllib.request.urlretrieve(bdownload,serverdir+"/server.jar")
-    PACKAGEDATA = {"id":VMAN["versions"][VMAN["versions"].index(pxver)]}
+    PACKAGEDATA = {"id":pxver}
     update_s_software_postinit(PACKAGEDATA,chosenserver)
     cursesplus.messagebox.showinfo(stdscr,["Server is updated"])
 
