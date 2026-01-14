@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54.8"
+APP_UF_VERSION = "1.54.9"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -4178,11 +4178,14 @@ def windows_update_software(stdscr,interactive=True):
             if "installer" in url and url.endswith("exe"):
                 foundurl = url
 
-        if foundurl is not None:
-            urllib.request.urlretrieve(foundurl,os.path.expandvars("%TEMP%/crssupdate.exe"))
-            os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
-        else:
-            cursesplus.messagebox.showerror(stdscr,["No suitable release asset could be found.","Please report this to devs AT ONCE"])
+        if cursesplus.messagebox.askyesno(stdscr,["An update is available",f"{APP_UF_VERSION} -> {ver}","Would you like to install it?"]):
+
+            if foundurl is not None:
+                urllib.request.urlretrieve(foundurl,os.path.expandvars("%TEMP%/crssupdate.exe"))
+                os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
+                sys.exit()
+            else:
+                cursesplus.messagebox.showerror(stdscr,["No suitable release asset could be found.","Please report this to devs AT ONCE"])
     else:
         if interactive:
             cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
