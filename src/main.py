@@ -90,7 +90,6 @@ import arguments                #CLI arguments
 staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
 staticflags.setup_early_load(WINDOWS,DEBUG)
 
-
 from staticflags import *       #Static flags are locked at this time
 import utils                    #Textural utilities
 import appdata                  #Application data
@@ -105,6 +104,8 @@ import renaminghandler          #MC rename namdler
 import texteditor               #Text editor handler
 import logutils                 #Load logs
 import bedrocklinks             #Load bedrock files
+import softwareupdate           #Handle updates of CRSS
+import archiveutils             #zips and tars
 
 del WINDOWS
 del DEBUG
@@ -217,30 +218,6 @@ class ServerRunWrapper:
                 return False
 
 SERVER_INITS:dict[str,ServerRunWrapper] = {}
-
-def package_server_script(indir:str,outfile:str) -> int:
-    try:
-        dirstack.pushd(indir)
-        with tarfile.open(outfile,"w:xz") as tar:
-            tar.add(".")
-        dirstack.popd()
-    except:
-        return 1
-    return 0
-
-def unpackage_server(infile:str,outdir:str) -> int:
-    try:
-        if not os.path.isdir(outdir):
-            os.mkdir(outdir)
-        dirstack.pushd(outdir)
-        with tarfile.open(infile,"r:xz") as tar:
-            tar.extractall(".")
-        dirstack.popd()
-    except:
-        return 1
-    return 0
-
-### END UTILS
 
 def safe_exit(code):
     appdata.updateappdata()
@@ -408,24 +385,6 @@ def trail(ind,maxlen:int):
         return ind[0:maxlen-4]+"..."
     else:
         return ind
-
-def package_server(stdscr,serverdir:str,chosenserver:int):
-    sdata = appdata.APPDATA["servers"][chosenserver]
-    with open(serverdir+"/exdata.json","w+") as f:
-        f.write(json.dumps(sdata))
-        #Write server data into a temporary file
-    wdir=cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a folder for the output server file")
-    if os.path.isdir(wdir):
-        wxfileout=wdir+"/"+sdata["name"]+".amc"
-        nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])
-        nwait.start()
-        package_server_script(serverdir,wxfileout)
-        nwait.stop()
-        nwait.destroy()
-        #if pr != 0:
-        #    cursesplus.messagebox.showerror(stdscr,["An error occured packaging your server"])
-        os.remove(serverdir+"/exdata.json")
-        cursesplus.messagebox.showinfo(stdscr,["Server is packaged."])
 
 def download_vanilla_software(stdscr,serverdir) -> dict|None:
     cursesplus.displaymsg(stdscr,["Getting version information"],False)
@@ -892,7 +851,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             except Exception as e:
                 cursesplus.messagebox.showerror(stdscr,["There was an error managing worlds.",str(e),"A world may be corrupt."])
         elif wtd == 5:
-            package_server(stdscr,svrd,chosenserver-1)
+            archiveutils.package_server(stdscr,svrd,chosenserver-1)
         elif wtd == 4:
             bedrock_whitelist(stdscr,svrd)
         elif wtd == 1:
@@ -3335,7 +3294,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 8:
             view_server_logs(stdscr,SERVER_DIR)
         elif w == 9:
-            package_server(stdscr,SERVER_DIR,chosenserver-1)
+            archiveutils.package_server(stdscr,SERVER_DIR,chosenserver-1)
         elif w == 10:
             stdscr.erase()
             stdscr.refresh()
@@ -4143,78 +4102,13 @@ def managejavainstalls(stdscr):
 
         appdata.updateappdata()
 
-def compare_versions(version1, version2):
-    """0: Same, -1: 1 < 2. 1: 1 > 2"""
-    version1_parts = tuple(map(int, version1.split('.')))
-    version2_parts = tuple(map(int, version2.split('.')))
-
-    for v1, v2 in zip(version1_parts, version2_parts):
-        if v1 < v2:
-            return -1
-        elif v1 > v2:
-            return 1
-
-    if len(version1_parts) < len(version2_parts):
-        return -1
-    elif len(version1_parts) > len(version2_parts):
-        return 1
-
-    return 0
-
-def windows_update_software(stdscr,interactive=True):
-
-    if interactive:
-        cursesplus.displaymsg(stdscr,["Checking for updates"],False)
-    
-    lastreleaseinfo = requests.get("https://api.github.com/repos/Enderbyte-Programs/CraftServerSetup/releases/latest").json()
-    foundurl = None
-    ver = lastreleaseinfo["tag_name"]
-
-    if compare_versions(ver.replace("v",""),APP_UF_VERSION.replace("v","")) == 1:
-
-        for releaseasset in lastreleaseinfo["assets"]:
-
-            url = releaseasset["browser_download_url"]
-            if "installer" in url and url.endswith("exe"):
-                foundurl = url
-
-        if cursesplus.messagebox.askyesno(stdscr,["An update is available",f"{APP_UF_VERSION} -> {ver}","Would you like to install it?"]):
-
-            if foundurl is not None:
-                urllib.request.urlretrieve(foundurl,os.path.expandvars("%TEMP%/crssupdate.exe"))
-                os.startfile(os.path.expandvars("%TEMP%/crssupdate.exe"))
-                sys.exit()
-            else:
-                cursesplus.messagebox.showerror(stdscr,["No suitable release asset could be found.","Please report this to devs AT ONCE"])
-    else:
-        if interactive:
-            cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
-
-def show_changelog_info(stdscr):
-    """Display the latest changelog info"""
-    cursesplus.displaymsg(stdscr,["Getting Info"],wait_for_keypress=False)
-    changeloginfo = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/raw/refs/heads/main/changelog").text
-    final = []
-    for ln in changeloginfo.splitlines():
-        if ln.replace(" ","") == "":
-            continue
-        if ln.startswith("-") or ln.startswith(" "):
-            #Info
-            final.append(ln)
-        else:
-            final.append("")
-            final.append("")
-            final.append(f"Added in {ln}")
-            
-    cursesplus.textview(stdscr,text="\n".join(final),message="Changelog Info")
-
 def import_amc_server(stdscr,chlx):
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
     nwait.start()
     smd5 = file_get_md5(chlx)
     if os.path.isdir(f"{TEMPDIR}/{smd5}"):
         shutil.rmtree(f"{TEMPDIR}/{smd5}")
-    s = unpackage_server(chlx,f"{TEMPDIR}/{smd5}")
+    s = archiveutils.unpackage_server(chlx,f"{TEMPDIR}/{smd5}")
     nwait.stop()
     if s != 0:
         cursesplus.messagebox.showerror(stdscr,["An error occured unpacking your server"])
@@ -4598,67 +4492,6 @@ Software used in the making of this program:
 
     """,message="CREDITS")
 
-def do_linux_update(stdscr,interactive=True) -> bool:
-    if os.path.isfile("/usr/lib/craftserversetup/updateblock"):
-        cursesplus.messagebox.showerror(stdscr,["You are using a debian or arch install setup","Please download the latest version from GitHub"])
-        return False
-    try:
-        if interactive:
-            cursesplus.displaymsg(stdscr,["Querrying updates"],False)
-        r = requests.get("https://github.com/Enderbyte-Programs/CraftServerSetup/releases/latest")
-        mostrecentreleasedversion = r.url.split("/")[-1][1:]
-        if compare_versions(mostrecentreleasedversion,APP_UF_VERSION) == 1:
-            #New update
-            if cursesplus.messagebox.askyesno(stdscr,["There is a new update available.",f"{mostrecentreleasedversion} over {APP_UF_VERSION}","Would you like to install it?"]):
-                if not os.path.isfile("/usr/lib/craftserversetup/deb"):
-                    cursesplus.displaymsg(stdscr,["Downloading new update"],False)
-                    downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.tar.xz"
-                    if os.path.isdir("/tmp/crssupdate"):
-                        shutil.rmtree("/tmp/crssupdate")
-                    os.mkdir("/tmp/crssupdate")
-                    urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.tar.xz")
-                    cursesplus.displaymsg(stdscr,["Installing update"],False)
-                    if unpackage_server("/tmp/crssupdate/craftserversetup.tar.xz","/tmp/crssupdate") == 1:
-                        cursesplus.messagebox.showerror(stdscr,["There was an error unpacking the update"])
-                        return False
-                    dirstack.pushd("/tmp/crssupdate")
-                    if os.path.isfile("/usr/bin/craftserversetup"):
-                        #admin
-                        spassword = uicomponents.crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
-                        with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                            r = subprocess.call(f"echo -e \"{spassword}\" | sudo -S -k python3 /tmp/crssupdate/installer install",stdout=std0,stderr=std0,shell=True)
-                    else:
-                        with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                            r = subprocess.call(["python3","/tmp/crssupdate/installer","install"],stdout=std0,stderr=std0)
-                    dirstack.popd()
-                    if r == 0:
-                        return True
-                    else:
-                        cursesplus.messagebox.showwarning(stdscr,["Update failed.","Check /tmp/crssupdate/UPDATELOG.txt"])
-                    
-                    # Equivilant of tar -xf
-                else:
-                    #Attempt deb install
-                    cursesplus.displaymsg(stdscr,["Downloading new update"],False)
-                    downloadurl = f"https://github.com/Enderbyte-Programs/CraftServerSetup/releases/download/v{mostrecentreleasedversion}/craftserversetup.deb"
-                    if os.path.isdir("/tmp/crssupdate"):
-                        shutil.rmtree("/tmp/crssupdate")
-                    os.mkdir("/tmp/crssupdate")
-                    urllib.request.urlretrieve(downloadurl,"/tmp/crssupdate/craftserversetup.deb")
-                    cursesplus.displaymsg(stdscr,["Installing update"],False)
-                    spassword = uicomponents.crssinput(stdscr,"Please input your sudo password so CraftServerSetup can be updated",passwordchar="#")
-                    with open("/tmp/crssupdate/UPDATELOG.txt","w+") as std0:
-                        r = subprocess.call(f"echo -e \"{spassword}\n\" | sudo -S -k dpkg -i /tmp/crssupdate/craftserversetup.deb",stdout=std0,stderr=std0,shell=True)
-
-            else:
-                return False#Quit by user preference
-        else:
-            if interactive:
-                cursesplus.messagebox.showinfo(stdscr,["No new updates are available"])
-            return False#Quit because no update
-    except:
-        cursesplus.messagebox.showerror(stdscr,["There was an error applying an update"])
-        return False#Quit because errpr
 
 def devtools(stdscr):
     
@@ -4698,23 +4531,6 @@ def devtools(stdscr):
 
 def internet_thread(stdscr):
     init_idata(stdscr)
-
-def update_menu(stdscr):
-    global UPDATEINSTALLED
-    while True:
-        m = uicomponents.menu(stdscr,["Back","Check for Updates","View Changelog"])
-        if m == 0:
-            break
-        elif m == 1:
-            if ON_WINDOWS:
-                windows_update_software(stdscr)
-                return
-            #OLD UPDATE MAY BE REMOVED IN 0.18.3
-            if do_linux_update(stdscr):
-                UPDATEINSTALLED = True
-                return
-        elif m == 2:
-            show_changelog_info(stdscr)
 
 def main(stdscr):
     global VERSION_MANIFEST
@@ -4808,10 +4624,10 @@ def main(stdscr):
 
         if appdata.APPDATA["settings"]["autoupdate"]["value"]:
             if ON_WINDOWS:
-                windows_update_software(stdscr,False)
+                softwareupdate.windows_update_software(stdscr,False)
             #OLD UPDATE MAY BE REMOVED IN 0.18.3
             else:
-                if do_linux_update(stdscr,False):
+                if softwareupdate.do_linux_update(stdscr,False):
                     UPDATEINSTALLED = True
                     return
         while True:
@@ -4841,7 +4657,7 @@ def main(stdscr):
                         cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
                         continue
                     else:
-                        update_menu(stdscr)
+                        softwareupdate.update_menu(stdscr)
                 elif m == 4:
                     webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
                     cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
