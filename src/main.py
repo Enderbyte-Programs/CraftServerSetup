@@ -91,7 +91,6 @@ staticflags.setup_ua(APP_UF_VERSION,APP_VERSION)
 staticflags.setup_early_load(WINDOWS,DEBUG)
 
 from staticflags import *       #Static flags are locked at this time
-import utils                    #Textural utilities
 import appdata                  #Application data
 import autorestart              #Server auto restart
 import timedexec                #Cursesplus timeout
@@ -108,6 +107,7 @@ import softwareupdate           #Handle updates of CRSS
 import archiveutils             #zips and tars
 import logfilters               #Log filtering
 import logloader                #V2 log loader
+import chatutils                #Who said what
 
 del WINDOWS
 del DEBUG
@@ -1771,8 +1771,6 @@ class CommandExecution:
     def __str__(self):
         return f"{self.when} {self.issuer}{' '*(16-len(self.issuer))} {self.commandstr}"
     
-def is_logentry_a_command(l:logutils.LogEntry) -> bool:
-    return len(re.findall(r"[a-zA-Z0-9_]+\sissued server command: .*",l.data)) > 0
 
 def recursive_list_startswith(searcher:str,items:list[str]) -> bool:
     for s in items:
@@ -1781,16 +1779,13 @@ def recursive_list_startswith(searcher:str,items:list[str]) -> bool:
     return False
 
 def command_execution_auditing(stdscr,serverdir:str):
-    if resource_warning(stdscr):
+    if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
     
-    orderedlogs = logutils.load_server_logs(stdscr,serverdir)
-    finalcmds:list[CommandExecution] = []
+    orderedlogs = logloader.load_logs(stdscr,serverdir,logfilters.is_logentry_a_command)
     cursesplus.displaymsg(stdscr,["Finding Commands"],False)
-    for entry in orderedlogs:
-        if is_logentry_a_command(entry):
-            finalcmds.append(CommandExecution.fromraw(entry))
+    finalcmds:list[CommandExecution] = [CommandExecution.fromraw(e) for e in orderedlogs]
             
     while True:
         wtd = uicomponents.menu(stdscr,["BACK","View Command History","Commands by Player","Commands by Text","Find command discrepancies","Graph by Player","Graph by command","Player command profile"])
@@ -1874,7 +1869,7 @@ def view_server_logs(stdscr,server_dir:str):
             dirstack.popd()
             return
         elif wtd == 1:
-            logs = logutils.load_server_logs(stdscr,server_dir)
+            logs = logloader.load_logs(stdscr,server_dir)
             
             finaltext = ""
             for entry in logs:
@@ -1897,12 +1892,10 @@ def view_server_logs(stdscr,server_dir:str):
                     wtd = uicomponents.menu(stdscr,["Cancel","View all of log","Chat logs only"])
                     if wtd == 1:
                         cursesplus.textview(stdscr,text=data,message=f"Viewing {cl}")
-                    elif wtd == 3:
-                        who_said_what(stdscr,server_dir)
                     else:
                         cursesplus.textview(stdscr,text="\n".join([d for d in data.splitlines() if logutils.is_log_line_a_chat_line(d)]))
         elif wtd == 3:
-            who_said_what(stdscr,server_dir)
+            chatutils.who_said_what(stdscr,server_dir)
         elif wtd == 4:
             command_execution_auditing(stdscr,server_dir)
                 
@@ -2085,127 +2078,6 @@ def startup_options(stdscr,serverdata:dict):
             cursesplus.textview(stdscr,text=serverdata["script"],message="Server startup script")
         elif wtd == 6:
             serverdata = autorestart.autorestart_settings(stdscr,serverdata)
-            
-
-def strict_word_search(haystack:str,needle:str) -> bool:
-    #PHP
-    words = haystack.split(" ")
-    return needle in words
-
-def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
-    cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
-    logfile = serverdir + "/logs"
-    if not os.path.isdir(logfile):
-        return []
-    dirstack.pushd(logfile)
-    logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
-    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    final:list[str] = []
-    for lf in logs:
-        p.step(lf)
-        if lf.endswith(".gz"):
-            with open(lf,'rb') as f:
-                final.extend(re.findall(tofind,gzip.decompress(f.read()).decode()))
-        else:
-            with open(lf) as f:
-                final.extend(re.findall(tofind,f.read()))
-    return final
-
-
-
-class ChatEntry:
-    logtime:datetime.datetime
-    playername:str
-    destination:str|None = None#Only used if targetted message
-    message:str
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def from_logentry(l:logutils.LogEntry):
-        r = ChatEntry()
-        r.logtime = l.get_full_log_time()
-        r.playername = l.playername.lower()
-        rawmessage:str = l.data
-
-        is_targetted = "issued server command" in rawmessage.lower()#Spigot/paper servers only
-        if not is_targetted:
-            r.message = rawmessage.split(l.playername)[1][1:]
-        else:
-            try:
-                cmdsection = rawmessage.split("issued server command: ")[1]
-                target = cmdsection.split(" ")[1]
-                r.destination = target
-                r.message = f"--> {r.destination}  "+" ".join(cmdsection.split(" ")[2:])
-                pass
-            except:
-                r.message = rawmessage#If it fails, use the raw data
-                
-        return r
-    
-    def get_parsed_date(self) -> str:
-        #Return a friendly date
-        return self.logtime.strftime("%Y-%m-%d %H:%M:%S")
-
-def who_said_what(stdscr,serverdir):
-    if resource_warning(stdscr):
-        return
-    renaminghandler.autoupdate_cache(stdscr,serverdir)
-    #allentries = logutils.load_server_logs(stdscr,serverdir)
-    allentries = logloader.load_logs(stdscr,serverdir,logfilters.is_log_entry_a_chat_line)#chat only
-    allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries]
-    #allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries if logutils.is_log_line_a_chat_line(a.data)]
-    #allentries.sort(key=lambda x: x.logdate,reverse=False)
-    #Not needed after LSL does sorting
-    #allentries.reverse()
-    while True:
-        wtd = uicomponents.menu(stdscr,["Back","Find by what was said","Find by player","View chat history of server","View Chat Bar Graph"])
-        if wtd == 0:
-            break
-        elif wtd == 1:
-            wws = uicomponents.crssinput(stdscr,"What message would you like to search for?")
-            strict = cursesplus.messagebox.askyesno(stdscr,["Do you want to search strictly?","(Full words only)"])
-            cassen = cursesplus.messagebox.askyesno(stdscr,["Do you want to be case sensitive?"])
-            if not strict and cassen:
-                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws in a.message])
-            elif not strict and not cassen:
-                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws.lower() in a.message.lower()])
-            elif strict and cassen:
-                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if strict_word_search(a.message,wws)])
-            elif strict and not cassen:
-                ft = "\n".join([f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if strict_word_search(a.message.lower(),wws.lower())])
-            cursesplus.textview(stdscr,text=ft,message="Search Results")
-        elif wtd == 2:
-            wws = uicomponents.crssinput(stdscr,"What player would you like to search for?").lower()
-            cursesplus.textview(stdscr,text=
-                                "\n".join(
-                                list(
-                                    itertools.chain.from_iterable([
-                                            [
-                                            f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries if wws_indiv in a.playername
-                                            ] for wws_indiv in renaminghandler.get_aliases_of(wws)
-                                        ]
-                                            
-                                        )
-                                    )
-                                ),message="Search Results")
-        elif wtd == 3:
-            cursesplus.textview(stdscr,text=
-                                "\n".join(
-                                [
-                                    f"{a.get_parsed_date()} {a.playername}: {a.message}" for a in allentries
-                                ]),message="Search Results")
-        elif wtd == 4:
-            sdata = {}
-            for entry in allentries:
-                if entry.playername in sdata:
-                    sdata[entry.playername] += 1
-                else:
-                    sdata[entry.playername] = 1
-            cursesplus.bargraph(stdscr,sdata,"Most Talkative Players","Messages")
-    dirstack.popd()
-
 class FormattedIP:
     def __init__(self,a,c,p,d=datetime.datetime.now()):
         self.address:str = a
@@ -2232,12 +2104,13 @@ def formattediplist_getindexbyip(search:str,haystack:list[FormattedIP]):
     return None
 
 def ip_lookup(stdscr,serverdir):
-    if resource_warning(stdscr):
+    if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
     
     ipdir = serverdir+"/.ipindex.json.gz"
-    allentries = logutils.load_server_logs(stdscr,serverdir,False)
+    #allentries = logutils.load_server_logs(stdscr,serverdir,False)
+    allentries = logloader.load_logs(stdscr,serverdir,logfilters.ip_addresses_with_attached_player)
                 
     IPS:dict[str,list] = {}
     formattedips:list[FormattedIP] = []
@@ -2672,19 +2545,20 @@ class JsonGz:
 
 def sanalytics(stdscr,serverdir):
     
-    if resource_warning(stdscr):
+    if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
     analytics_file_path = serverdir + os.sep + "anacache.json.gz"
     cursesplus.displaymsg(stdscr,["Loading from cache..."],False)
-    readfrom = None
+    readfrom = datetime.date(2000,1,1)
     cachefile = {"end":None,"minutes":{}}
     if os.path.isfile(analytics_file_path):
         cachefile = JsonGz.read(analytics_file_path)
         if cachefile["end"] is not None:
             readfrom = get_datetime_from_minute_id(cachefile["end"])#Stores the last minuteid that it successfully processed.
     
-    allentries:list[logutils.LogEntry] = logutils.load_server_logs(stdscr,serverdir,False,readfrom)
+    #allentries:list[logutils.LogEntry] = logutils.load_server_logs(stdscr,serverdir,False,readfrom)
+    allentries = logloader.load_logs(stdscr,serverdir,logfilters.has_joinorleave,readfrom)
     earliestentrydt:datetime.date = allentries[0].logdate
     cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
     eventslist:list[JLLogFrame] = []
@@ -2990,12 +2864,6 @@ def sanalytics(stdscr,serverdir):
         elif wtd == 12:
             os.remove(analytics_file_path)
             return
-
-def resource_warning(stdscr) -> bool:
-    if appdata.APPDATA["settings"]["reswarn"]:
-        return not cursesplus.messagebox.askyesno(stdscr,["What you just selected is a high resource operation.","Continuing may affect the performance of other apps running on this device.","Are you sure you wish to proceed?"])
-    else:
-        return False
 
 def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
     if sys.version_info[1] < 11:
@@ -3417,7 +3285,7 @@ def create_uuid_index(stdscr) -> None:
     matches = []
     s1knowledgebase = {}
     for server in appdata.APPDATA["servers"]:
-        matches.extend(load_server_logs_and_find(stdscr,server['dir'],r'(UUID of player \S+ is [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(logged in as \S+ joined \(UUID: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'))
+        matches.extend(logloader.load_server_logs_and_find(stdscr,server['dir'],r'(UUID of player \S+ is [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(logged in as \S+ joined \(UUID: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'))
         #Load servers
     
     cursesplus.displaymsg(stdscr,["Parsing data..."],False)
@@ -3953,7 +3821,7 @@ def server_backups(stdscr,serverdir:str,serverdata:dict):
             dirstack.popd()
             break
         elif z == 1:
-            if resource_warning(stdscr):
+            if uicomponents.resource_warning(stdscr):
                 continue
             with open(serverdir+"/crss.json","w+") as f:
                 f.write(json.dumps(serverdata))

@@ -2,6 +2,8 @@ import appdata
 import os
 import datetime
 import json
+import logloader
+import logfilters
 import logutils
 import re
 import cursesplus
@@ -85,7 +87,7 @@ def update_cache_custom(stdscr,rawentries:list[logutils.LogEntry]):
 def autoupdate_cache(stdscr,serverdir):
 
     lastupdatetime = datetime.datetime.fromtimestamp(NC_DATA["last_updated"])
-    update_cache_custom(stdscr,logutils.load_server_logs(stdscr,serverdir,True,lastupdatetime,r"\S+ \(formerly known as \S+\)"))
+    update_cache_custom(stdscr,logloader.load_logs(stdscr,serverdir,logfilters.player_rename,lastupdatetime))
 
 def player_naming_history(stdscr):
     srch = uicomponents.crssinput(stdscr,"What player do you want to learn about?").lower()

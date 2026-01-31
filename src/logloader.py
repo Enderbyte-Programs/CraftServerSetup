@@ -7,7 +7,8 @@ import dirstack
 import zlib
 import datetime
 import logfilters
-import textwrap
+import re
+import gzip
 
 def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.LogEntry],bool] = logfilters.permit_all,min_date = datetime.date(2000,1,1),max_date = datetime.date(2100,12,31)) -> list[logutils.LogEntry]:#I will be surprised if Minecraft is still operating and this program works in 2100. I'll most likely be long dead...
     """Load the logs of the server from `serverdir`, applying the check filter function. Returned logs will be between min date and max date."""
@@ -99,3 +100,22 @@ def create_log_entry(data:str,fromfilename:str) -> logutils.LogEntry:
         )
     return logutils.LogEntry(fromfilename,ld,data)
 
+def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
+    """Find specific matches of regex, removing the rest of the log entry"""
+    cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
+    logfile = serverdir + "/logs"
+    if not os.path.isdir(logfile):
+        return []
+    dirstack.pushd(logfile)
+    logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
+    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
+    final:list[str] = []
+    for lf in logs:
+        p.step(lf)
+        if lf.endswith(".gz"):
+            with open(lf,'rb') as f:
+                final.extend(re.findall(tofind,gzip.decompress(f.read()).decode()))
+        else:
+            with open(lf) as f:
+                final.extend(re.findall(tofind,f.read()))
+    return final

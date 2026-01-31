@@ -88,3 +88,9 @@ def crssinput(stdscr,
     r = cursesplus.cursesinput(stdscr,prompt,lines,maxlen,passwordchar,retremptylines,prefiltext,bannedcharacters)
     cursesplus.utils.hidecursor()
     return r
+
+def resource_warning(stdscr) -> bool:
+    if appdata.APPDATA["settings"]["reswarn"]:
+        return not cursesplus.messagebox.askyesno(stdscr,["What you just selected is a high resource operation.","Continuing may affect the performance of other apps running on this device.","Are you sure you wish to proceed?"])
+    else:
+        return False

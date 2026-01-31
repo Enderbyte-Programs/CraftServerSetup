@@ -26,3 +26,9 @@ def collapse_list(l:list):
             t.append(irtem)
 
     return t
+
+
+def strict_word_search(haystack:str,needle:str) -> bool:
+    #PHP
+    words = haystack.split(" ")
+    return needle in words
