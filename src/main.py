@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.54.9"
+APP_UF_VERSION = "1.55"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -106,6 +106,8 @@ import logutils                 #Load logs
 import bedrocklinks             #Load bedrock files
 import softwareupdate           #Handle updates of CRSS
 import archiveutils             #zips and tars
+import logfilters               #Log filtering
+import logloader                #V2 log loader
 
 del WINDOWS
 del DEBUG
@@ -2150,8 +2152,9 @@ def who_said_what(stdscr,serverdir):
     if resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
-    allentries = logutils.load_server_logs(stdscr,serverdir)
-    allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries if logutils.is_log_entry_a_chat_line(a)]
+    #allentries = logutils.load_server_logs(stdscr,serverdir)
+    allentries = logloader.load_logs(stdscr,serverdir,logfilters.is_log_entry_a_chat_line)#chat only
+    allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries]
     #allentries.sort(key=lambda x: x.logdate,reverse=False)
     #Not needed after LSL does sorting
     #allentries.reverse()

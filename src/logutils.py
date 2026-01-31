@@ -54,9 +54,7 @@ def is_log_line_a_chat_line(line:str) -> bool:
         return True
     else:
         return False
-    
-def is_log_entry_a_chat_line(le:LogEntry) -> bool:
-    return is_log_line_a_chat_line(le.data)
+
 
 def load_server_logs(stdscr,serverdir:str,dosort=True,load_no_earlier_than:datetime.datetime=None,regex_filter="") -> list[LogEntry]:#type: ignore
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
@@ -107,3 +105,4 @@ def load_log_entries_from_raw_data(data:str,fromfilename:str) -> list[LogEntry]:
     for le in data.splitlines():
         final.append(LogEntry(fromfilename,ld,le))
     return final
+
