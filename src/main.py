@@ -2155,6 +2155,7 @@ def who_said_what(stdscr,serverdir):
     #allentries = logutils.load_server_logs(stdscr,serverdir)
     allentries = logloader.load_logs(stdscr,serverdir,logfilters.is_log_entry_a_chat_line)#chat only
     allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries]
+    #allentries:list[ChatEntry] = [ChatEntry.from_logentry(a) for a in allentries if logutils.is_log_line_a_chat_line(a.data)]
     #allentries.sort(key=lambda x: x.logdate,reverse=False)
     #Not needed after LSL does sorting
     #allentries.reverse()

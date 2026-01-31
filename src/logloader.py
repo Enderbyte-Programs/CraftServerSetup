@@ -7,6 +7,7 @@ import dirstack
 import zlib
 import datetime
 import logfilters
+import textwrap
 
 def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.LogEntry],bool] = logfilters.permit_all,min_date = datetime.date(2000,1,1),max_date = datetime.date(2100,12,31)) -> list[logutils.LogEntry]:#I will be surprised if Minecraft is still operating and this program works in 2100. I'll most likely be long dead...
     """Load the logs of the server from `serverdir`, applying the check filter function. Returned logs will be between min date and max date."""
@@ -38,12 +39,11 @@ def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.Log
     total_entries_processed = 0
     total_entries_accepted = 0
     total_entries_rejected = 0
-
     for logfile in logs:
         if logfile.endswith("log"):
             with open(logfile) as f:
-                line = f.readline()
-                while line != "":
+                for line in f:
+
                     #While we are not at EOF
                     line = line.replace("\n","").replace("\r","")
 
@@ -57,7 +57,6 @@ def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.Log
                     total_entries_accepted += 1
                     allentries.append(le)
 
-                    line = f.readline()
         else:
             #Gzip will be a bit more complex because it is a compressed file
             with open(logfile,'rb') as f:
@@ -65,6 +64,7 @@ def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.Log
                 compressionobj = zlib.decompressobj(16+zlib.MAX_WBITS)
                 keepreading = True
                 while keepreading:
+
                     nextbytes = f.read(100)#Load 100 compressed bytes at a time.
                     if len(nextbytes) < 100:
                         keepreading = False#End of file
