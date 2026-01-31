@@ -1,3 +1,9 @@
+1.55:
+- Split out archiveutils.py
+- Split out softwareupdate.py
+- Use API-based updates for windows (update.txt is now retired)
+- Split out logfilters and logloader.py
+- Seriously upgrade log loader to handle large files without eating too much memory
 1.54.9:
 - Hotfix
 1.54.8:
