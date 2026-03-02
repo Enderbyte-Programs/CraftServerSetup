@@ -1,4 +1,5 @@
 from staticflags import *
+from eptel import generate_telemetry_key
 import random
 import json
 import gzip
@@ -145,6 +146,13 @@ def compatibilize_appdata(data:dict) -> dict:
             "display" : "Autorestart timeout in seconds",
             "type" : "int",
             "value" : 30
+        }
+
+    #1.55
+    if not "telemetry" in data:
+        data["telemetry"] = {
+            "telkey" : generate_telemetry_key(),#Telemetry key for this installation
+            "level" : -1#Signal to program that it needs to show user message -NOTE: send "install" action anyway on first startup
         }
 
     return data

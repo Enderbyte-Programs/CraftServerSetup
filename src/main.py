@@ -92,6 +92,7 @@ staticflags.setup_early_load(WINDOWS,DEBUG)
 
 from staticflags import *       #Static flags are locked at this time
 import appdata                  #Application data
+import eptel                    #Telemetry
 import autorestart              #Server auto restart
 import timedexec                #Cursesplus timeout
 import uicomponents             #Custom UI components
@@ -108,9 +109,12 @@ import archiveutils             #zips and tars
 import logfilters               #Log filtering
 import logloader                #V2 log loader
 import chatutils                #Who said what
+import telemetry                #Telemetric actions + for crash handler
 
 del WINDOWS
 del DEBUG
+
+
 
 _transndt = False
 try:
@@ -226,9 +230,6 @@ def safe_exit(code):
     for server in list(SERVER_INITS.values()):
         server.safestop()
     sys.exit(code)
-
-def send_telemetry():
-    pass#This feature has been disabled
 
 def parse_size(data: int) -> str:
     result:str = ""
@@ -4310,6 +4311,8 @@ def oobe(stdscr):
     
     if not appdata.APPDATA["hasCompletedOOBE"]:       
         stdscr.clear()
+        #Mwa ha ha ha ha
+        eptel.send_action("install")
         cursesplus.displaymsg(stdscr,[t("oobe.welcome.0"),"",t("oobe.welcome.1"),t("oobe.welcome.2")])
         if not cursesplus.messagebox.askyesno(stdscr,["Do you know how to use a text-based program like this?"]):
             usertutorial(stdscr)
@@ -4447,6 +4450,9 @@ def main(stdscr):
         
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         appdata.setup_appdata()
+        #Telemetry demands special startup
+        eptel.startup(appdata.APPDATA["telemetry"]["telkey"],"CraftServerSetup",APP_UF_VERSION)
+        telemetry.telemetric_action("startup")
 
         #Breakaway point for -m and -s tasks
         _scc = False
@@ -4475,7 +4481,6 @@ def main(stdscr):
             if not _scc:
                 cursesplus.messagebox.showerror(stdscr,["Unable to find requested","direct start ID."])
         
-        #send_telemetry()
         if appdata.APPDATA["language"] is None:
             eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
             appdata.APPDATA["language"] = eptranslate.Config.choice
@@ -4492,7 +4497,6 @@ def main(stdscr):
         introsuffix = ""
         if IN_SOURCE_TREE:
             introsuffix=" | SRC mode"
-        threading.Thread(target=send_telemetry).start()
 
         if appdata.APPDATA["settings"]["autoupdate"]["value"]:
             if ON_WINDOWS:

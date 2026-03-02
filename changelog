@@ -4,6 +4,11 @@
 - Use API-based updates for windows (update.txt is now retired)
 - Split out logfilters and logloader.py
 - Seriously upgrade log loader to handle large files without eating too much memory
+- Rebuild telemetry system, there are four levels
+- Send nothing
+- Send basic (so how it was before but even simpler)
+- Send crashes (default option, will send crashses because my software is buggy and I want to know it)
+- Send detailed usage statistics
 1.54.9:
 - Hotfix
 1.54.8:
