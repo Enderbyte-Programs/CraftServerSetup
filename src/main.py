@@ -3175,7 +3175,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         elif w == 12:
             w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics","Player name history"],"Additional Utilities")
             if w2 == 1:
-                who_said_what(stdscr,SERVER_DIR)
+                chatutils.who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
                 ip_lookup(stdscr,SERVER_DIR)
             elif w2 == 3:
