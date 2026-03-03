@@ -25,7 +25,6 @@ import threading                #Start threads
 import random                   #Random number generation
 import traceback                #Error management
 import webbrowser               #Open links like the bug link
-import tarfile                  #Create archives
 import gzip                     #Compression utilities
 import time                     #Timezone data
 import copy                     #Object copies
@@ -241,13 +240,11 @@ def error_handling(e:Exception,message="A serious error has occured"):
     _SCREEN.clear()
     _SCREEN.nodelay(0)
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-    #cursesplus.messagebox.showerror(_SCREEN,[
-    #    "o3   /      We are sorry, but a serious error occured     ",
-    #    "   - |      In the next menu, you will choose some options",
-    #    "o3   \\     You should probably report this as a bug       "
-    #])
+
+    telemetry.crash_report(e)
+
     while True:
-        erz = cursesplus.optionmenu(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f"{message}. What do you want to do?")
+        erz = cursesplus.optionmenu(_SCREEN,["Exit Program","View Error info","Return to main menu","Advanced options","Report bug on GitHub"],f":( {message}. What do you want to do?")
         if erz == 0:
             safe_exit(1)
         elif erz == 1:
@@ -302,16 +299,16 @@ def safe_error_handling(e:Exception):
     raw =  f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc()
     #splitext = textwrap.wrap(raw,_SCREEN.getmaxyx()[1]-1)
     splitext = raw.splitlines()
+
+    telemetry.crash_report(e)
+
     while True:
         _SCREEN.clear()
         my,mx = _SCREEN.getmaxyx()
-        cursesplus.utils.fill_line(_SCREEN,0,cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
-        cursesplus.utils.fill_line(_SCREEN,1,cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
-        cursesplus.utils.fill_line(_SCREEN,2,cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
         _SCREEN.addstr(3,0,"─"*(mx-1))
-        _SCREEN.addstr(0,0,"A fatal error has occured in CraftServerSetup. Info is listed below.",cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
-        _SCREEN.addstr(1,0,"Press C to return to the main menu.",cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
-        _SCREEN.addstr(2,0,"Press R to open a bug report on Github. Include information listed below.",cursesplus.set_colour(cursesplus.RED,cursesplus.WHITE))
+        _SCREEN.addstr(0,0,":( A fatal error has occured in CraftServerSetup. Info is listed below.",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        _SCREEN.addstr(1,0,">>> Press C to return to the main menu.",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
+        _SCREEN.addstr(2,0,">>> Press R to open a bug report on Github. Include information listed below.",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         ey = 3
         for eline in splitext:
             ey += 1
@@ -2068,6 +2065,7 @@ def formattediplist_getindexbyip(search:str,haystack:list[FormattedIP]):
     return None
 
 def ip_lookup(stdscr,serverdir):
+    telemetry.telemetric_action("iplookup")
     if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
@@ -2508,7 +2506,7 @@ class JsonGz:
             f.write(gzip.compress(json.dumps(data).encode()))
 
 def sanalytics(stdscr,serverdir):
-    
+    telemetry.telemetric_action("analytics")
     if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
@@ -3287,6 +3285,7 @@ def create_uuid_index(stdscr) -> None:
     appdata.updateappdata() 
 
 def playerstat(stdscr,serverdir):
+    telemetry.telemetric_action("playerstat")
     worlds = find_world_folders(serverdir)
     selworld = uicomponents.menu(stdscr,["Cancel"]+worlds,"Choose a world to search statistics for")
     if selworld == 0:
@@ -4120,6 +4119,11 @@ def main(stdscr):
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         appdata.setup_appdata()
         #Telemetry demands special startup
+
+        if appdata.APPDATA["telemetry"]["level"] == -1:
+            cursesplus.messagebox.showinfo(stdscr,["On the next screen, you will be prompted to","choose a telemetry level ","(how much data is sent to Enderbyte Programs)"])
+            telemetry.set_telemetry_level(stdscr,False)
+
         eptel.startup(appdata.APPDATA["telemetry"]["telkey"],"CraftServerSetup",APP_UF_VERSION)
         telemetry.telemetric_action("startup")
 

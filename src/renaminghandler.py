@@ -1,3 +1,5 @@
+"""Handle players renaming themselves"""
+
 import appdata
 import os
 import datetime
@@ -8,6 +10,7 @@ import logutils
 import re
 import cursesplus
 import uicomponents
+import telemetry
 
 NAMECHANGETRACKFILE = appdata.APPDATADIR + os.sep + "playeraliases.json"
 nctf_template = {
@@ -90,6 +93,7 @@ def autoupdate_cache(stdscr,serverdir):
     update_cache_custom(stdscr,logloader.load_logs(stdscr,serverdir,logfilters.player_rename,lastupdatetime))
 
 def player_naming_history(stdscr):
+    telemetry.telemetric_action("renhan")
     srch = uicomponents.crssinput(stdscr,"What player do you want to learn about?").lower()
     if not has_known_aliases(srch):
         cursesplus.messagebox.askyesno(stdscr,["This player has no known former names"])

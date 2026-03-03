@@ -10,3 +10,4 @@ installer
 lib/__pycache__/
 output/
 src/__pycache__/
+tach.toml

@@ -68,6 +68,10 @@ echo "Installation finished with no errors."
 
 ATTENTION - If you use an old version of this software, it might ask you for a "product key." This system has been retired, so it may confuse you. Please paste the code `4p6jgtnatqj5svb4` if it asks you for one.
 
+### Telemetry and Data sharing
+
+In order to catch more bugs, v1.55 introduces opt-in telemetry that will transmit crash logs to Enderbyte Programs. This is in an effort to find more bugs and issues. You will be prompted to select a telemetry level on your first startup after updating. To opt in to sending crash reports, please select level 2 or 3 for telemetry. If you would not like to, please select level 1 or 0. You may change the telemetry level at any time by going to Settings -> Telemetry level.
+
 ## Integrating Third Party Software
 
 If you would like to make your application work with CRSS, here is how to do so

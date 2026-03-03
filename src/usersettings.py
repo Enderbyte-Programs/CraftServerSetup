@@ -11,11 +11,13 @@ import eptranslate
 import staticflags
 import backups
 import javamanager
+import telemetry
 
 def manage_user_settings(stdscr):
+    telemetry.telemetric_action("settings")
     
     while True:
-        m = uicomponents.menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(appdata.APPDATA["settings"].values())],"Please choose a setting to modify")
+        m = uicomponents.menu(stdscr,["BACK","ADVANCED OPTIONS","Java Installations","Change Language","Manage Backup Profiles","Telemetry Level"]+[d["display"] + " : " + str(d["value"]) for d in list(appdata.APPDATA["settings"].values())],"Please choose a setting to modify")
         if m == 0:
             appdata.updateappdata()
             return
@@ -47,9 +49,11 @@ def manage_user_settings(stdscr):
             cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         elif m == 4:
             backups.backup_manager(stdscr)
+        elif m == 5:
+            telemetry.set_telemetry_level(stdscr)
         else:
-            selm = list(appdata.APPDATA["settings"].values())[m-5]
-            selk = list(appdata.APPDATA["settings"].keys())[m-5]
+            selm = list(appdata.APPDATA["settings"].values())[m-6]
+            selk = list(appdata.APPDATA["settings"].keys())[m-6]
             if selm["type"] == "bool":
                 selm["value"] = uicomponents.menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
             elif selm["type"] == "int":

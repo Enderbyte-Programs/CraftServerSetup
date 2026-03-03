@@ -46,10 +46,10 @@ def send_action(actionname:str) -> None:
 def send_crash(ex:Exception) -> None:
 
     #Process exception
-    tb = traceback.format_exception(ex)
+    tb = "\n".join(traceback.format_exception(ex))
 
     try:
-        threading.Thread(target=_send,args=[Constants.ACTION_REPORT_ENDPOINT,{
+        threading.Thread(target=_send,args=[Constants.CRASH_REPORT_ENDPOINT,{
             "version" : 1,#EPTEL request format v1
             "payload" : {
                 "productname" : Constants.product_name,

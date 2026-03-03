@@ -10,8 +10,10 @@ import datetime
 import logutils
 import dirstack
 import utils
+import telemetry
 
 def who_said_what(stdscr,serverdir):
+    telemetry.telemetric_action("chatutils")
     if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
