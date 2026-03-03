@@ -9,3 +9,4 @@ dist/
 installer
 lib/__pycache__/
 output/
+src/__pycache__/

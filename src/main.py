@@ -110,6 +110,10 @@ import logfilters               #Log filtering
 import logloader                #V2 log loader
 import chatutils                #Who said what
 import telemetry                #Telemetric actions + for crash handler
+import usersettings             #User settings UI manager
+import backups                  #System backup
+import utils                    #Random utilities
+import javamanager
 
 del WINDOWS
 del DEBUG
@@ -231,24 +235,6 @@ def safe_exit(code):
         server.safestop()
     sys.exit(code)
 
-def parse_size(data: int) -> str:
-    result:str = ""
-    if data < 0:
-        neg = True
-        data = -data
-    else:
-        neg = False
-    if data < 2000:
-        result = f"{data} bytes"
-    elif data > 2000000000:
-        result = f"{round(data/1000000000,2)} GB"
-    elif data > 2000000:
-        result = f"{round(data/1000000,2)} MB"
-    elif data > 2000:
-        result = f"{round(data/1000,2)} KB"
-    if neg:
-        result = "-"+result
-    return result
 def error_handling(e:Exception,message="A serious error has occured"):
     global COLOURS_ACTIVE
     global _SCREEN
@@ -342,15 +328,6 @@ def safe_error_handling(e:Exception):
             _SCREEN.erase()
             cursesplus.displaymsg(_SCREEN,["In your bug report, please make sure to include","the contents of the","error in the previous screen.","You can see the error again by pressing any key."])
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLACK,cursesplus.WHITE))
-        
-def get_java_version(file="java") -> str:
-    try:
-        if not ON_WINDOWS:
-            return subprocess.check_output(fr"{file} -version 2>&1 | grep -Eow '[0-9]+\.[0-9]+' | head -1",shell=True).decode().strip()
-        else:
-            return subprocess.check_output(f"{file} --version").decode().splitlines()[0].split(" ")[1]
-    except:
-        return "Unknown"
 
 def manage_whitelist(stdscr,whitefile:str):
     try:
@@ -403,7 +380,7 @@ def download_vanilla_software(stdscr,serverdir) -> dict|None:
         PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
         cursesplus.displaymsg(stdscr,["Preparing new server"],False)
     S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
-    S_DOWNLOAD_size = parse_size(S_DOWNLOAD_data["size"])
+    S_DOWNLOAD_size = utils.parse_size(S_DOWNLOAD_data["size"])
     cursesplus.displaymsg(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"],False)
     urllib.request.urlretrieve(S_DOWNLOAD_data["url"],serverdir+"/server.jar")
     return PACKAGEDATA
@@ -604,7 +581,7 @@ def bedrock_world_settings(stdscr,serverdir:str,data:dict) -> dict:
                 stdscr.addstr(7,0,"World size")
                 stdscr.addstr(5,20,selectedworld.name)
                 stdscr.addstr(6,20,selectedworld.path)
-                stdscr.addstr(7,20,parse_size(get_tree_size(selectedworld.path)))
+                stdscr.addstr(7,20,utils.parse_size(get_tree_size(selectedworld.path)))
                 stdscr.refresh()
                 
                 ch = curses.keyname(stdscr.getch()).decode().lower()
@@ -937,7 +914,7 @@ def setup_proxy_server(stdscr):
         S_INSTALL_DIR = SERVERSDIR+"/"+servername
         cursesplus.displaymsg(stdscr,["Please wait while your server is set up"],False)
         urllib.request.urlretrieve(BUNGEECORD_DOWNLOAD_URL,S_INSTALL_DIR+"/server.jar")
-        njavapath = choose_java_install(stdscr)
+        njavapath = javamanager.choose_java_install(stdscr)
         
 
 def setupnewserver(stdscr):
@@ -959,35 +936,21 @@ def setupnewserver(stdscr):
         setup_proxy_server(stdscr)
         return
         
-    while True:
-        
-        serversoftware = uicomponents.menu(stdscr,["Cancel","Help me choose","Vanilla","Spigot","Paper","Purpur"],"Please choose your server software")
-        if serversoftware != 1:
-            break
-        else:
-            cursesplus.textview(stdscr,text="""
-                                
-Help on choosing a server software
-                                
-Vanilla                                
-This is the normal Minecraft server software. It is the only software that Mojang officially supports. It can't do any plugins.
 
-Spigot
-This is an optimized version of Bukkit. It supports plugins but can become memory heavy
-
-Paper
-This is an optimized version of Spigot and is very popular. It also supports plugins
-
-Purpur
-This is apparently even more optimized. It also supports plugins. It can configure a lot of things in your server
-""")
-    serversoftware -= 1
-    if serversoftware == -1:
+    serversoftware = uicomponents.menu(stdscr,["Cancel","Vanilla","Spigot","Paper","Purpur"],"Please choose your server software",peroptionfooters=[
+        "Return to the main menu",
+        "This is the normal Minecraft server software, unmodified. It does not support plugins",
+        "This software supports plugins, and is considered a 'base' for many other softwares",
+        "This is a more optimized version of Spigot. It is compatible with all spigot plugins.",
+        "This is a more customizable version of Paper. It is compatible with all spigot + paper plugins"
+    ])
+    if serversoftware == 0:
         return
+    
     servername = choose_server_name(stdscr)
     S_INSTALL_DIR = SERVERSDIR+"/"+servername
     cursesplus.displaymsg(stdscr,["Please wait while your server is set up"],False)
-    njavapath = choose_java_install(stdscr)
+    njavapath = javamanager.choose_java_install(stdscr)
     if serversoftware == 1:
         PACKAGEDATA = download_vanilla_software(stdscr,S_INSTALL_DIR)
     elif serversoftware == 2:
@@ -1588,10 +1551,10 @@ def svr_mod_mgr(stdscr,SERVERDIRECTORY: str,serverversion,servertype):
                     stdscr.addstr(3,20,activeplug["version"])
                     stdscr.addstr(4,20,activeplug["mcversion"])
                     stdscr.addstr(5,20,activeplug["path"])
-                    stdscr.addstr(6,20,parse_size(os.path.getsize(activeplug["path"])))
+                    stdscr.addstr(6,20,utils.parse_size(os.path.getsize(activeplug["path"])))
                     stdscr.addstr(7,20,file_get_md5(activeplug["path"]))
                     if os.path.isdir(SERVERDIRECTORY+"/plugins/"+activeplug["name"]):
-                        fsize = parse_size(get_tree_size(SERVERDIRECTORY+"/plugins/"+activeplug["name"]))
+                        fsize = utils.parse_size(get_tree_size(SERVERDIRECTORY+"/plugins/"+activeplug["name"]))
                     else:
                         fsize = "0 bytes"
                     stdscr.addstr(8,20,fsize)
@@ -1663,7 +1626,7 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
         PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
         cursesplus.displaymsg(stdscr,["Preparing new server"],False)
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?"]):
-        njavapath = choose_java_install(stdscr)
+        njavapath = javamanager.choose_java_install(stdscr)
         appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
     S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
     stdscr.clear()
@@ -1677,7 +1640,7 @@ def update_vanilla_software(stdscr,serverdir:str,chosenserver:int):
 def update_spigot_software(stdscr,serverdir:str,chosenserver:int):
     update_s_software_preinit(serverdir)
     if cursesplus.messagebox.askyesno(stdscr,["Do you want to change the java installation","associated with this server?","WARNING! Make sure you use java 17 or newer"]):
-        njavapath = choose_java_install(stdscr)
+        njavapath = javamanager.choose_java_install(stdscr)
         appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
     p = cursesplus.ProgressBar(stdscr,2,cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,show_percent=True,message="Updating spigot")
     p.update()
@@ -2015,7 +1978,7 @@ def config_server(stdscr,chosenserver):
         appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(appdata.APPDATA["servers"][chosenserver-1])#Regen script
 
     elif __l == 8:
-        njavapath = choose_java_install(stdscr)
+        njavapath = javamanager.choose_java_install(stdscr)
         appdata.APPDATA["servers"][chosenserver-1]["javapath"] = njavapath
         appdata.APPDATA["servers"][chosenserver-1]["script"]=generate_script(appdata.APPDATA["servers"][chosenserver-1])#Regen script
 
@@ -3187,7 +3150,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             stdscr.addstr(3,20,sdat["memory"])
             stdscr.addstr(4,20,"...")
             stdscr.refresh()
-            stdscr.addstr(4,20,parse_size(get_tree_size(sdat["dir"])))
+            stdscr.addstr(4,20,utils.parse_size(get_tree_size(sdat["dir"])))
             stdscr.refresh()
             stdscr.addstr(5,20,["Yes" if sdat["moddable"] else "No"][0])
             stdscr.addstr(6,20,str(len(glob.glob(SERVER_DIR+"/plugins/*.jar")) if os.path.isdir(SERVER_DIR+"/plugins") else "N/A"))
@@ -3203,7 +3166,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 elif abkwtd == 1:
                     manage_whitelist(stdscr,SERVER_DIR+"/whitelist.json")
                 elif abkwtd == 2:
-                    server_backups(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
+                    backups.server_backups(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
                 elif abkwtd == 3:
                     manage_ops(stdscr,SERVER_DIR)
                 elif abkwtd == 4:
@@ -3506,7 +3469,7 @@ def file_manager(stdscr,directory:str,header:str):
             else:
                 cl = cursesplus.WHITE
             stdscr.addstr(fi+2,0,os.path.split(file.path)[1][xoffset:sidebarboundary+xoffset],cursesplus.set_colour(cursesplus.BLACK,cl))
-            stdscr.addstr(fi+2,sidebarboundary-30,parse_size(file.size),cursesplus.set_colour(cursesplus.BLACK,cl))
+            stdscr.addstr(fi+2,sidebarboundary-30,utils.parse_size(file.size),cursesplus.set_colour(cursesplus.BLACK,cl))
             stdscr.addstr(fi+2,sidebarboundary-19,str(file.date),cursesplus.set_colour(cursesplus.BLACK,cl))
             fi += 1
 
@@ -3654,7 +3617,7 @@ def manage_a_world(stdscr,SERVER_DIR,svrx:str):
             stdscr.addstr(1,0,"World Size:")
             stdscr.addstr(3,0,"PRESS D TO DELETE. PRESS ANY OTHER KEY TO GO BACK")
             stdscr.addstr(0,20,svrx)
-            stdscr.addstr(1,20,parse_size(svrs))
+            stdscr.addstr(1,20,utils.parse_size(svrs))
             stdscr.refresh()
             ch = stdscr.getch()
             if ch == 100:
@@ -3810,94 +3773,7 @@ def manage_bans(stdscr,serverdir):
                         dend =  ddate + " " + dtime + " " + get_mc_valid_timezone()
                         active["expires"] = dend
                         data[dz-2] = active
-                        
-def server_backups(stdscr,serverdir:str,serverdata:dict):
-    LBKDIR = serverdata["backupdir"]
-    dirstack.pushd(serverdir)#Just in case some super weird bug
-    #if not os.path.isdir(LBKDIR):
-    #    os.mkdir(LBKDIR)
-    while True:
-        z = uicomponents.menu(stdscr,["Back","Create a Backup","Load a Backup",f"Choose backup directory ({LBKDIR})","Delete all backups"])
-        if z == 0:
-            dirstack.popd()
-            break
-        elif z == 1:
-            if uicomponents.resource_warning(stdscr):
-                continue
-            with open(serverdir+"/crss.json","w+") as f:
-                f.write(json.dumps(serverdata))
-            useprofile = appdata.APPDATA["backupprofiles"][list(appdata.APPDATA["backupprofiles"].keys())[uicomponents.menu(stdscr,list(appdata.APPDATA["backupprofiles"].keys()),"Select which backup profile to use")]]
-            cursesplus.displaymsg(stdscr,["Calculating backup size..."],False)
-            totalbackupsize = 0
-            filestoindex = []
-            for irule in useprofile["include"]:
-                filestoindex += glob.glob(irule.replace("#SD",serverdir),recursive=True)
-            for includefile in filestoindex:
-                if os.path.isdir(includefile):
-                    continue
-                totalbackupsize += os.path.getsize(includefile)
-                
-            filetoremove = []
-            for erule in useprofile["exclude"]:
-                filetoremove += glob.glob(erule.replace("#SD",serverdir),recursive=True)
-            for excludefile in filetoremove:
-                
-                try:
-                    filestoindex.remove(excludefile)
-                    totalbackupsize -= os.path.getsize(excludefile)
-                except:
-                    pass
-            
-            
-            if cursesplus.messagebox.askyesno(stdscr,["The backup will take up",parse_size(totalbackupsize),"Do you want to continue?"]):
-                dstsname = str(datetime.datetime.now())[0:-7].replace(" ","_").replace(":","")
-                p = cursesplus.ProgressBar(stdscr,totalbackupsize+1,bar_location=cursesplus.ProgressBarLocations.CENTER,message="Creating backup")
-                for file in filestoindex:
-                    if os.path.isdir(file):
-                        continue
-                    p.value += os.path.getsize(file) - 1
-                    p.step(file)
                     
-                    dst = LBKDIR + f'/{dstsname}/' + file.replace(serverdir,"")
-                    os.makedirs(os.path.dirname(dst),exist_ok=True)
-                    try:
-                        shutil.copyfile(file,dst)
-                    except:
-                        pass#Fix bug - temp files crash
-                p.done()
-                cursesplus.messagebox.showinfo(stdscr,["Completed backup"])
-                
-        elif z == 2:
-            if len(os.listdir(LBKDIR)) == 0:
-                cursesplus.messagebox.showwarning(stdscr,["You do not have any backups"])
-                continue
-            if cursesplus.messagebox.askyesno(stdscr,["This will completely overwrite your server directory","Are you sure you wish to proceed"]):
-                selbk = cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a backup dir",directory=LBKDIR)
-                #cursesplus.displaymsg(stdscr,["Restoring Backup"],False)
-                w = cursesplus.PleaseWaitScreen(stdscr,["Restoring Backup"])
-                w.start()
-                os.chdir("/")
-                shutil.rmtree(serverdir)
-                shutil.copytree(selbk,serverdir)
-                try:
-                    with open(serverdir+"/crss.json") as f:
-                        nd = json.load(f)
-                        locateid = nd["id"]
-                        tom_index = next((index for (index, d) in enumerate(appdata.APPDATA["servers"]) if d["id"] == locateid), None)
-                        appdata.APPDATA["servers"][tom_index] = nd
-                except:
-                    pass
-                w.stop()
-                cursesplus.messagebox.showinfo(stdscr,["Restore completed"])
-                os.chdir(serverdir)       
-        elif z == 3:
-            serverdata["backupdir"] = cursesplus.filedialog.openfolderdialog(stdscr,"Choose a new backup directory")
-            LBKDIR = serverdata["backupdir"]
-            appdata.updateappdata()       
-        elif z == 4:
-            if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete all backups?"]):
-                shutil.rmtree(LBKDIR,True)
-                os.mkdir(LBKDIR)
 
 def get_tree_size(start_path = '.'):
     total_size = 0
@@ -3909,71 +3785,6 @@ def get_tree_size(start_path = '.'):
                 total_size += os.path.getsize(fp)
 
     return total_size
-
-
-def choose_java_install(stdscr) -> str:
-
-    #Return path of selected java- Smart java?
-    while True:
-        stdscr.erase()
-        jsl = uicomponents.menu(stdscr,["ADD NEW INSTALLATION"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]],"Please choose a Java installation from the list")
-        if jsl == 0:
-            managejavainstalls(stdscr)
-        else:
-            break
-    return appdata.APPDATA["javainstalls"][jsl-1]["path"]
-def managejavainstalls(stdscr):
-    
-    if "java" in [j["path"] for j in appdata.APPDATA["javainstalls"]]:
-        pass
-    else:
-        if os.system("java --help") == 0 or os.system("java /?") == 0 or os.system("java -help") == 0:
-        
-            appdata.APPDATA["javainstalls"].append({"path":"java","ver":get_java_version()})
-        stdscr.clear()
-    while True:
-        stdscr.erase()
-        jmg = uicomponents.menu(stdscr,["ADD INSTALLATION","FINISH"]+[jp["path"]+" (Java "+jp["ver"]+")" for jp in appdata.APPDATA["javainstalls"]])
-        if jmg == 0:
-            njavapath = cursesplus.filedialog.openfiledialog(stdscr,"Please choose a java executable",directory=os.path.expanduser("~"))
-            if os.system(njavapath.replace("\\","/")+" -help") != 0:
-                if not cursesplus.messagebox.askyesno(stdscr,["You may have selected an invalid java file.","Are you sure you would like to add it"]):
-                    continue
-                else:
-                    stdscr.erase()
-                    ndict = {"path":njavapath.replace("\\","/"),"ver":"Unknown"}
-                    if cursesplus.messagebox.askyesno(stdscr,["Do you know what java version this is?"]):
-                        ndict["ver"] = uicomponents.crssinput(stdscr,"Java version?",maxlen=10)
-                        appdata.APPDATA["javainstalls"].append(ndict)
-            else:
-                fver = get_java_version(njavapath.replace("\\","/"))
-                ndict = {"path":njavapath.replace("\\","/"),"ver":fver}
-                appdata.APPDATA["javainstalls"].append(ndict)
-        elif jmg == 1:
-            return
-        else:
-            
-            jdl = appdata.APPDATA["javainstalls"][jmg-2]
-            stdscr.clear()
-            stdscr.addstr(0,0,"MANAGING JAVA INSTALLATION")
-            stdscr.addstr(2,0,"Path")
-            stdscr.addstr(3,0,"Version")
-            stdscr.addstr(5,0,"Press V to verify installation | Press D to delete | Press any other key to return",cursesplus.cp.set_colour(cursesplus.WHITE,cursesplus.BLACK))
-            stdscr.addstr(2,10,jdl["path"])
-            stdscr.addstr(3,10,jdl["ver"])
-            k = stdscr.getch()
-            if k == curses.KEY_DC or k == 100:
-                if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to remove the java installation",jdl["path"]],default=cursesplus.messagebox.MessageBoxStates.NO):
-                    del appdata.APPDATA["javainstalls"][jmg-2]
-            elif k == 118:
-                jdl["ver"] = get_java_version(jdl["path"])
-                if jdl["ver"] == "Error":
-                    cursesplus.messagebox.showwarning(stdscr,["Java installaion is corrupt"])
-                    del appdata.APPDATA["javainstalls"][jmg-2]
-                else:
-                    cursesplus.messagebox.showinfo(stdscr,["Java installation is safe"])
-
-        appdata.updateappdata()
 
 def import_amc_server(stdscr,chlx):
     nwait = cursesplus.PleaseWaitScreen(stdscr,["Unpacking Server"])
@@ -4006,7 +3817,7 @@ def import_amc_server(stdscr,chlx):
         xdat["dir"] = SERVERSDIR+"/"+nname
         bri = False
         if xdat["software"] != 0:
-            xdat["javapath"] = choose_java_install(stdscr)
+            xdat["javapath"] = javamanager.choose_java_install(stdscr)
         else:
             if (os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and not ON_WINDOWS) or (not os.path.isfile(xdat["dir"]+"/bedrock_server.exe") and ON_WINDOWS):
                 bri = True
@@ -4111,7 +3922,7 @@ def import_server(stdscr):
             p.stop()
             p.destroy()
             xdat["dir"] = SERVERSDIR+"/"+nname
-            xdat["javapath"] = choose_java_install(stdscr)
+            xdat["javapath"] = javamanager.choose_java_install(stdscr)
             memorytoall = choose_server_memory_amount(stdscr)
             xdat["memory"] = memorytoall
             xdat["version"] = uicomponents.crssinput(stdscr,"What version is your server?")
@@ -4134,148 +3945,6 @@ def import_server(stdscr):
         except Exception as e:
             cursesplus.messagebox.showerror(stdscr,["An error occured importing your server.",str(e)])
     else: return
-
-def parse_bp_ielist(data:dict) -> list[str]:
-    final = []
-    for include in data["include"]:
-        final.append("+ include "+include)
-    for exclude in data["exclude"]:
-        final.append("- exclude "+exclude)
-    return final
-
-def edit_backup_profile(stdscr,backupname: str) :
-    bdata = appdata.APPDATA["backupprofiles"][backupname]
-    bname = backupname
-    while True:
-        lditems = parse_bp_ielist(bdata)
-        m = uicomponents.menu(stdscr,["FINISH","CHANGE PROFILE NAME","Delete Profile","Create Rule"]+lditems,f"Editing backup profile {bname}")
-        if m == 0:
-            del appdata.APPDATA["backupprofiles"][backupname]
-            appdata.APPDATA["backupprofiles"][bname] = bdata
-            return
-        elif m == 1:
-            while True:
-                bname = uicomponents.crssinput(stdscr,"Name the backup profile")
-                if bname in appdata.APPDATA["backupprofiles"] and bname != backupname:
-                    #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
-                    if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Do you want to over-write it?"]):
-                        break
-                else:
-                    break
-        elif m == 2:
-            if cursesplus.messagebox.askyesno(stdscr,["Are you sure you want to delete this","backup profile?"]):
-                del appdata.APPDATA["backupprofiles"][bname]
-                return
-        elif m == 3:
-            wtype = uicomponents.menu(stdscr,["Cancel","Include (files to include)","Exclude (files to not include)"],"What type of rule should this be?")
-            if wtype == 0:
-                continue
-            isexclude = wtype == 2
-            imethod = uicomponents.menu(stdscr,["Handwrite a Glob pattern","Select Files/Folders"],"How would you like to input this rule?")
-            pattern = [""]
-            if imethod == 0:
-                cursesplus.displaymsg(stdscr,[
-                    "Notes for writing Glob statements",
-                    "Use * for wildcard, ** for recursive wildcard",
-                    "Do not end with a / for a folder, use /* or /** instead."
-                ])
-                pattern[0] = uicomponents.crssinput(stdscr,"Write the GLOB pattern to match. Use #SD/ for the server directory.")
-            else:
-                itype = uicomponents.menu(stdscr,["Choose a directory","Choose file(s)"])
-                if itype == 0:
-                    idir = cursesplus.filedialog.openfolderdialog(stdscr,"Choose a directory to match.")
-                    pattern[0] = idir + "/**"
-                else:
-                    ifiles = cursesplus.filedialog.openfilesdialog(stdscr,"Choose files to match")
-                    pattern = ifiles
-                    
-            if isexclude:
-                bdata["exclude"] += pattern
-            else:
-                bdata["include"] += pattern
-            
-        else:
-            isexclude = lditems[m-4].startswith("-")
-            if cursesplus.messagebox.askyesno(stdscr,["Do you want to delete this rule?"]):
-                relname = lditems[m-4].replace("+ include ","").replace("- exclude ","")
-                if isexclude:
-                    bdata["exclude"].remove(relname)
-                else:
-                    bdata["include"].remove(relname)
-            
-
-def new_backup_profile(stdscr) -> str:
-    while True:
-        name = uicomponents.crssinput(stdscr,"Name the backup profile")
-        if name in appdata.APPDATA["backupprofiles"]:
-            if cursesplus.messagebox.askyesno(stdscr,["Name already exists.","Would you like to over-write it?"],default=cursesplus.messagebox.MessageBoxStates.NO):
-                return name
-            #cursesplus.messagebox.showerror(stdscr,["Name already exists.","Please choose a new one."])
-        else:
-            #Add to dict
-            appdata.APPDATA["backupprofiles"][name] = {
-                "include" : ["#SD/*"],
-                "exclude" : []
-            }
-            return name
-    
-def backup_manager(stdscr):
-    while True:
-        co = uicomponents.menu(stdscr,["Quit","Create backup profile"]+list(appdata.APPDATA["backupprofiles"].keys()),"Backup Profile Manager")
-        if co == 0:
-            appdata.updateappdata()
-            return
-        elif co == 1:
-            edit_backup_profile(stdscr,new_backup_profile(stdscr))
-        else:
-            edit_backup_profile(stdscr,list(appdata.APPDATA["backupprofiles"].keys())[co-2])
-
-def settings_mgr(stdscr):
-    global COLOURS_ACTIVE
-    
-    while True:
-        m = uicomponents.menu(stdscr,["BACK","ADVANCED OPTIONS","MANAGE JAVA INSTALLATIONS","CHANGE LANGUAGE","BACKUP PROFILES"]+[d["display"] + " : " + str(d["value"]) for d in list(appdata.APPDATA["settings"].values())],"Please choose a setting to modify")
-        if m == 0:
-            appdata.updateappdata()
-            return
-        elif m == 1:
-            while True:
-                n = uicomponents.menu(stdscr,["BACK","Reset settings","Reset all app data","Clear temporary directory"])
-                if n == 0:
-                    break
-                elif n == 1:
-                    del appdata.APPDATA["settings"]
-                    appdata.self_compatibilize()
-                    appdata.updateappdata()
-                elif n == 2:
-                    if cursesplus.messagebox.askyesno(stdscr,["DANGER","This will destroy all of the data this app has stored!","This includes ALL servers!","This will restore this program to default","Are you sure you wish to continue?"]):
-                        if not cursesplus.messagebox.askyesno(stdscr,["THIS IS YOUR LAST CHANCE!","To make sure that you actually intend to reset,","SELECT NO TO WIPE"]):
-                            if cursesplus.messagebox.askyesno(stdscr,["Last chance. For real this time","Are you sure you want to reset?"],default=cursesplus.messagebox.MessageBoxStates.NO):
-                                os.chdir("/")
-                                shutil.rmtree(APPDATADIR)
-                                cursesplus.messagebox.showinfo(stdscr,["Program reset."])
-                                sys.exit()
-                    appdata.updateappdata()
-                elif n == 3:
-                    shutil.rmtree(TEMPDIR)
-        elif m == 2:
-            managejavainstalls(stdscr)
-        elif m == 3:
-            eptranslate.prompt(stdscr,"Welcome to CraftServerSetup! Please choose a language to begin.")
-            appdata.APPDATA["language"] = eptranslate.Config.choice
-            cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
-        elif m == 4:
-            backup_manager(stdscr)
-        else:
-            selm = list(appdata.APPDATA["settings"].values())[m-5]
-            selk = list(appdata.APPDATA["settings"].keys())[m-5]
-            if selm["type"] == "bool":
-                selm["value"] = uicomponents.menu(stdscr,["True (Yes)","False (No)"],f"New value for {selm['display']}") == 0
-            elif selm["type"] == "int":
-                selm["value"] = cursesplus.numericinput(stdscr,f"Please choose a new value for {selm['display']}")
-            elif selm["type"] == "str":
-                selm["value"] = uicomponents.crssinput(stdscr,f"Please choose a new value for {selm['display']}",prefiltext=selm["value"])
-            appdata.APPDATA["settings"][selk] = selm
 
 def doc_system(stdscr):
     while True:
@@ -4318,7 +3987,7 @@ def oobe(stdscr):
             usertutorial(stdscr)
         if not bool(appdata.APPDATA["javainstalls"]):
             if cursesplus.messagebox.askyesno(stdscr,["You have no java installations set up","Would you like to set some up now?"]):
-                managejavainstalls(stdscr)
+                javamanager.managejavainstalls(stdscr)
             else:
                 cursesplus.messagebox.showinfo(stdscr,["You can manage your","Java installations from the","settings menu"])
         
@@ -4526,8 +4195,6 @@ def main(stdscr):
                     setupnewserver(stdscr)
                 elif m == 1:
                     servermgrmenu(stdscr)
-                #elif m == 3:
-                #    managejavainstalls(stdscr)
                 elif m == 5:
                     if PORTABLE:
                         cursesplus.messagebox.showerror(stdscr,["You may not update in portable mode"])
@@ -4538,7 +4205,7 @@ def main(stdscr):
                     webbrowser.open("https://github.com/Enderbyte-Programs/CraftServerSetup/issues")
                     cursesplus.messagebox.showinfo(stdscr,["Please check your web browser"])     
                 elif m == 2:
-                    settings_mgr(stdscr)
+                    usersettings.manage_user_settings(stdscr)
                 elif m == 3:
                     doc_system(stdscr)
                 elif m == 6:

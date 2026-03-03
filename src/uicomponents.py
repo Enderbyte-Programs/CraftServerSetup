@@ -7,7 +7,7 @@ import curses
 import utils
 
 
-def menu(stdscr,options:list[str],title="Please choose an option from the list below",footer="") -> int:
+def menu(stdscr,options:list[str],title="Please choose an option from the list below",footer="",peroptionfooters=[],preselected=0) -> int:
     """An alternate optionmenu that will be used in primary areas. The only difference from Curses Plus is that it has some colour presets"""
     try:
         uselegacy = appdata.APPDATA["settings"]["oldmenu"]["value"]
@@ -16,8 +16,10 @@ def menu(stdscr,options:list[str],title="Please choose an option from the list b
     
     if uselegacy:
         return cursesplus.optionmenu(stdscr,options,title)
-    selected = 0
+    selected = preselected
     offset = 0
+
+    use_peroptionfooters = len(peroptionfooters) > 0 and footer == ""
 
     maxl = utils.list_get_maxlen(options)
     while True:
@@ -52,7 +54,11 @@ def menu(stdscr,options:list[str],title="Please choose an option from the list b
         if len(options) > offset+my-7:
             stdscr.addstr(oi+2,maxl+15,f"{len(options)-offset-my+7} options below")
         
-        stdscr.addstr(oi+4,0,footer)#Add footer
+        if not use_peroptionfooters:
+            stdscr.addstr(oi+4,0,footer[0:mx-1])#Add footer\
+        else:
+            if len(peroptionfooters) > selected:
+                stdscr.addstr(oi+4,0,peroptionfooters[selected][0:mx-1])
 
         stdscr.refresh()
         ch = stdscr.getch()

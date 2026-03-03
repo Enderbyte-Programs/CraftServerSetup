@@ -9,6 +9,9 @@
 - Send basic (so how it was before but even simpler)
 - Send crashes (default option, will send crashses because my software is buggy and I want to know it)
 - Send detailed usage statistics
+- Add replacement for the "MORE INFO" screen on option menu - permenuoptions and implement this where relevant
+- Add preselected support for the CRSS style menu (diverged quite a bit from cursesplus)
+- Split out usersettings, javamanager, and systembackup.py
 1.54.9:
 - Hotfix
 1.54.8:

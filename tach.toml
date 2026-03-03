@@ -1,0 +1,130 @@
+interfaces = []
+exclude = [
+    "**/*__pycache__",
+    "**/*egg-info",
+    "**/docs",
+    "**/tests",
+    "**/venv",
+]
+source_roots = [ "src",
+]
+
+[[modules]]
+path = "tempdir"
+depends_on = ["staticflags"]
+
+[[modules]]
+path = "staticflags"
+depends_on = ["arguments"]
+
+[[modules]]
+path = "logloader"
+depends_on = ["dirstack", "logutils", "logfilters"]
+
+[[modules]]
+path = "dirstack"
+depends_on = []
+
+[[modules]]
+path = "epdoc"
+depends_on = []
+
+[[modules]]
+path = "chatutils"
+depends_on = ["uicomponents", "logfilters", "logutils", "logloader", "dirstack", "utils", "renaminghandler"]
+
+[[modules]]
+path = "texteditor"
+depends_on = ["appdata", "dirstack", "tempdir"]
+
+[[modules]]
+path = "javamanager"
+depends_on = ["appdata", "staticflags", "uicomponents"]
+
+[[modules]]
+path = "propertiesfiles"
+depends_on = []
+
+[[modules]]
+path = "main"
+depends_on = ["logutils", "codeofconduct", "timedexec", "eptel", "texteditor", "archiveutils", "pngdim", "staticflags", "utils", "uicomponents", "telemetry", "autorestart", "renaminghandler", "epdoc", "dirstack", "chatutils", "softwareupdate", "arguments", "backups", "logfilters", "javamanager", "usersettings", "eptranslate", "tempdir", "bedrocklinks", "appdata", "logloader", "propertiesfiles"]
+
+[[modules]]
+path = "timedexec"
+depends_on = []
+
+[[modules]]
+path = "uicomponents"
+depends_on = ["appdata", "utils"]
+
+[[modules]]
+path = "autorestart"
+depends_on = ["uicomponents"]
+
+[[modules]]
+path = "codeofconduct"
+depends_on = ["propertiesfiles", "langcodes", "staticflags", "uicomponents", "texteditor", "utils"]
+
+[[modules]]
+path = "eptranslate"
+depends_on = []
+
+[[modules]]
+path = "telemetry"
+depends_on = ["uicomponents", "appdata", "eptel"]
+
+[[modules]]
+path = "arguments"
+depends_on = []
+
+[[modules]]
+path = "logutils"
+depends_on = []
+
+[[modules]]
+path = "renaminghandler"
+depends_on = ["appdata", "logutils", "uicomponents", "logloader", "logfilters"]
+
+[[modules]]
+path = "usersettings"
+depends_on = ["backups", "uicomponents", "appdata", "staticflags", "javamanager", "eptranslate"]
+
+[[modules]]
+path = "archiveutils"
+depends_on = ["dirstack", "appdata"]
+
+[[modules]]
+path = "softwareupdate"
+depends_on = ["staticflags", "dirstack", "uicomponents", "archiveutils"]
+
+[[modules]]
+path = "pngdim"
+depends_on = []
+
+[[modules]]
+path = "backups"
+depends_on = ["appdata", "utils", "uicomponents", "dirstack"]
+
+[[modules]]
+path = "utils"
+depends_on = []
+
+[[modules]]
+path = "appdata"
+depends_on = ["staticflags", "eptel"]
+
+[[modules]]
+path = "eptel"
+depends_on = []
+
+[[modules]]
+path = "bedrocklinks"
+depends_on = ["dirstack", "staticflags", "uicomponents"]
+
+[[modules]]
+path = "logfilters"
+depends_on = ["logutils"]
+
+[[modules]]
+path = "langcodes"
+depends_on = []

@@ -28,8 +28,11 @@
 - Customized settings screen for each version of Minecraft
 - Sort releases/snapshots/experiments when doing version listings
 
-### Far future / unplanned
+### Far future / Unversioned
+
+These features I intend to implement but have not yet planned when I will do that.
 
 - Add bungeecord and Velocity support
 - Add fabric and/or forge support
 - Add inventory viewer or player data editor
+- Improve update system (remove dependency on github, allow portable updates, etc)

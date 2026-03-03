@@ -1,8 +1,11 @@
 """Enderbyte Programs Telemetry System - CRSS wrapper"""
 
 import enum
+import cursesplus
+
 import eptel
 import appdata
+import uicomponents
 
 class TelemetryLevels(enum.Enum):
     UNSET = -1#Temp value
@@ -28,3 +31,21 @@ def telemetric_action(actionname:str):
 def crash_report(ex:Exception):
     if get_telemetry_level() >= 2:
         eptel.send_crash(ex)
+
+def set_telemetry_level(stdscr) -> None:
+    """Show the user a screen to select their telemetry level, and set this telemetry level"""
+    op = uicomponents.menu(stdscr,["Cancel","0 - Nothing","1 - Basic Only","2 - Crash reports","3 - Comprehensive"],f"Please choose a telemetry level. Current level is: {get_telemetry_level()}",peroptionfooters=[
+        "Do not change the telemetry level",
+        "Send no telemetry whatsoever",
+        "Send only a single 'installation exists' telemetry event",
+        "Basic + send error details if a crash occurs",
+        "Send comprehensive usage statistics"
+    ],preselected=3)
+
+    if op == 0:
+        return
+    
+    appdata.APPDATA["telemetry"]["level"] = op - 1
+    appdata.updateappdata()
+
+    cursesplus.messagebox.showinfo(stdscr,["Telemetry level updated successfully."])
