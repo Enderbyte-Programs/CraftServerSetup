@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.55"
+APP_UF_VERSION = "1.55.1"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -4120,10 +4120,6 @@ def main(stdscr):
         appdata.setup_appdata()
         #Telemetry demands special startup
 
-        if appdata.APPDATA["telemetry"]["level"] == -1:
-            cursesplus.messagebox.showinfo(stdscr,["On the next screen, you will be prompted to","choose a telemetry level ","(how much data is sent to Enderbyte Programs)"])
-            telemetry.set_telemetry_level(stdscr,False)
-
         eptel.startup(appdata.APPDATA["telemetry"]["telkey"],"CraftServerSetup",APP_UF_VERSION)
         telemetry.telemetric_action("startup")
 
@@ -4160,6 +4156,11 @@ def main(stdscr):
             cursesplus.displaymsg(stdscr,["Craft Server Setup"],False)
         license(stdscr)
         oobe(stdscr)
+
+        if appdata.APPDATA["telemetry"]["level"] == -1:
+            cursesplus.messagebox.showinfo(stdscr,["On the next screen, you will be prompted to","choose a telemetry level ","(how much data is sent to Enderbyte Programs)"])
+            telemetry.set_telemetry_level(stdscr,False)
+
         if arguments.should_run_import_mode():
             import_amc_server(stdscr,arguments.get_file_to_import())      
         

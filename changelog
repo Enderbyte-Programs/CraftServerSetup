@@ -1,3 +1,5 @@
+1.55.1:
+- Fix OOBE order
 1.55:
 - Split out archiveutils.py
 - Split out softwareupdate.py
