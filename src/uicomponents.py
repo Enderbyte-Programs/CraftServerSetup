@@ -100,3 +100,6 @@ def resource_warning(stdscr) -> bool:
         return not cursesplus.messagebox.askyesno(stdscr,["What you just selected is a high resource operation.","Continuing may affect the performance of other apps running on this device.","Are you sure you wish to proceed?"])
     else:
         return False
+    
+def comingsoon(stdscr):
+    cursesplus.messagebox.showerror(stdscr,["Sorry, this feature is coming soon"])

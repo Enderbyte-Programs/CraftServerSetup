@@ -33,6 +33,10 @@ def package_server(stdscr,serverdir:str,chosenserver:int):
         f.write(json.dumps(sdata))
         #Write server data into a temporary file
     wdir=cursesplus.filedialog.openfolderdialog(stdscr,"Please choose a folder for the output server file")
+
+    if wdir is None:
+        return
+
     if os.path.isdir(wdir):
         wxfileout=wdir+"/"+sdata["name"]+".amc"
         nwait = cursesplus.PleaseWaitScreen(stdscr,["Packaging Server"])

@@ -1,3 +1,9 @@
+1.55.2:
+- Make log loader use datetimes again instead of dates, fixing a bug in server analytics (nasty nasty bug...)
+- Fix serveral bugs in the analytics loader that occur if your cache has 100% coverage
+- Split out analytics system
+- Fix bug where program would crash if started with no internet connection
+- Fix bug where cancelling a package server operation would cause a crash
 1.55.1:
 - Fix OOBE order
 1.55:

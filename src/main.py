@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.55.1"
+APP_UF_VERSION = "1.55.2"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -112,12 +112,13 @@ import telemetry                #Telemetric actions + for crash handler
 import usersettings             #User settings UI manager
 import backups                  #System backup
 import utils                    #Random utilities
-import javamanager
+import javamanager              #Java selector
+import analytics                #Server analytics
+import jsongz                   #Json-Gz reader
+import internetcheck            #check if connected
 
 del WINDOWS
 del DEBUG
-
-
 
 _transndt = False
 try:
@@ -1767,7 +1768,7 @@ def command_execution_auditing(stdscr,serverdir:str):
                 cursesplus.displaymsg(stdscr,["searching"],False)
                 abusable_prefixes = ["/give","/gamemode","/tp","/teleport"]
                 excluder_prefixes = ["/tpa","/tpr","/msg","/w","/tpc"]
-                other_players = remove_duplicates_from_list([s.issuer for s in finalcmds])
+                other_players = utils.remove_duplicates_from_list([s.issuer for s in finalcmds])
                 final = ""
                 for cmd in finalcmds:
                     if recursive_list_startswith(cmd.commandstr,abusable_prefixes) and not recursive_list_startswith(cmd.commandstr,excluder_prefixes):
@@ -1862,11 +1863,14 @@ def view_server_logs(stdscr,server_dir:str):
                 
 def init_idata(stdscr):
     
-    idata = requests.get("https://pastebin.com/raw/GLSGkysJ").json()
-    appdata.APPDATA["idata"] = idata
-    if idata["dead"]["active"]:
-        cursesplus.messagebox.showerror(stdscr,["This computer program has been locked.",f"REASON: {idata['dead']['message']}"])
-        sys.exit(3)
+    try:
+        idata = requests.get("https://pastebin.com/raw/GLSGkysJ").json()
+        appdata.APPDATA["idata"] = idata
+        if idata["dead"]["active"]:
+            cursesplus.messagebox.showerror(stdscr,["This computer program has been locked.",f"REASON: {idata['dead']['message']}"])
+            sys.exit(3)
+    except:
+        pass#No error for no internet
 
 def find_world_folders(directory) -> list[str]:
     final = []
@@ -2144,7 +2148,7 @@ def ip_lookup(stdscr,serverdir):
         new_ls = []
         for pl in k.players:
             new_ls += renaminghandler.get_aliases_of(pl)
-        formattedips[ki].players = remove_duplicates_from_list(new_ls)
+        formattedips[ki].players = utils.remove_duplicates_from_list(new_ls)
 
         ki += 1
 
@@ -2232,600 +2236,6 @@ def ip_lookup(stdscr,serverdir):
             if cursesplus.messagebox.askyesno(stdscr,["Are you sure you wish to delete the cache?","This will result in slow loading times."],default=cursesplus.messagebox.MessageBoxStates.NO):
                 os.remove(ipdir)
                 return
-
-def friendly_positions(ins:int) -> str:
-    conv = str(ins)
-    if conv.endswith("1"):
-        conv += "st"
-    elif conv.endswith("2"):
-        conv += "nd"
-    elif conv.endswith("3"):
-        conv += "rd"
-    else:
-        conv += "th"
-    return conv
-            
-def get_minute_id_from_datetime(d:datetime.datetime) -> int:
-    return int(d.timestamp()/60//1)
-
-def get_datetime_from_minute_id(t:int) -> datetime.datetime:
-    return datetime.datetime.fromtimestamp(t*60)
-
-class JLLogFrame:
-    data:str
-    ext:datetime.datetime
-    def __init__(self,lowerdata:logutils.LogEntry):
-        rtime = lowerdata.data.split(" ")[0].strip()
-        rdate = lowerdata.logdate
-        
-        self.ext = datetime.datetime.strptime(f"{rdate.year}-{rdate.month}-{rdate.day} {rtime[1:-1]}","%Y-%m-%d %H:%M:%S")
-        self.data = lowerdata.data
-
-class ServerMinuteFrame:
-    minuteid:int
-    onlineplayers:list[str] = []
-    playerminutes:int = None
-    
-    def __init__(self,minuteid):
-        self.minuteid = minuteid
-    def wasonline(self,name) -> bool:
-        return name in self.onlineplayers
-    def todatetime(self) -> datetime:
-        return datetime.datetime.fromtimestamp(self.minuteid*60)
-    def howmanyonline(self) -> int:
-        return len(self.onlineplayers)
-    def getplayerminutes(self) -> int:
-        if self.playerminutes is None:
-            return self.howmanyonline()
-        else:
-            return self.playerminutes
-    def get_data(self,setting):
-        if setting == AnalyticsExplorerDataTypes.PLAYERCOUNT:
-            return self.howmanyonline()
-        else:
-            return self.getplayerminutes()
-
-def serverminuteframe_uf(smf:ServerMinuteFrame):
-    return f"{smf.minuteid} ({smf.todatetime()}) - {smf.onlineplayers}"
-
-def strip_datetime(d:datetime.datetime) -> str:
-    return d.strftime("%Y-%m-%d %H:%M:%S")
-
-def count_unique_values(l:list) -> int:
-    return len(set(l))
-
-def remove_duplicates_from_list(l:list) -> list:
-    return list(set(l))
-
-def remove_values_from_list(the_list, val):
-   return [value for value in the_list if value != val]
-
-def comingsoon(stdscr):
-    cursesplus.messagebox.showerror(stdscr,["Sorry, this feature is coming soon"])
-
-def split_list_into_chunks(l, n):
-    for i in range(0, len(l), n): 
-        yield l[i:i + n]
-
-class AnalyticsExplorerZoomLevels(enum.Enum):
-    MINUTE = 1
-    HOUR = 60
-    DAY = 1440
-    WEEK = 1440*7
-    
-class AnalyticsExplorerDataTypes(enum.Enum):
-    TOTALPLAYERMINUTES = 0
-    PLAYERCOUNT = 1
-
-def sort_dict_by_key(d:dict) -> dict:
-    return dict(sorted(list(d.items())))
-
-def get_chunk_size_from_aezl(s:AnalyticsExplorerZoomLevels):
-    return {
-        AnalyticsExplorerZoomLevels.MINUTE:1,
-        AnalyticsExplorerZoomLevels.HOUR:60,
-        AnalyticsExplorerZoomLevels.DAY:1440,
-        AnalyticsExplorerZoomLevels.WEEK:1440*7
-        }[s]
-
-def serialize_smf(s:ServerMinuteFrame) -> dict:
-    return {
-        "id" : s.minuteid,
-        "playerminutes" : s.playerminutes,
-        "onlineplayers" : s.onlineplayers
-    }
-
-def deserialize_smf(s:dict) -> ServerMinuteFrame:
-    d = ServerMinuteFrame(s["id"])
-    d.onlineplayers = s["onlineplayers"]
-    d.playerminutes = s["playerminutes"]
-    return d
-
-def server_analytics_explorer(stdscr,data:dict[int,ServerMinuteFrame]):
-    cursesplus.displaymsg(stdscr,["Analytics Explorer","Initializing..."],False)
-    #This function allows users to explore their analytics
-    offset = 0
-    datasize = len(data)-1
-    currentzoomlevel = AnalyticsExplorerZoomLevels.MINUTE#Also passively the list chunk size
-    currentdatatype = AnalyticsExplorerDataTypes.PLAYERCOUNT
-    zoomlevels = {
-        AnalyticsExplorerZoomLevels.MINUTE: "Minute (default)",
-        AnalyticsExplorerZoomLevels.HOUR: "Hour",
-        AnalyticsExplorerZoomLevels.DAY: "Day",
-        AnalyticsExplorerZoomLevels.WEEK: "Week"
-    }
-    datatypes = {
-        AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES: "Player Minutes Spent",
-        AnalyticsExplorerDataTypes.PLAYERCOUNT: "Online Players (default)"
-    }
-    ldata = list(data.values())#List representation of data to prevent performance issues?
-
-    td = tempdir.generate_temp_dir()
-
-    #ogdata = copy.deepcopy(data)
-    #ogldata = copy.deepcopy(ldata)#For use later
-    JsonGz.write(td+"/data.json.gz",{k:serialize_smf(v) for k,v in list(data.items())})
-    maxval = max([len(p.onlineplayers) for p in ldata])
-    while True:
-        my,mx = stdscr.getmaxyx()
-        xspace = mx-1
-        yspace = my-4#Top Bottom, and weird bug
-        stdscr.erase()
-        cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.BLUE))
-        stdscr.addstr(0,0,"Analytics Explorer - Press Q to quit and H for help",cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-        
-        
-        ti = 0
-        for i in range(offset-xspace//2,offset+xspace//2):
-            if i < 0 or i > datasize:
-                #Write red bar
-                #print("w")
-                for dy in range(1,yspace+1):
-                    stdscr.addstr(dy,ti,"█",cursesplus.set_colour(cursesplus.RED,cursesplus.RED))
-            else:
-                seldata = ldata[i]
-                if currentdatatype == AnalyticsExplorerDataTypes.PLAYERCOUNT:
-                    scale = int(seldata.howmanyonline()/maxval*yspace)
-                else:
-                    scale = int(seldata.getplayerminutes()/maxval*yspace)
-                
-                if i == offset:
-                    for p in range(1,yspace+2):
-                        stdscr.addstr(p,ti,"█",cursesplus.set_colour(cursesplus.GREEN,cursesplus.GREEN))#Central marker
-                    for p in range(yspace+1,yspace+1-scale,-1):
-                        stdscr.addstr(p,ti,"█",cursesplus.set_colour(cursesplus.CYAN,cursesplus.CYAN))
-                else:
-                    for p in range(yspace+1,yspace+1-scale,-1):
-                        stdscr.addstr(p,ti,"█",cursesplus.set_colour(cursesplus.WHITE,cursesplus.WHITE))
-            
-            ti += 1
-            
-        seldata = ldata[offset]
-        if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
-            stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.getplayerminutes()} player-minutes")
-        else:
-            try:
-                stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.howmanyonline()} players online - {seldata.onlineplayers}")
-            except:
-                stdscr.addstr(my-2,0,f"{strip_datetime(get_datetime_from_minute_id(seldata.minuteid))} || {seldata.howmanyonline()} players online")#Too long for list
-        
-        ch = curses.keyname(stdscr.getch()).decode()
-        if ch == "q":
-            break
-        elif ch == "h":
-            cursesplus.displaymsg(stdscr,["KEYBINDS","q - Quit","h - Help","<- -> Scroll","END - Go to end","HOME - Go to beginning","j - Jump to time","SHIFT <-- --> - Jump hour","Ctrl <-- --> - Jump day","T - Select time unit","D - Select data type"])
-        elif ch == "KEY_LEFT":
-            if offset > 0:
-                offset -= 1
-        elif ch == "KEY_RIGHT":
-            offset += 1
-        elif ch == "KEY_SLEFT":
-            if offset > 60:
-                offset -= 60
-            else:
-                offset = 0
-        elif ch == "KEY_SRIGHT":#Jump around by an hour
-            offset += 60 
-        elif ch == "kRIT5":#ctrl left
-            offset += 1440
-        elif ch == "kLFT5":#ctrl right
-            if offset > 1440:
-                offset -= 1440
-            else:
-                offset = 0
-        elif ch == "KEY_END":
-            offset = datasize - 1
-        elif ch == "KEY_HOME":
-            offset = 0
-        elif ch == "j":
-            stdscr.clear()
-            ndate = cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a date and time to jump to",True,False,get_datetime_from_minute_id(ldata[offset].minuteid))
-            if currentzoomlevel == AnalyticsExplorerZoomLevels.HOUR:
-                ndate = ndate.replace(second=0,minute=0)
-            if currentzoomlevel == AnalyticsExplorerZoomLevels.DAY or currentzoomlevel == AnalyticsExplorerZoomLevels.WEEK:
-                ndate = ndate.replace(hour=0)
-            nmid = get_minute_id_from_datetime(ndate)
-            if not nmid in data:
-                cursesplus.messagebox.showerror(stdscr,["Records do not exist for the selected date."])
-            else:
-                offset = list(data.keys()).index(nmid)
-        elif ch == "t":
-            currentzoomlevel = list(zoomlevels.keys())[uicomponents.menu(stdscr,list(zoomlevels.values()),"Choose a zoom level")]
-            cursesplus.displaymsg(stdscr,["Generating Data"],False)
-            #This will use ogdat because data may have been used for hour or day, which will screw it up
-            offset = 0
-            if currentzoomlevel == AnalyticsExplorerZoomLevels.MINUTE:
-                data = {k:deserialize_smf(v) for k,v in list(JsonGz.read(td+"/data.json.gz").items())}
-                ldata = list(data.values())
-            else:
-                chunked_data:list[list[ServerMinuteFrame]] = split_list_into_chunks(list({k:deserialize_smf(v) for k,v in list(JsonGz.read(td+"/data.json.gz").items())}.values()),get_chunk_size_from_aezl(currentzoomlevel))
-                final_data:dict[int,ServerMinuteFrame] = {}
-                for chunk in chunked_data:
-                    s:ServerMinuteFrame = ServerMinuteFrame(chunk[0].minuteid)
-                    #Append all unique players, and set playerminutes
-                    total_playerminutes = 0
-                    unique_players = []
-                    for minute in chunk:
-                        total_playerminutes += minute.howmanyonline()
-                        for onlineplayer in minute.onlineplayers:
-                            if onlineplayer not in unique_players:
-                                unique_players.append(onlineplayer)
-                    s.playerminutes = total_playerminutes
-                    s.onlineplayers = unique_players
-                    final_data[s.minuteid] = s
-                data = final_data
-                del chunked_data
-                del final_data
-                ldata = list(data.values())
-            maxval = max([p.get_data(currentdatatype) for p in list(data.values())])
-            #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
-            #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
-            datasize = len(data)-1
-                
-        elif ch == "d":
-            currentdatatype = list(datatypes.keys())[uicomponents.menu(stdscr,list(datatypes.values()),"Choose a data type")]
-            maxval = max([p.get_data(currentdatatype) for p in ldata])
-            #if currentdatatype == AnalyticsExplorerDataTypes.TOTALPLAYERMINUTES:
-            #    maxval = maxval*get_chunk_size_from_aezl(currentzoomlevel)
-        if offset > datasize:
-            offset = datasize - 1
-            
-def average_list(l:list[int|float]) -> float:
-    return sum(l)/len(l)
-            
-def recursive_average(l:list[list[int|float]]) -> list[float]:
-    return [average_list(z) for z in l]
-
-class JsonGz:
-    def read(path:str) -> dict:
-        with open(path,'rb') as f:
-            rd = f.read()
-        return json.loads(gzip.decompress(rd).decode())
-    def write(path:str,data:dict) -> None:
-        with open(path,'wb+') as f:
-            f.write(gzip.compress(json.dumps(data).encode()))
-
-def sanalytics(stdscr,serverdir):
-    telemetry.telemetric_action("analytics")
-    if uicomponents.resource_warning(stdscr):
-        return
-    renaminghandler.autoupdate_cache(stdscr,serverdir)
-    analytics_file_path = serverdir + os.sep + "anacache.json.gz"
-    cursesplus.displaymsg(stdscr,["Loading from cache..."],False)
-    readfrom = datetime.date(2000,1,1)
-    cachefile = {"end":None,"minutes":{}}
-    if os.path.isfile(analytics_file_path):
-        cachefile = JsonGz.read(analytics_file_path)
-        if cachefile["end"] is not None:
-            readfrom = get_datetime_from_minute_id(cachefile["end"])#Stores the last minuteid that it successfully processed.
-    
-    #allentries:list[logutils.LogEntry] = logutils.load_server_logs(stdscr,serverdir,False,readfrom)
-    allentries = logloader.load_logs(stdscr,serverdir,logfilters.has_joinorleave,readfrom)
-    earliestentrydt:datetime.date = allentries[0].logdate
-    cursesplus.displaymsg(stdscr,["Parsing Data","Please Wait"],wait_for_keypress=False)
-    eventslist:list[JLLogFrame] = []
-    joins:dict[int,list[str]] = {}
-    leavs:dict[int,list[str]] = {}
-    #Both of these lists will be [minuteid] -> [list of players].
-    if len(allentries) == 0:
-        cursesplus.messagebox.showwarning(stdscr,["No logs, so no info!"])
-        return
-    
-    for entry in allentries:
-        
-        lz = re.findall(r' \S* joined the game| \S* left the game',entry.data)
-        
-        #print(entry.data)
-        if len(lz) > 0:
-            if entry.logdate < earliestentrydt:
-                earliestentrydt = entry.logdate
-            #print(lz)
-            eventslist.append(JLLogFrame(entry))
-            rs:str = lz[0].strip()
-            plname = rs.split(" ")[0].lower()
-            action = rs.split(" ")[1]
-            #Remove special characters from plname
-            plname = plname.replace("(","").replace(")","")
-            plname = renaminghandler.get_current_name_of(plname)
-            mid = get_minute_id_from_datetime(eventslist[-1].ext)
-            if "joined" in action:
-                if not mid in joins:
-                    joins[mid] = [plname]
-                else:
-                    joins[mid].append(plname)
-            if "left" in action:
-                if not mid in leavs:
-                    leavs[mid] = [plname]
-                else:
-                    leavs[mid].append(plname)
-    cursesplus.displaymsg(stdscr,["Sorting Data","Please Wait"],wait_for_keypress=False)
-    joins = sort_dict_by_key(joins)
-    leavs = sort_dict_by_key(leavs)
-    firstentrymid = get_minute_id_from_datetime(datetime.datetime.combine(earliestentrydt,datetime.time(0,0,0)))
-    if len(cachefile["minutes"]) > 0:
-        firstentrymid = int(list(cachefile["minutes"].keys())[0])+1
-    cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],wait_for_keypress=False)
-    currentmid = get_minute_id_from_datetime(datetime.datetime.now())
-    #Take leavs and joins and assemble minuteframe
-    final:dict[int,ServerMinuteFrame] = {
-        firstentrymid-1:ServerMinuteFrame(firstentrymid-1)#Keep template incase no action in first minute
-    }
-    
-    lastrealjoin:dict[str,int] = {}#keep track of the last registered join of a player. If they stay on for longer than 6 hours without a real join, they get removed.
-    for m in range(firstentrymid,currentmid+1):
-        #M is minute id
-        if m not in joins and not m in leavs:
-            prev = copy.deepcopy(final[m-1])
-            prev.minuteid = m
-            final[m] = prev
-        else:
-            phj = []
-            phl = []
-            if m in joins:
-                phj = joins[m]
-            if m in leavs:
-                phl = leavs[m]
-            
-            frame = copy.deepcopy(final[m-1])#Deep copy!?!?!? THEN WHY WERENT YOU COPYING !?!??!
-            #frame = ServerMinuteFrame(0)
-            frame.minuteid = m 
-            frame.onlineplayers = frame.onlineplayers.copy()
-            for player in phj:
-                lastrealjoin[player] = m
-                if player in phl:
-                    phl.remove(player)
-                    continue#This should solve the quick joinleave problem
-                frame.onlineplayers.append(player)
-            for player in phl:
-                try:
-                    frame.onlineplayers = remove_values_from_list(frame.onlineplayers,player)
-                except:
-                    pass
-            for op in frame.onlineplayers:
-                try:
-                    if (m - lastrealjoin[op]) > 360:
-                        #print("REM")
-                        frame.onlineplayers = remove_values_from_list(frame.onlineplayers,op)
-                except:
-                    pass#If player inspects analytics starting from when players were online, this could crash
-            final[m] = frame
-    for cachedentry in list(cachefile["minutes"].items()):
-        final[int(cachedentry[0])] = ServerMinuteFrame(int(cachedentry[0]))
-        final[int(cachedentry[0])].onlineplayers = cachedentry[1]
-        #This should overwrite any nasty data.
-    cursesplus.displaymsg(stdscr,["Cleaning Data","Please Wait"],wait_for_keypress=False)
-    
-    for k in final:
-        final[k].onlineplayers = remove_duplicates_from_list(final[k].onlineplayers)
-        
-    #Find last zeroed time to store in cache
-    for mre in list(final.values()).__reversed__():
-        if mre.howmanyonline() == 0:
-            storeto = mre.minuteid
-            break
-    cursesplus.displaymsg(stdscr,["Saving Data","Please Wait"],False)
-    newcache = {"end":int(storeto),"minutes":{}}
-    for line in list(final.items()):
-        if int(line[0]) <= int(storeto):
-            newcache["minutes"][int(line[0])] = line[1].onlineplayers
-    JsonGz.write(analytics_file_path,newcache)
-    #with open("/tmp/cwf.txt","w+") as f:
-    #    f.write("\n".join([serverminuteframe_uf(x) for x in list(final.values())]))
-    cursesplus.displaymsg(stdscr,["Done"],False)
-    
-    minminid = firstentrymid      
-    maxminid = get_minute_id_from_datetime(datetime.datetime.now())
-    while True:
-        cursesplus.displaymsg(stdscr,["Applying filters..."],False)
-        workingdata:dict[str,ServerMinuteFrame] = {}
-        for k in list(final.keys()):
-            if k >= minminid and k <= maxminid:
-                workingdata[k] = final[k]
-        wtd = uicomponents.menu(stdscr,["Back","Analytics Explorer","Playtime","Total Player Count","Time of Day",f"FILTER MIN: {strip_datetime(get_datetime_from_minute_id(minminid))}",f"FILTER MAX: {strip_datetime(get_datetime_from_minute_id(maxminid))}","RESET FILTERS","Export to CSV","Server Popularity Over Time","Last Seen","First Join","Reset Cache"],"Server Analytics Manager")
-        if wtd == 0:
-            return
-        elif  wtd == 1:
-            server_analytics_explorer(stdscr,workingdata)
-        elif wtd == 2:
-            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
-            playminutes:dict[str,int] = {}
-            for entry in list(workingdata.values()):
-                for p in entry.onlineplayers:
-                    if not p in playminutes:
-                        playminutes[p] = 0
-                    playminutes[p] += 1
-            while True:
-                #swtd = uicomponents.menu(stdscr,["Back","VIEW GRAPH"]+list(playminutes.keys()),"Choose a player to view their playtime information")
-                swtd = cursesplus.searchable_option_menu(stdscr,list(playminutes.keys()),"Choose a player to view their playtime information",["Back","View Total Graph"])
-                if swtd == 0:
-                    break
-                elif swtd == 1:
-                    
-                    cursesplus.bargraph(stdscr,playminutes,"Player Minute Information","minutes")
-                else:
-                    plstudy = list(playminutes.keys())[swtd-2]
-                    zwtd = uicomponents.menu(stdscr,["Total Playtime Minutes","Playtime History","Time of Day analyzers"])
-                    match zwtd:
-                        case 0:
-                            cursesplus.messagebox.showinfo(stdscr,["Playtime Minutes: "+str(playminutes[list(playminutes.keys())[swtd-2]])])
-                        case 1:
-                            cursesplus.displaymsg(stdscr,["Analyzing Data","Please wait"],False)
-                            dzl = {}#yearmonth:data
-                            for entry in list(workingdata.values()):
-                                if plstudy in entry.onlineplayers:
-                                    nd = get_datetime_from_minute_id(entry.minuteid)
-                                    nk = f"{nd.year}-{str(nd.month).zfill(2)}"
-                                    if not nk in dzl:
-                                        dzl[nk] = 1
-                                    else:
-                                        dzl[nk] += 1
-                                        
-                            cursesplus.bargraph(stdscr,dzl,f"How has {plstudy} played over the months?","minutes spend",False,True)
-                        case 2:
-                            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
-                            dataset:list[int] = [0 for _ in range(24)]#0:00 to 23:00
-
-                            for entry in list(workingdata.values()):
-                                hr = get_datetime_from_minute_id(entry.minuteid).hour
-                                if plstudy in entry.onlineplayers:
-                                    dataset[hr] += 1
-                                
-                            dataset_ps = {}
-                            i = 0
-                            for ex in dataset:
-                                dataset_ps[f"{i}:00 - {i}:59"] = ex
-                                i += 1
-                                
-                            cursesplus.bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
-                            
-        elif wtd == 3:
-            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
-            allplayers = []
-            for entry in list(workingdata.values()):
-                allplayers += entry.onlineplayers
-            cursesplus.messagebox.showinfo(stdscr,["During the time selected,",str(count_unique_values(allplayers)),"unique players have joined this server"])
-            cursesplus.messagebox.showinfo(stdscr,["The maximum number of players at once was ",str(max([s.howmanyonline() for s in list(workingdata.values())]))])
-        elif wtd == 4:
-            cursesplus.messagebox.showinfo(stdscr,["This graph is shown in player-minutes","It is one for each minute a player spends"])
-            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
-            dataset:list[int] = [0 for _ in range(24)]#0:00 to 23:00
-
-            for entry in list(workingdata.values()):
-                hr = get_datetime_from_minute_id(entry.minuteid).hour
-                dataset[hr] += entry.howmanyonline()
-                
-            dataset_ps = {}
-            i = 0
-            for ex in dataset:
-                dataset_ps[f"{i}:00 - {i}:59"] = ex
-                i += 1
-                
-            cursesplus.bargraph(stdscr,dataset_ps,"Player minutes spent per hour of day","player-minutes",False,True)
-            
-        elif wtd == 5:
-            stdscr.clear()
-            minminid = get_minute_id_from_datetime(cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a new minimum filter time",True,False,get_datetime_from_minute_id(minminid)))
-        elif wtd == 6:
-            stdscr.clear()
-            maxminid = get_minute_id_from_datetime(cursesplus.date_time_selector(stdscr,cursesplus.DateTimeSelectorTypes.DATEANDTIME,"Choose a new minimum filter time",True,False,get_datetime_from_minute_id(maxminid)))
-        elif wtd == 7:
-            minminid = firstentrymid      
-            maxminid = get_minute_id_from_datetime(datetime.datetime.now())
-        elif wtd == 8:
-            od = cursesplus.filedialog.openfolderdialog(stdscr,"Select output folder")
-            if od is not None:
-                cursesplus.displaymsg(stdscr,["Please wait..."],False)
-                finalstr = "Minute ID,Local Time,Player Count,Online Players\n"
-                for entry in list(workingdata.values()):
-                    finalstr += f"{entry.minuteid},{get_datetime_from_minute_id(entry.minuteid)},{entry.howmanyonline()},{', '.join(entry.onlineplayers)}\n"
-                with open(od+"/serverplayers.csv","w+") as f:
-                    f.write(finalstr)
-                cursesplus.messagebox.showinfo(stdscr,["Exported successfully"])
-        elif wtd == 9:
-            tan = uicomponents.menu(stdscr,["Total Player-minutes","Unique Players","Average Online Players","Average Online Players (active time)"],"Select Data to examine",footer="(active time) shows only data that is not zero")
-            gd:dict[str,object] = {}
-            unit = "player-minutes"
-            cursesplus.displaymsg(stdscr,["Analyzing Data","Please Wait"],False)
-            match tan:
-                case 0:
-                    for entry in list(workingdata.values()):
-                        gkey = f"{get_datetime_from_minute_id(entry.minuteid).year}-{get_datetime_from_minute_id(entry.minuteid).month.__str__().zfill(2)}"
-                        if gkey in gd:
-                            gd[gkey] += entry.howmanyonline()
-                        else:
-                            gd[gkey] = entry.howmanyonline()
-                case 1:
-                    for entry in list(workingdata.values()):
-                        gkey = f"{get_datetime_from_minute_id(entry.minuteid).year}-{get_datetime_from_minute_id(entry.minuteid).month.__str__().zfill(2)}"
-                        if gkey in gd:
-                            for pl in entry.onlineplayers:
-                                if pl not in gd[gkey]:
-                                    gd[gkey].append(pl)
-                        else:
-                            gd[gkey] = entry.onlineplayers
-                    for dkey in gd:
-                        gd[dkey] = len(gd[dkey])#Convert lists of players into lens
-                    unit = "unique players"
-                case 2 | 3:
-                    for entry in list(workingdata.values()):
-                        gkey = f"{get_datetime_from_minute_id(entry.minuteid).year}-{get_datetime_from_minute_id(entry.minuteid).month.__str__().zfill(2)}"
-                        if gkey in gd:
-                            if entry.howmanyonline() > 0 or tan == 2:
-                                gd[gkey].append(entry.howmanyonline())
-                            
-                        else:
-                            gd[gkey] = [entry.howmanyonline()]
-                    for dkey in gd:
-                        gd[dkey] = average_list(gd[dkey])
-                    unit = "online players"
-                
-            cursesplus.bargraph(stdscr,gd,"Popularity Results",unit,False,False)
-        elif wtd == 10:
-            plf = 0
-            cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-            sortop = uicomponents.menu(stdscr,["Alphabetically","Recent -> Old"],"Choose search option")
-            fjblock:dict[str,datetime.datetime] = {}
-            for line in reversed(list(workingdata.values())):
-                for pl in line.onlineplayers:
-                    if not pl in fjblock.keys():
-                        fjblock[pl] = get_datetime_from_minute_id(line.minuteid)
-                        plf += 1
-                        cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-
-            if sortop == 0:
-                fjblock = dict(sorted(fjblock.items()))#Sort A-Z
-
-            #Assemble text
-            finals = "PLAYER NAME".ljust(16)+" "+"LAST SEEN"+"\n"
-            for blk in fjblock.items():
-                finals += blk[0].ljust(16) + " " + strip_datetime(blk[1]) + "\n"
-
-            cursesplus.textview(stdscr,text=finals,message="Results")
-        elif wtd == 11:
-            plf = 0
-            cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-            sortop = uicomponents.menu(stdscr,["Alphabetically","Oldest to newest"],"Choose search option")
-            fjblock:dict[str,datetime.datetime] = {}
-            for line in list(workingdata.values()):
-                for pl in line.onlineplayers:
-                    if not pl in fjblock.keys():
-                        fjblock[pl] = get_datetime_from_minute_id(line.minuteid)
-                        plf += 1
-                        cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-
-            if sortop == 0:
-                fjblock = dict(sorted(fjblock.items()))#Sort A-Z
-
-            #Assemble text
-            finals = "PLAYER NAME".ljust(16)+" "+"JOIN DATE"+"\n"
-            for blk in fjblock.items():
-                finals += blk[0].ljust(16) + " " + strip_datetime(blk[1]) + "\n"
-
-            cursesplus.textview(stdscr,text=finals,message="Results")
-            
-        elif wtd == 12:
-            os.remove(analytics_file_path)
-            return
 
 def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
     if sys.version_info[1] < 11:
@@ -3181,7 +2591,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             elif w2 == 3:
                 #cursesplus.messagebox.showerror(stdscr,["This feature is coming soon.","Sorry"])
                 #continue
-                sanalytics(stdscr,SERVER_DIR)
+                analytics.analytics_loader(stdscr,SERVER_DIR)
             elif w2 == 4:
                 playerstat(stdscr,SERVER_DIR)
             elif w2 == 5:
@@ -3329,7 +2739,7 @@ def playerstat(stdscr,serverdir):
                         allkeys += get_nested_keys(d)
                         bigdata[get_name_from_uuid(filemaps[file])] = d
                 
-                allkeys = remove_duplicates_from_list(allkeys)
+                allkeys = utils.remove_duplicates_from_list(allkeys)
                 while True:
                     compe = cursesplus.searchable_option_menu(stdscr,allkeys,"Choose a statistic to compare",["FINISH"])
                     if compe == 0:
@@ -4172,6 +3582,9 @@ def main(stdscr):
         if IN_SOURCE_TREE:
             introsuffix=" | SRC mode"
 
+        if not internetcheck.is_computer_connected_to_internet():
+            introsuffix += " | ! NO INTERNET"
+
         if appdata.APPDATA["settings"]["autoupdate"]["value"]:
             if ON_WINDOWS:
                 softwareupdate.windows_update_software(stdscr,False)
@@ -4187,7 +3600,7 @@ def main(stdscr):
                 lz = ["New server","My servers","Settings","Help","Report a bug","Update CraftServerSetup","Credits","Quit","OTHER ENDERBYTE PROGRAMS SOFTWARE"]
                 if DEVELOPER:
                     lz += ["Debug Tools"]
-                m = uicomponents.menu(stdscr,lz,f"{t('title.welcome')} | {appdata.APPDATA['idata']['MOTD']}",f"Version {APP_UF_VERSION}{introsuffix} on {platform.system()} {platform.release()} (Python {platform.python_version()})")
+                m = uicomponents.menu(stdscr,lz,f"{t('title.welcome')} {introsuffix} | {appdata.APPDATA['idata']['MOTD']}",f"Version {APP_UF_VERSION} on {platform.system()} {platform.release()} (Python {platform.python_version()})")
                 if m == 7:
                     cursesplus.displaymsg(stdscr,["Shutting down..."],False)
                     if len(SERVER_INITS.items()):

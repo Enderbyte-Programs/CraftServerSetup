@@ -10,9 +10,11 @@ import logfilters
 import re
 import gzip
 
-def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.LogEntry],bool] = logfilters.permit_all,min_date = datetime.date(2000,1,1),max_date = datetime.date(2100,12,31)) -> list[logutils.LogEntry]:#I will be surprised if Minecraft is still operating and this program works in 2100. I'll most likely be long dead...
+def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.LogEntry],bool] = logfilters.permit_all,min_datetime = datetime.datetime(2000,1,1,0,0,0),max_datetime = datetime.datetime(2099,12,31,23,59,59)) -> list[logutils.LogEntry]:#I will be surprised if Minecraft is still operating and this program works in 2100. I'll most likely be long dead...
     """Load the logs of the server from `serverdir`, applying the check filter function. Returned logs will be between min date and max date."""
     cursesplus.displaymsg(stdscr,["Loading Logs, Please wait...","0 processed","0 accepted","0 filtered"],False)
+    min_date = min_datetime.date()
+    max_date = max_datetime.date()
     logdir = serverdir + "/logs"
     if not os.path.isdir(logdir):
         cursesplus.messagebox.showerror(stdscr,["No logs could be found."])
@@ -75,6 +77,10 @@ def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.Log
                         line = splb[0].decode()
                         buffer = splb[1]
                         le = create_log_entry(line,logfile)
+
+                        letime = le.get_full_log_time()
+                        if letime < min_datetime or letime > max_datetime:
+                            continue#Reject for being out of range. Like the date this does not contribute to the reject count
 
                         total_entries_processed += 1
                         if not filter_function(le):

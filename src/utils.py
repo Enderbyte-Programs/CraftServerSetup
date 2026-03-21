@@ -1,6 +1,6 @@
 """Miscellaneous utilities"""
 
-import os
+import datetime
 
 def str_contains_word(s:str,string:str) -> bool:
     d = s.lower().split(" ")
@@ -51,3 +51,40 @@ def parse_size(data: int) -> str:
     if neg:
         result = "-"+result
     return result
+
+def strip_datetime(d:datetime.datetime) -> str:
+    return d.strftime("%Y-%m-%d %H:%M:%S")
+
+def count_unique_values(l:list) -> int:
+    return len(set(l))
+
+def remove_duplicates_from_list(l:list) -> list:
+    return list(set(l))
+
+def remove_values_from_list(the_list, val):
+   return [value for value in the_list if value != val]
+
+def friendly_positions(ins:int) -> str:
+    conv = str(ins)
+    if conv.endswith("1"):
+        conv += "st"
+    elif conv.endswith("2"):
+        conv += "nd"
+    elif conv.endswith("3"):
+        conv += "rd"
+    else:
+        conv += "th"
+    return conv
+
+def split_list_into_chunks(l, n):
+    for i in range(0, len(l), n): 
+        yield l[i:i + n]
+        
+def sort_dict_by_key(d:dict) -> dict:
+    return dict(sorted(list(d.items())))
+
+def average_list(l:list[int|float]) -> float:
+    return sum(l)/len(l)
+            
+def recursive_average(l:list[list[int|float]]) -> list[float]:
+    return [average_list(z) for z in l]

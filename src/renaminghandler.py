@@ -89,7 +89,7 @@ def update_cache_custom(stdscr,rawentries:list[logutils.LogEntry]):
 
 def autoupdate_cache(stdscr,serverdir):
 
-    lastupdatetime = datetime.datetime.fromtimestamp(NC_DATA["last_updated"]).date()
+    lastupdatetime = datetime.datetime.fromtimestamp(NC_DATA["last_updated"])
     update_cache_custom(stdscr,logloader.load_logs(stdscr,serverdir,logfilters.player_rename,lastupdatetime))
 
 def player_naming_history(stdscr):
