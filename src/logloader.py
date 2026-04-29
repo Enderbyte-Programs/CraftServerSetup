@@ -31,8 +31,8 @@ def load_logs(stdscr,serverdir:str,filter_function:typing.Callable[[logutils.Log
                 int(lf.split("-")[1]),
                 int(lf.split("-")[2])
             )
-            if ld >= min_date and ld <= max_date:
-                logs.append(lf)#Accept
+        if ld >= min_date and ld <= max_date:
+            logs.append(lf)#Accept
         
     logs = list(sorted(logs))#Sort the data by sorting the files
     #cursesplus.messagebox.showinfo(stdscr,[f"F {len(logs)}"])
