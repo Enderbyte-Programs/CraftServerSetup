@@ -3,15 +3,6 @@
 ## Planned Updates
 
 ### 1.55
-
-- Telemetry overhaul
-    - Four levels
-    - Nothing
-    - Basic Information (software version, os version)
-    - Crash reports (send crash reports)
-    - Detailed information (installation type, number of servers, computer memory amount)
-- Probably have some "telemetry key" to track crashes
-- This will require significant backend web programming
 - Also minor feature, allow the user to launch a shell from java or bedrock server management (bash on Linux, cmd on windows)
 
 ### 1.56

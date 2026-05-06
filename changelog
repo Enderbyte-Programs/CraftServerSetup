@@ -1,3 +1,7 @@
+1.55.4:
+- Add ability to launch a shell from manage server menu (Java and Bedrock)
+1.55.3:
+- Fix bug in log loader where it would ignore latest file
 1.55.2:
 - Make log loader use datetimes again instead of dates, fixing a bug in server analytics (nasty nasty bug...)
 - Fix serveral bugs in the analytics loader that occur if your cache has 100% coverage

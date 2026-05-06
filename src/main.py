@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.55.3"
+APP_UF_VERSION = "1.55.4"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -28,7 +28,6 @@ import webbrowser               #Open links like the bug link
 import gzip                     #Compression utilities
 import time                     #Timezone data
 import copy                     #Object copies
-import enum                     #Improve readability
 import io                       #File streams
 import shlex                    #Data parsing
 import re                       #Pattern matching
@@ -114,7 +113,7 @@ import backups                  #System backup
 import utils                    #Random utilities
 import javamanager              #Java selector
 import analytics                #Server analytics
-import jsongz                   #Json-Gz reader
+import shellmanager             #Launch shells
 import internetcheck            #check if connected
 
 del WINDOWS
@@ -798,7 +797,7 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
             
     svrd = appdata.APPDATA["servers"][chosenserver-1]["dir"]       
     while True:
-        wtd = uicomponents.menu(stdscr,["RETURN TO MAIN MENU","Start Server","Server Settings","Delete Server","Configure Allowlist","Export Server","World Settings","Re/change install","FILE MANAGER"],f"Managing {servername}")
+        wtd = uicomponents.menu(stdscr,["RETURN TO MAIN MENU","Start Server","Server Settings","Delete Server","Configure Allowlist","Export Server","World Settings","Re/change install","Launch Shell","FILE MANAGER"],f"Managing {servername}")
         if wtd == 0:
             os.chdir("/")
             return
@@ -814,8 +813,10 @@ def bedrock_manage_server(stdscr,servername,chosenserver):
                     stdscr.clear()
                     break
             stdscr.erase()
-        elif wtd == 8:
+        elif wtd == 9:
             file_manager(stdscr,appdata.APPDATA["servers"][chosenserver-1]["dir"],f"Managing files for {servername}")
+        elif wtd == 8:
+            shellmanager.launch_shell()
         elif wtd == 7:
             bedrock_do_update(stdscr,chosenserver,availablelinks)
         elif wtd == 6:
@@ -2449,7 +2450,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         os.chdir(appdata.APPDATA["servers"][chosenserver-1]["dir"])#Fix bug where running a sub-option that changes dir would screw with future operations
         x__ops = ["RETURN TO MAIN MENU","Start Server","Configuration >>","Advanced configuration >>","Delete server","Manage worlds","Update Server software","Manage Content >>"]
         x__ops += ["Server Logs >>","Export server","View server info","Administration and Backups >>"]
-        x__ops += ["Utilities >>","FILE MANAGER"]
+        x__ops += ["Utilities >>","Launch Shell","FILE MANAGER"]
         if _sname in SERVER_INITS and not appdata.APPDATA["servers"][chosenserver-1]["settings"]["legacy"]:
             x__ops[1] = "Server is running >>"
         #w = uicomponents.menu(stdscr,x__ops)
@@ -2596,7 +2597,11 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 playerstat(stdscr,SERVER_DIR)
             elif w2 == 5:
                 renaminghandler.player_naming_history(stdscr)
+        
         elif w == 13:
+            shellmanager.launch_shell()
+
+        elif w == 14:
             file_manager(stdscr,SERVER_DIR,f"Files of {appdata.APPDATA['servers'][chosenserver-1]['name']}")
 _SCREEN:typing.Any = None
 
