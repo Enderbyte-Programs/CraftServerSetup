@@ -2,16 +2,13 @@
 
 ## Planned Updates
 
-### 1.55
-- Also minor feature, allow the user to launch a shell from java or bedrock server management (bash on Linux, cmd on windows)
-
 ### 1.56
 
 - Disk space analyser
-- basic mode - just see plugins %, world%, all customized. Delete option works on all
 - Advanced mode - shows each folder without customization. Delete option for specific files or specific subdirectories
 - For each, it will be a bar chart using a unique character for each subfolder. 
-- Possibly summary view as well which is more visual
+- Ability to estimate when serer will run out of disk space? Requires you open the DSA at least 2 times for estimation.
+- Possibly basic extension framework?
 
 ### 1.57
 
