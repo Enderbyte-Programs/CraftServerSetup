@@ -13,6 +13,8 @@ def get_parents(basedir:str,subfile:str) -> list[str]:
     result = [copy.copy(subfile)]
     while subfile.replace(basedir,"").strip() != "/":
         subfile = os.path.dirname(subfile)
+        if subfile in basedir:
+            break
         result.append(copy.copy(subfile))
 
     return result
