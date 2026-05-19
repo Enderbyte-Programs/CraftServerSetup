@@ -115,6 +115,7 @@ import javamanager              #Java selector
 import analytics                #Server analytics
 import shellmanager             #Launch shells
 import internetcheck            #check if connected
+import diskspaceanalyzer        #Disk space analyzer
 
 del WINDOWS
 del DEBUG
@@ -2584,7 +2585,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         #    appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
         #    appdata.updateappdata()
         elif w == 12:
-            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics","Player name history"],"Additional Utilities")
+            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics","Player name history","Disk Space Analyzer"],"Additional Utilities")
             if w2 == 1:
                 chatutils.who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
@@ -2597,12 +2598,15 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 playerstat(stdscr,SERVER_DIR)
             elif w2 == 5:
                 renaminghandler.player_naming_history(stdscr)
+            elif w2 == 6:
+                diskspaceanalyzer.dsa_ui(stdscr,SERVER_DIR)
         
         elif w == 13:
             shellmanager.launch_shell()
 
         elif w == 14:
             file_manager(stdscr,SERVER_DIR,f"Files of {appdata.APPDATA['servers'][chosenserver-1]['name']}")
+            
 _SCREEN:typing.Any = None
 
 def get_nested_keys(d, parent_key=''):
