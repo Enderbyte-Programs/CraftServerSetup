@@ -19,3 +19,6 @@ def is_logentry_a_command(l:logutils.LogEntry) -> bool:
 
 def player_rename(l:logutils.LogEntry) -> bool:
     return len(re.findall(r"\S+ \(formerly known as \S+\)",l.data)) > 0
+
+def get_uuid(l:logutils.LogEntry) -> bool:
+    return len(re.findall(r": UUID of player \S+ is \S+$",l.data) + re.findall(r"Floodgate player logged in as \S+ joined \(UUID: \S+\)",l.data)) > 0

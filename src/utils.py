@@ -88,3 +88,13 @@ def average_list(l:list[int|float]) -> float:
             
 def recursive_average(l:list[list[int|float]]) -> list[float]:
     return [average_list(z) for z in l]
+
+def recursive_remove_if_contains(l:list[str],badvals:list[str]) -> list[str]:
+    res = []
+    for r in l:
+        for badval in badvals:
+            if badval in r:
+                break
+        else:
+            res.append(r)
+    return res

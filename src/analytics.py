@@ -14,14 +14,17 @@ import utils
 import logfilters
 import analyticsstructures
 import analyticsexplorer
-
-#TODO - split this file into analyticsexplorer.py and analyticsstructures.py
+import uuid
+from time import sleep
+import uuidmgr
 
 def analytics_loader(stdscr,serverdir):
     telemetry.telemetric_action("analytics")
     if uicomponents.resource_warning(stdscr):
         return
     renaminghandler.autoupdate_cache(stdscr,serverdir)
+    uuidmgr.load_from_logs(stdscr,serverdir)
+
     analytics_file_path = serverdir + os.sep + "anacache.json.gz"
     cursesplus.displaymsg(stdscr,["Loading from cache..."],False)
     readfrom = datetime.datetime(2000,1,1,0,0,0)
@@ -129,6 +132,7 @@ def analytics_loader(stdscr,serverdir):
     
     for k in final:
         final[k].onlineplayers = utils.remove_duplicates_from_list(final[k].onlineplayers)
+        final[k].onlineplayers = utils.recursive_remove_if_contains(final[k].onlineplayers,["\"","{","/"])
         
     #Find last zeroed time to store in cache
     storeto = analyticsstructures.get_minute_id_from_datetime(readfrom)#By default, store none. Then, try to find the last zero point
@@ -297,7 +301,7 @@ def analytics_loader(stdscr,serverdir):
         elif wtd == 10:
             plf = 0
             cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-            sortop = uicomponents.menu(stdscr,["Alphabetically","Recent -> Old"],"Choose search option")
+            sortop = uicomponents.menu(stdscr,["Alphabetically","Recent -> Old","Export UUIDs"],"Choose search option or data option")
             fjblock:dict[str,datetime.datetime] = {}
             for line in reversed(list(workingdata.values())):
                 for pl in line.onlineplayers:
@@ -305,6 +309,10 @@ def analytics_loader(stdscr,serverdir):
                         fjblock[pl] = analyticsstructures.get_datetime_from_minute_id(line.minuteid)
                         plf += 1
                         cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
+
+            if sortop == 2:
+                do_date_based_uuid_export(stdscr,fjblock)
+                continue
 
             if sortop == 0:
                 fjblock = dict(sorted(fjblock.items()))#Sort A-Z
@@ -318,7 +326,7 @@ def analytics_loader(stdscr,serverdir):
         elif wtd == 11:
             plf = 0
             cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
-            sortop = uicomponents.menu(stdscr,["Alphabetically","Oldest to newest"],"Choose search option")
+            sortop = uicomponents.menu(stdscr,["Alphabetically","Oldest to newest","Export UUIDs"],"Choose search option or data option")
             fjblock:dict[str,datetime.datetime] = {}
             for line in list(workingdata.values()):
                 for pl in line.onlineplayers:
@@ -326,6 +334,10 @@ def analytics_loader(stdscr,serverdir):
                         fjblock[pl] = analyticsstructures.get_datetime_from_minute_id(line.minuteid)
                         plf += 1
                         cursesplus.displaymsg(stdscr,["Analyzing data",f"{plf} players found"],False)
+
+            if sortop == 2:
+                do_date_based_uuid_export(stdscr,fjblock)
+                continue
 
             if sortop == 0:
                 fjblock = dict(sorted(fjblock.items()))#Sort A-Z
@@ -342,4 +354,43 @@ def analytics_loader(stdscr,serverdir):
             cursesplus.messagebox.showinfo(stdscr,["The analytics cache has been reset."])
             return
         
+def do_date_based_uuid_export(stdscr,vals:dict[str,datetime.datetime]) -> None:
+    """Produces and writes a file. Each line is one user. First block before space is uuid. All names are built to handle name changes"""
+    cursesplus.displaymsg(stdscr,["Please wait..."],False)
 
+    tempresult:dict[str,int] = {}
+
+    for kvpair in list(vals.items()):
+        latest_uname = renaminghandler.get_current_name_of(kvpair[0])
+        tempresult[latest_uname] = int(kvpair[1].timestamp())
+
+    cursesplus.displaymsg(stdscr,["It is now time to convert names into UUIDs","They will be processed at 1/second max","Press enter to proceed."])
+
+    result:dict[str,int] = {}
+    all_items = list(tempresult.items())
+    
+    pbar = cursesplus.ProgressBar(stdscr,len(all_items),bar_type=cursesplus.ProgressBarTypes.FullScreenProgressBar,show_log=True,message="Loading UUIDs")
+
+    while len(all_items) > 0:
+        
+        selitem = all_items.pop()
+        mresult = uuidmgr.get_uuid_from_name(selitem[0])
+        if mresult == "":
+            continue
+        
+        cursesplus.displaymsg(stdscr,[f"{len(all_items)} remaining"],False)
+        result[str(mresult)] = selitem[1]
+        pbar.step(f"{selitem[0]} -> {mresult}",True)
+
+    pbar.done()
+
+        
+    outfile = cursesplus.savefile_selector(stdscr)
+    with open(outfile,"w+") as f:
+        for resitem in list(result.items()):
+            f.write(resitem[0])
+            f.write(" ")
+            f.write(str(resitem[1]))
+            f.write("\n")
+    
+    cursesplus.messagebox.showinfo(stdscr,["Saved successfully"])

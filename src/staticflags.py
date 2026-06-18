@@ -168,6 +168,7 @@ def setup_early_load(windows:bool,debug:bool):
     global BACKUPDIR
     global DOCDOWNLOAD
     global ASSETSDIR
+    global UUIDSTORAGEFILE
 
     #Get argparse
     _arguments.startup()
@@ -217,3 +218,5 @@ def setup_early_load(windows:bool,debug:bool):
         os.mkdir(SERVERS_BACKUP_DIR)
     if not os.path.isdir(ASSETSDIR):
         os.mkdir(ASSETSDIR)
+
+    UUIDSTORAGEFILE = APPDATADIR + "/uuids.json.gz"
