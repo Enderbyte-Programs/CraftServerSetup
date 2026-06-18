@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.56"
+APP_UF_VERSION = "1.55.5"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -115,7 +115,8 @@ import javamanager              #Java selector
 import analytics                #Server analytics
 import shellmanager             #Launch shells
 import internetcheck            #check if connected
-import diskspaceanalyzer        #Disk space analyzer
+import uuidmgr
+import diskspaceanalyzer
 
 del WINDOWS
 del DEBUG
@@ -152,24 +153,6 @@ def sigint(signal,frame):
 
 def assemble_package_file_path(serverdir:str):
     return TEMPDIR+"/packages-spigot-"+serverdir.replace("\\","/").split("/")[-1]+".json"
-
-def is_uuidindex_loaded():
-    return len(appdata.UUID_INDEX) != 0
-
-def get_name_from_uuid(uuid:str) -> str:
-    if uuid in appdata.UUID_INDEX:
-        if uuid is None:
-            return uuid#Failed all attemps. I know it's a bad idea to be using this both internally and from the user side, but I am a bad developer
-        return appdata.UUID_INDEX[uuid]
-    else:
-        r = requests.get("https://api.minetools.eu/uuid/"+uuid)
-        try:
-            name = r.json()["name"]
-            appdata.UUID_INDEX[uuid] = name
-            sleep(1)#Prevent crash from rate spamming
-            return name
-        except:
-            return uuid#If all fails, just return to sender
 
 def extract_links_from_page(data: str) -> list[str]:
     dl = data.split("href=")
@@ -347,7 +330,7 @@ def manage_whitelist(stdscr,whitefile:str):
             for player in names:
                 cursesplus.displaymsg(stdscr,[player],False)
                 try:
-                    pluid = get_player_uuid(player)
+                    pluid = uuidmgr.get_uuid_from_name(player)
                 except:
                     cursesplus.messagebox.showerror(stdscr,[f"{player} does not appear to be a valid username.","Please make sure you have typed it correctly."])
                     continue
@@ -1018,17 +1001,6 @@ def setupnewserver(stdscr):
         pass
     os.chdir(bdir)
     manage_server(stdscr,S_INSTALL_DIR,appdata.APPDATA["servers"].index(sd)+1)
-
-def get_player_uuid(username:str):
-    req = f"https://api.mojang.com/users/profiles/minecraft/{username}"
-    r = requests.get(req).json()
-    uuid = r["id"]
-    uuidl = list(uuid)
-    uuidl.insert(8,"-")
-    uuidl.insert(13,"-")
-    uuidl.insert(18,"-")
-    uuidl.insert(23,"-")
-    return "".join(uuidl)
 
 def setup_new_world(stdscr,dpp:dict,serverdir=os.getcwd(),initialconfig=True) -> dict:
     if not initialconfig:
@@ -2634,13 +2606,6 @@ def dictpath(inputd:dict,path:str):
             final = final[axx]
     return final
 
-def push_uuids_for_searching(uuids:list[str]) -> None:
-    """Adds a list of uuids to the list. It is a good idea to call create_uuid_index after this"""
-    for uuid in uuids:
-        if not uuid in appdata.UUID_INDEX:
-            appdata.UUID_INDEX[uuid] = None
-    appdata.updateappdata()
-
 def collapse_tuple(l) -> str:
     if isinstance(l,tuple) or isinstance(l,list):
         best = ""
@@ -2652,56 +2617,6 @@ def collapse_tuple(l) -> str:
         return best
     else:
         return l
-
-def create_uuid_index(stdscr) -> None:
-    """Loads logs from all servers and attempts to fill in as many uuids as it can"""
-    #First, check if UUID index actually needs to be updated.
-    if not None in list(appdata.UUID_INDEX.values()):
-        return#Doesn't need updating
-    cursesplus.displaymsg(stdscr,["Finding missing UUIDs"],False)
-    missinguuids = []
-    for entry in list(appdata.UUID_INDEX.items()):
-        if entry[1] is None:
-            missinguuids.append(entry[0])
-    matches = []
-    s1knowledgebase = {}
-    for server in appdata.APPDATA["servers"]:
-        matches.extend(logloader.load_server_logs_and_find(stdscr,server['dir'],r'(UUID of player \S+ is [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(logged in as \S+ joined \(UUID: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'))
-        #Load servers
-    
-    cursesplus.displaymsg(stdscr,["Parsing data..."],False)
-    for match in matches:
-        s = collapse_tuple(match).split(" ")
-        s1knowledgebase[s[3]] = s[-1]#Match player name to UUID
-    saveduuids = 0
-    faileduuids = 0
-    cursesplus.displaymsg(stdscr,["Saving UUIDS..."],False)
-    #Attempt to match UUID-less matches
-    #cursesplus.textview(stdscr,text=str(missinguuids))
-    for missinuuid in missinguuids:
-        if missinuuid in s1knowledgebase:
-            appdata.UUID_INDEX[missinuuid] = s1knowledgebase[missinuuid]
-            saveduuids += 1
-            missinguuids.remove(missinuuid)
-            
-    #cursesplus.messagebox.showinfo(stdscr,[str(saveduuids),str(faileduuids)])
-    #Use webrequests for remaining UUIDS
-    tofindpbar = cursesplus.ProgressBar(stdscr,len(missinguuids),message="Finding UUIDs")
-    for missinuuid in missinguuids:
-        tofindpbar.step(f"{saveduuids} found; {faileduuids} failed || {missinuuid}")
-        if missinuuid.startswith("0000"):
-            faileduuids += 1
-            continue
-        webresult = get_name_from_uuid(missinuuid)
-        if webresult is None or webresult == missinuuid:
-            faileduuids += 1
-            continue
-        appdata.UUID_INDEX[missinuuid] = webresult
-        saveduuids += 1
-        missinguuids.remove(missinuuid)
-        sleep(1)
-       
-    appdata.updateappdata() 
 
 def playerstat(stdscr,serverdir):
     telemetry.telemetric_action("playerstat")
@@ -2727,11 +2642,9 @@ def playerstat(stdscr,serverdir):
         #Attempt to load UUID to playernames
         localmappings = {k:k for k in uuids}
         p = cursesplus.ProgressBar(stdscr,len(uuids),message="Converting UUIDs")
-        push_uuids_for_searching(uuids)
-        create_uuid_index(stdscr)
         for uuid in uuids:
             p.step(f"{p.max - p.value} remaining - {uuid}")
-            localmappings[uuid] = get_name_from_uuid(uuid)
+            localmappings[uuid] = uuidmgr.get_name_from_uuid(uuid)
         localmappings = {k:v for k,v in list(localmappings.items()) if k is not None and v is not None }
         #localmappings = {k:v for k,v in list(localmappings.items()) if os.path.isfile(playerdatafolder+k+".json")}
         
@@ -2746,7 +2659,7 @@ def playerstat(stdscr,serverdir):
                     with open(file) as f:
                         d = json.load(f)["stats"]
                         allkeys += get_nested_keys(d)
-                        bigdata[get_name_from_uuid(filemaps[file])] = d
+                        bigdata[uuidmgr.get_name_from_uuid(filemaps[file])] = d
                 
                 allkeys = utils.remove_duplicates_from_list(allkeys)
                 while True:
@@ -3059,7 +2972,7 @@ def manage_ops(stdscr,serverdir):
             elif dz == 1:
                 player = uicomponents.crssinput(stdscr,"Please input the player's name")
                 try:
-                    uuid = get_player_uuid(player)
+                    uuid = uuidmgr.get_uuid_from_name(player)
                 except:
                     cursesplus.messagebox.showerror(stdscr,["This player does not exist."])
                 else:
@@ -3138,7 +3051,7 @@ def manage_bans(stdscr,serverdir):
             elif dz  == 1:
                 player = uicomponents.crssinput(stdscr,"Please input the player's name")
                 try:
-                    uuid = get_player_uuid(player)
+                    uuid = uuidmgr.get_uuid_from_name(player)
                 except:
                     cursesplus.messagebox.showerror(stdscr,["This player does not exist."])
                 else:
@@ -3537,10 +3450,11 @@ def main(stdscr):
         
         threading.Thread(target=internet_thread,args=(stdscr,)).start()
         appdata.setup_appdata()
-        #Telemetry demands special startup
 
+        ### Special non-critical library inits ###
         eptel.startup(appdata.APPDATA["telemetry"]["telkey"],"CraftServerSetup",APP_UF_VERSION)
         telemetry.telemetric_action("startup")
+        uuidmgr.init()
 
         #Breakaway point for -m and -s tasks
         _scc = False

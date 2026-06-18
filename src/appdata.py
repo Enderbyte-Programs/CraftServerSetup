@@ -215,14 +215,10 @@ __DEFAULTAPPDATA__ = {
     "language" : None
 }
 
-UUID_INDEX:dict = {}
-
 def setup_appdata():
     """Load appdata from the file and populate the appdata.APPDATA variable."""
     global APPDATA
     global APPDATAFILE
-    global UUIDFILE
-    global UUID_INDEX
     APPDATAFILE = APPDATADIR+"/config.json"
     if not os.path.isfile(APPDATAFILE):
         with open(APPDATAFILE,"w+") as f:
@@ -238,19 +234,6 @@ def setup_appdata():
             APPDATA = __DEFAULTAPPDATA__
     APPDATA = compatibilize_appdata(APPDATA)
 
-    UUIDFILE = APPDATADIR+"/uuidindex.json.gz"
-
-    if not os.path.isfile(UUIDFILE):
-        with open(UUIDFILE,"wb+") as f:
-            f.write(gzip.compress(json.dumps({}).encode()))
-    else:
-        try:
-            with open(UUIDFILE,"rb") as f:
-                UUID_INDEX = json.loads(gzip.decompress(f.read()))
-        except:
-            with open(UUIDFILE,"wb+") as f:
-                f.write(gzip.compress(json.dumps({}).encode()))
-
 def self_compatibilize():
     """Execute a compatibilization and repair routine on appdata.APPDATA"""
     global APPDATA
@@ -261,12 +244,8 @@ def updateappdata():
     """Write in-memory appdata and UUID cache to the disk"""
     
     global APPDATAFILE
-    global UUID_INDEX
-    global UUIDFILE
     with open(APPDATAFILE,"w+") as f:
         f.write(json.dumps(APPDATA,indent=2))
-    with open(UUIDFILE,"wb+") as f:
-        f.write(gzip.compress(json.dumps(UUID_INDEX).encode()))#Write compressed file
 
 def get_setting_value(key:str) -> typing.Any:
     return APPDATA["settings"][key]["value"]

@@ -105,23 +105,3 @@ def create_log_entry(data:str,fromfilename:str) -> logutils.LogEntry:
             int(fromfilename.split("-")[2])
         )
     return logutils.LogEntry(fromfilename,ld,data)
-
-def load_server_logs_and_find(stdscr,serverdir:str,tofind:str) -> list[str]:
-    """Find specific matches of regex, removing the rest of the log entry"""
-    cursesplus.displaymsg(stdscr,["Loading Logs, Please wait..."],False)
-    logfile = serverdir + "/logs"
-    if not os.path.isdir(logfile):
-        return []
-    dirstack.pushd(logfile)
-    logs:list[str] = [l for l in os.listdir(logfile) if l.endswith(".gz") or l.endswith(".log")]
-    p = cursesplus.ProgressBar(stdscr,len(logs),cursesplus.ProgressBarTypes.SmallProgressBar,cursesplus.ProgressBarLocations.TOP,message="Loading logs")
-    final:list[str] = []
-    for lf in logs:
-        p.step(lf)
-        if lf.endswith(".gz"):
-            with open(lf,'rb') as f:
-                final.extend(re.findall(tofind,gzip.decompress(f.read()).decode()))
-        else:
-            with open(lf) as f:
-                final.extend(re.findall(tofind,f.read()))
-    return final

@@ -95,3 +95,13 @@ def clean_file_path(s:str) -> str:
     if s.endswith("/"):
         s = s[0:-1]
     return s
+
+def recursive_remove_if_contains(l:list[str],badvals:list[str]) -> list[str]:
+    res = []
+    for r in l:
+        for badval in badvals:
+            if badval in r:
+                break
+        else:
+            res.append(r)
+    return res
