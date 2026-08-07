@@ -8,12 +8,13 @@ from time import sleep
 import textwrap
 from .constants import *
 import datetime
-import copy
 from . import utils
 import threading
 import re
+import platform
 
 _C_INIT = False
+_ON_WINDOWS = platform.system() == "Windows"
 
 class ArgumentError(Exception):
     """You have provided an invalid combination of arguments"""
@@ -1103,6 +1104,8 @@ def _is_a_valid_file_name(s:str) -> bool:
     banned_characters = ["\"","*","<",">",":","|","?"]
     for c in banned_characters:
         if c in s:
+            if _ON_WINDOWS and c == ":" and s.index(c) == 1:
+                continue#Fix major issue where false positive would occur with Windows drive letters
             return False
     return True
 
@@ -1129,8 +1132,8 @@ def savefile_selector(stdscr,defaultdirectory=os.getcwd(),extension="",enforce_e
                 if not barefn.endswith(extension):
                     barefn += extension
             fileo = barefn
-        elif p == 3:
-            return "NONE"
+        elif p == 4:
+            return None
 
 def _friendly_positions(ins:int) -> str:
     conv = str(ins)

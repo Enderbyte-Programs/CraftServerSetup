@@ -1,3 +1,8 @@
+1.56:
+- Add the Disk Space analyzer
+- Windows builds now use python 3.14 instead of 3.12
+- Update all references of os.get_terminal_size to stdscr.getmaxyx which better handles resizing
+- Update cursesplus to 3.20.2
 1.55.5:
 - Add UUID table export for first join and last seen
 - Overhaul UUID system

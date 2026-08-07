@@ -76,7 +76,6 @@ def openfiledialog(stdscr,title: str = "Please choose a file",filter: str = [["*
     selected: int = 0
     refresh: bool = False
     directory = directory.replace("\\","/")
-    masterlist: list = list[Fileobj]
     directories = [directory+"/"+l for l in os.listdir(directory) if os.path.isdir(directory+"/"+l)]
     if filter[activefilter][0].strip() == "*":
         files = [directory+"/"+l for l in os.listdir(directory) if os.path.isfile(directory+"/"+l)]
@@ -110,7 +109,6 @@ def openfiledialog(stdscr,title: str = "Please choose a file",filter: str = [["*
         topline = "Name"+" "*(MAXNL-4)+"|"+"Size     "+"|Date Modified"
         topline = topline+(mx-2-len(topline))*" "
         if refresh:
-            masterlist: list = list[Fileobj]
             directories = [directory+"/"+l for l in os.listdir(directory) if os.path.isdir(directory+"/"+l)]
             if filter[activefilter][0].strip() == "*":
                 files = [directory+"/"+l for l in os.listdir(directory) if os.path.isfile(directory+"/"+l)]
