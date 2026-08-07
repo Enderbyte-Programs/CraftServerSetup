@@ -233,6 +233,10 @@ def dsa_ui(stdscr,base_dir:str) -> None:
                 wantedscan = uicomponents.menu(stdscr,["Cancel"]+[s.calltime.strftime("Scan from %Y-%m-%d %H:%M:%S") for s in availableoptions])
                 if wantedscan != 0:
                     view_scan(stdscr,availableoptions[wantedscan - 1])
+        elif baseoption == 3:
+            cursesplus.messagebox.showinfo(stdscr,["This feature is coming soon."])
+        elif baseoption == 4:
+            cursesplus.messagebox.showinfo(stdscr,["This feature is coming soon."])
 
 def get_server_dsa_history_folder(serverdir:str) -> str:
     os.makedirs(serverdir + "/dsahistory",exist_ok=True)
