@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.55.5"
+APP_UF_VERSION = "1.56"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -115,7 +115,8 @@ import javamanager              #Java selector
 import analytics                #Server analytics
 import shellmanager             #Launch shells
 import internetcheck            #check if connected
-import uuidmgr                  #UUID helper
+import uuidmgr
+import diskspaceanalyzer
 
 del WINDOWS
 del DEBUG
@@ -231,7 +232,7 @@ def error_handling(e:Exception,message="A serious error has occured"):
         if erz == 0:
             safe_exit(1)
         elif erz == 1:
-            cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc(),message="Error info")
+            cursesplus.textview(_SCREEN,text=f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:_SCREEN.getmaxyx()[1]-1]}"+"\n"+traceback.format_exc(),message="Error info")
            
         elif erz == 2:
             if ON_WINDOWS:
@@ -279,7 +280,7 @@ def safe_error_handling(e:Exception):
     _SCREEN.nodelay(0)
     _SCREEN.clear()
     _SCREEN.bkgd(cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
-    raw =  f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:os.get_terminal_size()[0]-1]}"+"\n"+traceback.format_exc()
+    raw =  f"TYPE: {type(e)}"+"\n"+f"MESSAGE: {str(e)[0:_SCREEN.getmaxyx()[1]-1]}"+"\n"+traceback.format_exc()
     #splitext = textwrap.wrap(raw,_SCREEN.getmaxyx()[1]-1)
     splitext = raw.splitlines()
 
@@ -379,7 +380,7 @@ def download_spigot_software(stdscr,serverdir,javapath) -> dict:
         else:
             xver = "latest"
         PACKAGEDATA = {"id":xver}
-        mx = os.get_terminal_size()[0]-4
+        mx = stdscr.getmaxyx()[1]-4
         proc = subprocess.Popen([javapath,"-jar","BuildTools.jar","--rev",xver],shell=False,stdout=subprocess.PIPE)
         tick = 0
         while True:
@@ -2305,7 +2306,8 @@ def start_server(stdscr,_sname,chosenserver,SERVER_DIR):
                                 redraw = True
                 
             #Visual part
-            mx,my = os.get_terminal_size()
+            #mx,my = os.get_terminal_size()
+            my,mx = stdscr.getmaxyx()
             mx -= 1
             my -= 1
             headeroverhead = 5
@@ -2527,7 +2529,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
             sdat = appdata.APPDATA["servers"][chosenserver-1]
             stdscr.addstr(0,20,sdat["name"])
             stdscr.addstr(1,20,sdat["version"])
-            stdscr.addstr(2,20,sdat["dir"][0:os.get_terminal_size()[0]])
+            stdscr.addstr(2,20,sdat["dir"][0:stdscr.getmaxyx()[1]])
             stdscr.addstr(3,20,sdat["memory"])
             stdscr.addstr(4,20,"...")
             stdscr.refresh()
@@ -2556,7 +2558,7 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
         #    appdata.APPDATA["servers"][chosenserver-1] = change_software(stdscr,SERVER_DIR,appdata.APPDATA["servers"][chosenserver-1])
         #    appdata.updateappdata()
         elif w == 12:
-            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics","Player name history"],"Additional Utilities")
+            w2 = uicomponents.menu(stdscr,["Back","Chat Utilities","IP Lookups","Server Analytics","Player Statistics","Player name history","Disk Space Analyzer"],"Additional Utilities")
             if w2 == 1:
                 chatutils.who_said_what(stdscr,SERVER_DIR)
             elif w2 == 2:
@@ -2569,12 +2571,15 @@ def manage_server(stdscr,_sname: str,chosenserver: int):
                 playerstat(stdscr,SERVER_DIR)
             elif w2 == 5:
                 renaminghandler.player_naming_history(stdscr)
+            elif w2 == 6:
+                diskspaceanalyzer.dsa_ui(stdscr,SERVER_DIR)
         
         elif w == 13:
             shellmanager.launch_shell()
 
         elif w == 14:
             file_manager(stdscr,SERVER_DIR,f"Files of {appdata.APPDATA['servers'][chosenserver-1]['name']}")
+            
 _SCREEN:typing.Any = None
 
 def get_nested_keys(d, parent_key=''):
@@ -2756,7 +2761,8 @@ def file_manager(stdscr,directory:str,header:str):
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         stdscr.addstr(0,0,header,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         
-        mx,my = os.get_terminal_size()
+        #mx,my = os.get_terminal_size()
+        my,mx = stdscr.getmaxyx()
         my -= 1
         mx -= 1
 

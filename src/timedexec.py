@@ -8,7 +8,8 @@ def timeout_askyesno(stdscr,message:list[str],default:bool,timeout:int):
     """Display a messagebox that asks a user a questions. Returns TRUE on Yes and FALSE on No. The user has timeout seconds to answer. If they don't defaul tiwll be returned."""
     stdscr.nodelay(True)
     selected = default
-    x,y = os.get_terminal_size()
+    #x,y = os.get_terminal_size()
+    y,x = stdscr.getmaxyx()
     ox = 0
 
     framesremaining = timeout * 10

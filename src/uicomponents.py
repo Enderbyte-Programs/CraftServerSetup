@@ -24,7 +24,8 @@ def menu(stdscr,options:list[str],title="Please choose an option from the list b
     maxl = utils.list_get_maxlen(options)
     while True:
         stdscr.clear()
-        mx,my = os.get_terminal_size()
+        #mx,my = os.get_terminal_size()
+        my,mx = stdscr.getmaxyx()
         
         cursesplus.utils.fill_line(stdscr,0,cursesplus.set_colour(cursesplus.BLUE,cursesplus.WHITE))
         cursesplus.utils.fill_line(stdscr,1,cursesplus.set_colour(cursesplus.WHITE,cursesplus.BLACK))
