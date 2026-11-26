@@ -1,3 +1,11 @@
+1.56.1:
+- Update certifi from 2025.8.23 to 2026.11.20 (YIKES! A year out of date...)
+- Update charset normalizer from 3.4.3 to 3.5.3
+- Update idna from 3.10 to 3.20
+- Update pyyaml from 6.0.1 to 6.0.4 (previous reference was typo? There is no 6.1)
+- Update requests gfrom 2.32.5 to 2.34.2
+- Update requests from 2.5.0 to 2.8.0
+- Increase minimum python version to 3.11 as 
 1.56:
 - Add the Disk Space analyzer
 - Windows builds now use python 3.14 instead of 3.12

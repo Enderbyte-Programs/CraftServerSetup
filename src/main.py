@@ -2,7 +2,7 @@
 #type: ignore
 #Early load variables
 APP_VERSION = 1#The API Version.
-APP_UF_VERSION = "1.56"
+APP_UF_VERSION = "1.56.1"
 #The semver version
 print(f"CraftServerSetup by Enderbyte Programs v{APP_UF_VERSION} (c) 2023-2026, some rights reserved")
 
@@ -37,7 +37,7 @@ import itertools                #Useful things for working with lists
 WINDOWS = platform.system() == "Windows"
 DEBUG = False#Some constants need to be loaded before library startup... It's a bad system, but this is what is needed to split up this 7000 line file
 
-if sys.version_info < (3,10):
+if sys.version_info < (3,11):
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     print("!!!!!!! Serious Error !!!!!!!")
     print("!! Python version  too old !!")

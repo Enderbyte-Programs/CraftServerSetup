@@ -3,8 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import typing
-from json import dumps
-from os.path import abspath, basename, dirname, join, realpath
+from os.path import abspath, basename, dirname, join, realpath, splitext
 from platform import python_version
 from unicodedata import unidata_version
 
@@ -14,37 +13,19 @@ from charset_normalizer.models import CliDetectionResult
 from charset_normalizer.version import __version__
 
 
-def query_yes_no(question: str, default: str = "yes") -> bool:
-    """Ask a yes/no question via input() and return their answer.
-
-    "question" is a string that is presented to the user.
-    "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
-        an answer is required of the user).
-
-    The "answer" return value is True for "yes" or False for "no".
-
-    Credit goes to (c) https://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
-    """
-    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
+def query_yes_no(question: str, default: str = "yes") -> bool:  # Defensive:
+    """Ask a yes/no question via input() and return the answer as a bool."""
+    prompt = " [Y/n] " if default == "yes" else " [y/N] "
 
     while True:
-        sys.stdout.write(question + prompt)
-        choice = input().lower()
-        if default is not None and choice == "":
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
+        choice = input(question + prompt).strip().lower()
+        if not choice:
+            return default == "yes"
+        if choice in ("y", "yes"):
+            return True
+        if choice in ("n", "no"):
+            return False
+        print("Please respond with 'y' or 'n'.")
 
 
 class FileType:
@@ -262,25 +243,24 @@ def cli_detect(argv: list[str] | None = None) -> int:
                 )
             )
         else:
-            x_.append(
-                CliDetectionResult(
-                    abspath(my_file.name),
-                    best_guess.encoding,
-                    best_guess.encoding_aliases,
-                    [
-                        cp
-                        for cp in best_guess.could_be_from_charset
-                        if cp != best_guess.encoding
-                    ],
-                    best_guess.language,
-                    best_guess.alphabets,
-                    best_guess.bom,
-                    best_guess.percent_chaos,
-                    best_guess.percent_coherence,
-                    None,
-                    True,
-                )
+            cli_result = CliDetectionResult(
+                abspath(my_file.name),
+                best_guess.encoding,
+                best_guess.encoding_aliases,
+                [
+                    cp
+                    for cp in best_guess.could_be_from_charset
+                    if cp != best_guess.encoding
+                ],
+                best_guess.language,
+                best_guess.alphabets,
+                best_guess.bom,
+                best_guess.percent_chaos,
+                best_guess.percent_coherence,
+                None,
+                True,
             )
+            x_.append(cli_result)
 
             if len(matches) > 1 and args.alternatives:
                 for el in matches:
@@ -320,10 +300,10 @@ def cli_detect(argv: list[str] | None = None) -> int:
                 dir_path = dirname(realpath(my_file.name))
                 file_name = basename(realpath(my_file.name))
 
-                o_: list[str] = file_name.split(".")
-
                 if args.replace is False:
-                    o_.insert(-1, best_guess.encoding)
+                    # "sample.txt" -> "sample.cp1252.txt", "README" -> "README.cp1252"
+                    root, ext = splitext(file_name)
+                    file_name = f"{root}.{best_guess.encoding}{ext}"
                     if my_file.closed is False:
                         my_file.close()
                 elif (
@@ -341,11 +321,11 @@ def cli_detect(argv: list[str] | None = None) -> int:
                     continue
 
                 try:
-                    x_[0].unicode_path = join(dir_path, ".".join(o_))
+                    cli_result.unicode_path = join(dir_path, file_name)
 
-                    with open(x_[0].unicode_path, "wb") as fp:
+                    with open(cli_result.unicode_path, "wb") as fp:
                         fp.write(best_guess.output())
-                except OSError as e:
+                except OSError as e:  # Defensive:
                     print(str(e), file=sys.stderr)
                     if my_file.closed is False:
                         my_file.close()
@@ -355,9 +335,13 @@ def cli_detect(argv: list[str] | None = None) -> int:
             my_file.close()
 
     if args.minimal is False:
+        from json import dumps
+
         print(
             dumps(
-                [el.__dict__ for el in x_] if len(x_) > 1 else x_[0].__dict__,
+                [el.__dict__ for el in x_]
+                if args.alternatives or len(x_) > 1
+                else x_[0].__dict__,
                 ensure_ascii=True,
                 indent=4,
             )
@@ -377,5 +361,5 @@ def cli_detect(argv: list[str] | None = None) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    cli_detect()
+if __name__ == "__main__":  # Defensive:
+    raise SystemExit(cli_detect())

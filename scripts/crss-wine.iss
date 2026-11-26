@@ -2,7 +2,7 @@
 
 
 
-#define MyAppVersion "1.56"
+#define MyAppVersion "1.56.1"
 ;The above line must be on line 5!
 
 
@@ -39,7 +39,7 @@ OutputDir=C:\python\crss\installer
 
 
 
-OutputBaseFilename=CraftServerSetup-1.56-installer
+OutputBaseFilename=CraftServerSetup-1.56.1-installer
 ;The above line MUST be on line 42
 
 
