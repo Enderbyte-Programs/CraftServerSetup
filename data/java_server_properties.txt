@@ -1,0 +1,26 @@
+#Version action name type optiontype minimum maximum description prompt [prompt=result]#
+1.2.5 add allow-flight bool basic 0 0 "Allow flight" "Allow players to use fly hacks in survival?"
+1.2.5 add allow-nether bool basic 0 0 "Allow Nether" "Allow players to enter the nether?"
+1.2.5 add difficulty int options 0 3 "Difficulty" "What should the difficulty of the server be?" "Peaceful=0" "Easy=1" "Normal=2" "Hard=3"
+#Remember to change this to string later#
+1.2.5 add enable-query bool basic 0 0 "Allow query" "Allow web requests to view basic information about this server?"
+1.2.5 add enable-rcon bool basic 0 0 "Allow RCON" "Allow Remote Control?"
+1.2.5 add gamemode int options 0 3 "Gamemode" "What should the default gamemode of the server be?" "Survival=0" "Creative=1" "Adventure=2" "Spectator=3"
+#Remember to change this to string later#
+1.2.5 add generate-structures bool basic 0 0 "Generate Structures" "Generate structures in the world?"
+1.2.5 add level-name string basic 1 256 "World folder" "What world name should the server load?"
+1.2.5 add level-seed string basic 0 24 "World seed" "What should the seed of the world be? Leave blank for a random seed"
+1.2.5 add level-type string options 0 100 "World type" "What should the type of the world be?" "Standard generation" "Super flat world" "Large Biomes" "Amplified"
+#Remember to change this for 1.8, 1.13 - Valid options changes#
+1.2.5 add max-build-height int basic 0 255 "Build Limit" "What should the build limit be?"
+1.2.5 add max-players int basic 1 1000000 "Player Limit" "What should the player limit be?" 
+1.2.5 add motd string basic 1 64 "MOTD" "What is the message of the day?"
+1.2.5 add online-mode bool basic 0 0 "Cracked" "Should this server enforce a Minecraft account for joining players?"
+1.2.5 add pvp bool basic 0 0 "Allow PVP" "Allow PVP?"
+1.2.5 add server-ip string basic 0 16 "Force IP Address" "Is there an IP address that you want to force listening on? Leave blank for all."
+1.2.5 add server-port int basic 0 65535 "Server Port" "What port should the server listen on?"
+1.2.5 add spawn-animals bool basic 0 0 "Spawn Animals" "Spawn animals?"
+1.2.5 add spawn-monsters bool basic 0 0 "Spawn Monsters" "Spawn monsters?"
+1.2.5 add spawn-npcs bool basic 0 0 "Spawn villagers" "Spawn villagers?"
+1.2.5 add view-distance int basic 4 32 "Render Distance" "What should the render distance be?"
+1.2.5 add white-list bool basic 0 0 "Use whitelist" "Enforce a whitelist for this server?"

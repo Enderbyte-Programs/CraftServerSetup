@@ -1,3 +1,5 @@
+1.57:
+- You will now get a warning instead of crashing when a vanilla version does not supply a server jar (from being too old)
 1.56.1:
 - Update certifi from 2025.8.23 to 2026.11.20 (YIKES! A year out of date...)
 - Update charset normalizer from 3.4.3 to 3.5.3

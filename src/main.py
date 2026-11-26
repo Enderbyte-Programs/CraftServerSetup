@@ -352,14 +352,21 @@ def download_vanilla_software(stdscr,serverdir) -> dict|None:
     VERSION_MANIFEST_DATA = requests.get(VERSION_MANIFEST).json()
     stdscr.clear()
     stdscr.erase()
-    downloadversion = uicomponents.menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
-    if downloadversion == 0:
-        return
-    else:
-        stdscr.clear()
-        cursesplus.displaymsg(stdscr,["Getting version manifest..."],False)
-        PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
-        cursesplus.displaymsg(stdscr,["Preparing new server"],False)
+    while True:
+        downloadversion = uicomponents.menu(stdscr,["Cancel"]+[v["id"] for v in VERSION_MANIFEST_DATA["versions"]],"Please choose a version")
+        if downloadversion == 0:
+            return
+        else:
+            stdscr.clear()
+            cursesplus.displaymsg(stdscr,["Getting version manifest..."],False)
+            PACKAGEDATA = requests.get(VERSION_MANIFEST_DATA["versions"][downloadversion-1]["url"]).json()
+            cursesplus.displaymsg(stdscr,["Preparing new server"],False)
+
+        if not "downloads" in PACKAGEDATA or not "server" in PACKAGEDATA["downloads"]:
+            cursesplus.messagebox.showerror(stdscr,["This version does not supply a server","Sorry"])
+            continue
+        else:
+            break
     S_DOWNLOAD_data = PACKAGEDATA["downloads"]["server"]
     S_DOWNLOAD_size = utils.parse_size(S_DOWNLOAD_data["size"])
     cursesplus.displaymsg(stdscr,["Downloading server file",f"Size: {S_DOWNLOAD_size}"],False)
